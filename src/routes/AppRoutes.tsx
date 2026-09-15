@@ -7,6 +7,11 @@ import DashboardLayout from '@/layouts/DashboardLayout'
 import PublicLayout from '@/layouts/PublicLayout'
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
 import LoginPage from '@/pages/auth/LoginPage'
+import RegisterPage from '@/pages/auth/RegisterPage'
+import VerifyEmailPage from '@/pages/auth/VerifyEmailPage'
+import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
+import GoogleCompleteProfilePage from '@/pages/auth/GoogleCompleteProfilePage'
 import DistributorDashboardPage from '@/pages/distributor/DistributorDashboardPage'
 import OperationDashboardPage from '@/pages/operation/OperationDashboardPage'
 import QCDashboardPage from '@/pages/qc/QCDashboardPage'
@@ -28,6 +33,11 @@ export default function AppRoutes() {
 
       <Route element={<AuthLayout />}>
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+        <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
+        <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
+        <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
+        <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
+        <Route path={ROUTES.GOOGLE_COMPLETE_PROFILE} element={<GoogleCompleteProfilePage />} />
       </Route>
 
       <Route element={<PublicLayout />}>

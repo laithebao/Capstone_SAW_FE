@@ -1,5 +1,6 @@
 import { createContext, useState, type ReactNode } from 'react'
 import { setApiAccessToken } from '@/services/apiClient'
+import { logout as requestLogout } from '@/services/authService'
 import type { AuthContextValue, AuthSession } from '@/types/auth'
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -7,7 +8,6 @@ export const AuthContext = createContext<AuthContextValue | undefined>(undefined
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null)
 
-  // Nhận phiên từ API xác thực thật trong tương lai; không tự tạo tài khoản.
   function login(nextSession: AuthSession) {
     if (!nextSession.accessToken.trim()) {
       throw new Error('Phiên đăng nhập cần có access token.')
@@ -17,9 +17,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(nextSession)
   }
 
-  function logout() {
-    setApiAccessToken(null)
-    setSession(null)
+  async function logout() {
+    try {
+      if (session?.refreshToken) {
+        await requestLogout(session.refreshToken)
+      }
+    } finally {
+      setApiAccessToken(null)
+      setSession(null)
+    }
   }
 
   return (
