@@ -3,6 +3,11 @@ import { ROLES, type Role } from '@/constants/roles'
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
+  REGISTER: '/register',
+  VERIFY_EMAIL: '/verify-email',
+  FORGOT_PASSWORD: '/forgot-password',
+  RESET_PASSWORD: '/reset-password',
+  GOOGLE_COMPLETE_PROFILE: '/google/complete-profile',
   TRACEABILITY: '/trace/:qrCode',
   ADMIN: '/admin',
   WAREHOUSE_MANAGER: '/warehouse-manager',
