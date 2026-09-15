@@ -1,6 +1,10 @@
-// Kiểu nền tảng đề xuất; đối chiếu với hợp đồng ASP.NET Core trước khi tích hợp.
 export interface ApiResponse<T> {
+  statusCode: number
+  isSuccess: boolean
+  message: string
   data: T
+  errors: string[] | null
+  timestamp: string
 }
 
 export interface PagedResponse<T> {
