@@ -7,6 +7,7 @@ import DashboardLayout from '@/layouts/DashboardLayout'
 import PublicLayout from '@/layouts/PublicLayout'
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
 import LoginPage from '@/pages/auth/LoginPage'
+import RegisterPage from '@/pages/auth/RegisterPage'
 import DistributorDashboardPage from '@/pages/distributor/DistributorDashboardPage'
 import OperationDashboardPage from '@/pages/operation/OperationDashboardPage'
 import QCDashboardPage from '@/pages/qc/QCDashboardPage'
@@ -28,6 +29,7 @@ export default function AppRoutes() {
 
       <Route element={<AuthLayout />}>
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+        <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
       </Route>
 
       <Route element={<PublicLayout />}>

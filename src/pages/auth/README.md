@@ -6,11 +6,13 @@ Chứa các màn hình liên quan đến tài khoản và đăng nhập.
 
 ## Chứa gì?
 
-Hiện chỉ có LoginPage dạng placeholder.
+Hiện có `LoginPage` và `RegisterPage`. Hai page chỉ ghép component trình bày;
+schema validation nằm trong `features/auth/schemas`, còn việc gọi API sẽ nằm trong
+`services/authService.ts` khi Backend sẵn sàng.
 
 ## Ví dụ
 
-LoginPage; chỉ thêm ForgotPasswordPage hoặc RegisterPage khi đến phạm vi được giao.
+`LoginPage`, `RegisterPage`; chỉ thêm `ForgotPasswordPage` khi đến phạm vi được giao.
 
 ## Không nên đặt ở đây
 

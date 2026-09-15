@@ -3,6 +3,7 @@ import { ROLES, type Role } from '@/constants/roles'
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
+  REGISTER: '/register',
   TRACEABILITY: '/trace/:qrCode',
   ADMIN: '/admin',
   WAREHOUSE_MANAGER: '/warehouse-manager',

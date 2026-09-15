@@ -8,7 +8,7 @@ export function setApiAccessToken(token: string | null) {
 }
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5252/api',
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',

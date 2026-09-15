@@ -1,15 +1,61 @@
+# Dependencies and generated output
 node_modules/
 dist/
 coverage/
 *.tsbuildinfo
 
+# Local environment and secrets
 .env
 .env.*
 !.env.example
 *.local
 
+# Database scripts must stay outside the frontend repository
+*.sql
+*.bak
+*.bacpac
+*.dacpac
+
+# Credentials, certificates and private keys
+secrets.json
+*.secrets.json
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+*.keystore
+
+# Logs and caches
 *.log
-.DS_Store
-Thumbs.db
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+.vite/
+.cache/
+.parcel-cache/
+.turbo/
+.next/
+.nuxt/
+.output/
+storybook-static/
+
+# IDE and operating-system files
 .idea/
 .vscode/
+*.suo
+*.user
+*.code-workspace
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.swp
+*~
+*.orig
+*.rej

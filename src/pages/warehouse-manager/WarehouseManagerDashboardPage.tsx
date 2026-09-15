@@ -1,8 +1,4 @@
-export default function WarehouseManagerDashboardPage() {
-  return (
-    <>
-      <h1>Warehouse Manager Dashboard</h1>
-      <p>Khung trang tổng quan dành cho quản lý kho.</p>
-    </>
-  )
-}
+import { ROLES } from '@/constants/roles'
+import RoleDashboard from '@/features/role-dashboard/RoleDashboard'
+import { roleDashboardConfigs } from '@/features/role-dashboard/roleDashboardConfig'
+export default function WarehouseManagerDashboardPage(){return <RoleDashboard config={roleDashboardConfigs[ROLES.WAREHOUSE_MANAGER]}/>}
