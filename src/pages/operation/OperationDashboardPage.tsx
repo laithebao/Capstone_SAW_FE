@@ -1,8 +1,4 @@
-export default function OperationDashboardPage() {
-  return (
-    <>
-      <h1>Operation Dashboard</h1>
-      <p>Khung trang tổng quan dành cho nhân viên vận hành kho.</p>
-    </>
-  )
-}
+import { ROLES } from '@/constants/roles'
+import RoleDashboard from '@/features/role-dashboard/RoleDashboard'
+import { roleDashboardConfigs } from '@/features/role-dashboard/roleDashboardConfig'
+export default function OperationDashboardPage(){return <RoleDashboard config={roleDashboardConfigs[ROLES.OPERATION_STAFF]}/>}

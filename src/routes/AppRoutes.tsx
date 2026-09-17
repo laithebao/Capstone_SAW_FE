@@ -6,7 +6,17 @@ import AuthLayout from '@/layouts/AuthLayout'
 import DashboardLayout from '@/layouts/DashboardLayout'
 import PublicLayout from '@/layouts/PublicLayout'
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
+import CropTypesPage from '@/pages/admin/CropTypesPage'
+import CropTypeFormPage from '@/pages/admin/CropTypeFormPage'
+import InspectionStandardsPage from '@/pages/admin/InspectionStandardsPage'
+import InspectionStandardListPage from '@/pages/admin/InspectionStandardListPage'
+import UserAccessPage from '@/pages/admin/UserAccessPage'
 import LoginPage from '@/pages/auth/LoginPage'
+import RegisterPage from '@/pages/auth/RegisterPage'
+import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
+import VerifyEmailPage from '@/pages/auth/VerifyEmailPage'
+import ChangePasswordPage from '@/pages/auth/ChangePasswordPage'
 import DistributorDashboardPage from '@/pages/distributor/DistributorDashboardPage'
 import OperationDashboardPage from '@/pages/operation/OperationDashboardPage'
 import QCDashboardPage from '@/pages/qc/QCDashboardPage'
@@ -28,6 +38,10 @@ export default function AppRoutes() {
 
       <Route element={<AuthLayout />}>
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+        <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
+        <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
+        <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
+        <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
       </Route>
 
       <Route element={<PublicLayout />}>
@@ -38,8 +52,15 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
+          <Route path={ROUTES.CHANGE_PASSWORD} element={<ChangePasswordPage />} />
           <Route element={<RoleRoute allowedRoles={[ROLES.ADMINISTRATOR]} />}>
             <Route path={ROUTES.ADMIN} element={<AdminDashboardPage />} />
+            <Route path={ROUTES.ADMIN_USER_ACCESS} element={<UserAccessPage />} />
+            <Route path={ROUTES.ADMIN_CROP_TYPES} element={<CropTypesPage />} />
+            <Route path={ROUTES.ADMIN_CROP_TYPE_NEW} element={<CropTypeFormPage />} />
+            <Route path={ROUTES.ADMIN_CROP_TYPE_EDIT} element={<CropTypeFormPage />} />
+            <Route path={ROUTES.ADMIN_INSPECTION_STANDARDS} element={<InspectionStandardListPage />} />
+            <Route path={ROUTES.ADMIN_INSPECTION_STANDARD_NEW} element={<InspectionStandardsPage />} />
           </Route>
           <Route element={<RoleRoute allowedRoles={[ROLES.WAREHOUSE_MANAGER]} />}>
             <Route path={ROUTES.WAREHOUSE_MANAGER} element={<WarehouseManagerDashboardPage />} />

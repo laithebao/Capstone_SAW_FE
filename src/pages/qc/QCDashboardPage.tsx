@@ -1,8 +1,4 @@
-export default function QCDashboardPage() {
-  return (
-    <>
-      <h1>QC Dashboard</h1>
-      <p>Khung trang tổng quan dành cho nhân viên kiểm định chất lượng.</p>
-    </>
-  )
-}
+import { ROLES } from '@/constants/roles'
+import RoleDashboard from '@/features/role-dashboard/RoleDashboard'
+import { roleDashboardConfigs } from '@/features/role-dashboard/roleDashboardConfig'
+export default function QCDashboardPage(){return <RoleDashboard config={roleDashboardConfigs[ROLES.QC_STAFF]}/>}

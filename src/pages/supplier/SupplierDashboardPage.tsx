@@ -1,8 +1,4 @@
-export default function SupplierDashboardPage() {
-  return (
-    <>
-      <h1>Supplier Dashboard</h1>
-      <p>Khung trang tổng quan dành cho nhà cung cấp.</p>
-    </>
-  )
-}
+import { ROLES } from '@/constants/roles'
+import RoleDashboard from '@/features/role-dashboard/RoleDashboard'
+import { roleDashboardConfigs } from '@/features/role-dashboard/roleDashboardConfig'
+export default function SupplierDashboardPage(){return <RoleDashboard config={roleDashboardConfigs[ROLES.SUPPLIER]}/>}

@@ -3,7 +3,7 @@ import type { Role } from '@/constants/roles'
 export type { Role } from '@/constants/roles'
 
 export interface User {
-  id: string
+  id: number
   name: string
   email: string
   role: Role
@@ -12,6 +12,9 @@ export interface User {
 export interface AuthSession {
   user: User
   accessToken: string
+  expiresAt: string
+  refreshToken: string
+  refreshTokenExpiresAt: string
 }
 
 export interface AuthContextValue {
@@ -19,5 +22,5 @@ export interface AuthContextValue {
   accessToken: string | null
   isAuthenticated: boolean
   login: (session: AuthSession) => void
-  logout: () => void
+  logout: () => Promise<void>
 }
