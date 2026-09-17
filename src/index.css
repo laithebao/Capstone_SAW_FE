@@ -30,3 +30,12 @@
     text-decoration: none;
   }
 }
+
+@media (min-width: 1024px) {
+  .inspection-standard-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+    gap: 1.25rem;
+  }
+}
