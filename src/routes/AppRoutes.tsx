@@ -11,6 +11,8 @@ import CropTypeFormPage from '@/pages/admin/CropTypeFormPage'
 import InspectionStandardsPage from '@/pages/admin/InspectionStandardsPage'
 import InspectionStandardListPage from '@/pages/admin/InspectionStandardListPage'
 import UserAccessPage from '@/pages/admin/UserAccessPage'
+import AuditLogPage from '@/pages/admin/AuditLogPage'
+import AuditLogDetailPage from '@/pages/admin/AuditLogDetailPage'
 import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
@@ -61,6 +63,9 @@ export default function AppRoutes() {
             <Route path={ROUTES.ADMIN_CROP_TYPE_EDIT} element={<CropTypeFormPage />} />
             <Route path={ROUTES.ADMIN_INSPECTION_STANDARDS} element={<InspectionStandardListPage />} />
             <Route path={ROUTES.ADMIN_INSPECTION_STANDARD_NEW} element={<InspectionStandardsPage />} />
+            <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogPage />} />
+            <Route path={ROUTES.ADMIN_AUDIT_CHANGES} element={<AuditLogPage />} />
+            <Route path={ROUTES.ADMIN_AUDIT_DETAIL} element={<AuditLogDetailPage />} />
           </Route>
           <Route element={<RoleRoute allowedRoles={[ROLES.WAREHOUSE_MANAGER]} />}>
             <Route path={ROUTES.WAREHOUSE_MANAGER} element={<WarehouseManagerDashboardPage />} />
