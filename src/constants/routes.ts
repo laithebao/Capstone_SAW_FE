@@ -16,6 +16,8 @@ export const ROUTES = {
   ADMIN_CROP_TYPE_EDIT: '/admin/crop-types/:id/edit',
   ADMIN_INSPECTION_STANDARDS: '/admin/inspection-standards',
   ADMIN_INSPECTION_STANDARD_NEW: '/admin/inspection-standards/new',
+  ADMIN_INSPECTION_STANDARD_DETAIL: '/admin/inspection-standards/:id',
+  ADMIN_INSPECTION_STANDARD_VERSION_NEW: '/admin/inspection-standards/:id/versions/new',
   ADMIN_AUDIT_LOGS: '/admin/audit-logs',
   ADMIN_AUDIT_CHANGES: '/admin/audit-logs/changes',
   ADMIN_AUDIT_DETAIL: '/admin/audit-logs/:id',
