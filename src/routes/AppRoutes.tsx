@@ -10,6 +10,8 @@ import CropTypesPage from '@/pages/admin/CropTypesPage'
 import CropTypeFormPage from '@/pages/admin/CropTypeFormPage'
 import InspectionStandardsPage from '@/pages/admin/InspectionStandardsPage'
 import InspectionStandardListPage from '@/pages/admin/InspectionStandardListPage'
+import InspectionStandardDetailPage from '@/pages/admin/InspectionStandardDetailPage'
+import InspectionStandardVersionFormPage from '@/pages/admin/InspectionStandardVersionFormPage'
 import UserAccessPage from '@/pages/admin/UserAccessPage'
 import AuditLogPage from '@/pages/admin/AuditLogPage'
 import AuditLogDetailPage from '@/pages/admin/AuditLogDetailPage'
@@ -63,6 +65,8 @@ export default function AppRoutes() {
             <Route path={ROUTES.ADMIN_CROP_TYPE_EDIT} element={<CropTypeFormPage />} />
             <Route path={ROUTES.ADMIN_INSPECTION_STANDARDS} element={<InspectionStandardListPage />} />
             <Route path={ROUTES.ADMIN_INSPECTION_STANDARD_NEW} element={<InspectionStandardsPage />} />
+            <Route path={ROUTES.ADMIN_INSPECTION_STANDARD_DETAIL} element={<InspectionStandardDetailPage />} />
+            <Route path={ROUTES.ADMIN_INSPECTION_STANDARD_VERSION_NEW} element={<InspectionStandardVersionFormPage />} />
             <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogPage />} />
             <Route path={ROUTES.ADMIN_AUDIT_CHANGES} element={<AuditLogPage />} />
             <Route path={ROUTES.ADMIN_AUDIT_DETAIL} element={<AuditLogDetailPage />} />
