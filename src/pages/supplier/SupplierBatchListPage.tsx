@@ -222,7 +222,7 @@ export const SupplierBatchListPage: React.FC = () => {
       {/* Quick Action Buttons */}
       <div className="flex flex-wrap items-center gap-3">
         <button
-          onClick={() => navigate('/supplier/batches/declare')}
+          onClick={() => navigate('/supplier/batches/new')}
           className="bg-zinc-800 hover:bg-zinc-900 text-white font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm transition shadow-sm"
         >
           <Plus className="w-4 h-4" />
@@ -349,7 +349,7 @@ export const SupplierBatchListPage: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       <button
-                        onClick={() => navigate(`/supplier/batches/${batch.batchId}/status`)}
+                        onClick={() => navigate(`/supplier/batches/${batch.batchId}`)}
                         className="p-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition"
                         title="Xem chi tiết trạng thái"
                       >

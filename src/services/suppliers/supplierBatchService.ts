@@ -4,6 +4,7 @@ import type {
   GetSupplierBatchesQueryRequest,
   SupplierBatchItemResponse,
   SupplierBatchListResponse,
+  SupplierBatchStatusResponse,
 } from '@/types/supplierBatch';
 
 export const supplierBatchService = {
@@ -37,7 +38,7 @@ export const supplierBatchService = {
 
   getBatchStatus: async (
     id: number
-  ): Promise<{ message: string; data: SupplierBatchListResponse }> => {
+  ): Promise<{ message: string; data: SupplierBatchStatusResponse }> => {
     const response = await apiClient.get(`/SupplierBatches/${id}/status`);
     return response.data;
   },

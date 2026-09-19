@@ -38,6 +38,7 @@ import BatchProcessDetailPage from '@/pages/supplier/BatchProcessDetailPage'
 import DeclareBatchPage from '@/pages/supplier/DeclareBatchPage'
 import EditBatchPage from '@/pages/supplier/EditBatchPage'
 import SupplierBatchListPage from '@/pages/supplier/SupplierBatchListPage'
+import BatchStatusDetailPage from '@/pages/supplier/BatchStatusDetailPage'
 
 export default function AppRoutes() {
   const { user, isAuthenticated } = useAuth()
@@ -97,6 +98,7 @@ export default function AppRoutes() {
             <Route path={ROUTES.SUPPLIER_BATCHES} element={<SupplierBatchListPage />} />
             <Route path={ROUTES.SUPPLIER_BATCH_NEW} element={<DeclareBatchPage />} />
             <Route path={ROUTES.SUPPLIER_BATCH_EDIT} element={<EditBatchPage />} />
+            <Route path={ROUTES.SUPPLIER_BATCH_STATUS} element={<BatchStatusDetailPage />} />
             <Route path={ROUTES.SUPPLIER_BATCH_DETAIL} element={<BatchProcessDetailPage />} />
           </Route>
 

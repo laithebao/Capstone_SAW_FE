@@ -68,7 +68,7 @@ export const SupplierProfilePage: React.FC = () => {
   return (
     <SupplierProfileView 
       profile={profile} 
-      onEdit={() => navigate(ROUTES.SUPPLIER_PROFILE_DECLARE)} 
+      onEdit={() => navigate(ROUTES.SUPPLIER_PROFILE_EDIT)} 
     />
   );
 };

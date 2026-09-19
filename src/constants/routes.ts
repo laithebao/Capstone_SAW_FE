@@ -34,6 +34,7 @@ export const ROUTES = {
   SUPPLIER_CROPS: '/supplier/crops',
   SUPPLIER_BATCHES: '/supplier/batches',
   SUPPLIER_BATCH_DETAIL: '/supplier/batches/:id',
+  SUPPLIER_BATCH_STATUS: '/supplier/batches/:id/status',
   SUPPLIER_BATCH_NEW: '/supplier/batches/new',        
   SUPPLIER_BATCH_EDIT: '/supplier/batches/:id/edit',
 

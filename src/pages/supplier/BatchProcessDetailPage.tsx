@@ -10,6 +10,7 @@ import {
   Package,
   FileText,
   Info,
+  Pencil,
 } from 'lucide-react';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
 import type { SupplierBatchStatusResponse } from '@/types/supplierBatch';
@@ -115,13 +116,22 @@ export const BatchProcessDetailPage: React.FC = () => {
         </div>
 
         {/* Action button bên phải */}
-        <button
-          onClick={() => {}}
-          className="px-4 py-1.5 border border-red-200 text-red-600 bg-red-50/50 hover:bg-red-100/80 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
-        >
-          <XCircle className="w-4 h-4 text-red-500" />
-          <span>Hủy đơn</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(`/supplier/batches/${id}/status`)}
+            className="px-4 py-1.5 border border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-100/80 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+          >
+            <Pencil className="w-4 h-4 text-blue-500" />
+            <span>Chỉnh sửa</span>
+          </button>
+          <button
+            onClick={() => {}}
+            className="px-4 py-1.5 border border-red-200 text-red-600 bg-red-50/50 hover:bg-red-100/80 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+          >
+            <XCircle className="w-4 h-4 text-red-500" />
+            <span>Hủy đơn</span>
+          </button>
+        </div>
       </div>
 
       {/* Grid Bố cục 2 Cột chuẩn Figma */}
