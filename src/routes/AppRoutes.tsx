@@ -26,6 +26,7 @@ import OperationDashboardPage from '@/pages/operation/OperationDashboardPage'
 import QCDashboardPage from '@/pages/qc/QCDashboardPage'
 import SupplierDashboardPage from '@/pages/supplier/SupplierDashboardPage'
 import SupplierProfilePage from '@/pages/supplier/SupplierProfilePage'
+import { DeclareSupplierProfilePage } from '@/pages/supplier/DeclareSupplierProfilePage' // <-- IMPORT THÊM Ở ĐÂY
 import ForbiddenPage from '@/pages/system/ForbiddenPage'
 import NotFoundPage from '@/pages/system/NotFoundPage'
 import TraceabilityPage from '@/pages/traceability/TraceabilityPage'
@@ -81,10 +82,14 @@ export default function AppRoutes() {
           <Route element={<RoleRoute allowedRoles={[ROLES.OPERATION_STAFF]} />}>
             <Route path={ROUTES.OPERATION} element={<OperationDashboardPage />} />
           </Route>
+          
+          {/* PHÂN HỆ SUPPLIER */}
           <Route element={<RoleRoute allowedRoles={[ROLES.SUPPLIER]} />}>
             <Route path={ROUTES.SUPPLIER} element={<SupplierDashboardPage />} />
             <Route path={ROUTES.SUPPLIER_PROFILE} element={<SupplierProfilePage />} />
+            <Route path={ROUTES.SUPPLIER_PROFILE_DECLARE} element={<DeclareSupplierProfilePage />} /> {/* <-- ĐĂNG KÝ ROUTE MỚI */}
           </Route>
+
           <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
             <Route path={ROUTES.DISTRIBUTOR} element={<DistributorDashboardPage />} />
           </Route>

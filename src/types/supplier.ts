@@ -44,3 +44,22 @@ export interface SupplierProfileResponse {
   certifications: SupplierCertificationDto[];
   documents: SupplierDocumentDto[];
 }
+
+export interface DeclareSupplierProfileRequest {
+  supplierName: string;
+  taxCode: string;
+  supplierType?: string;
+  legalRepresentative: string;
+  contactPerson: string;
+  phoneNumber?: string;
+  email?: string;
+  logoUrl?: string;
+  province?: string;
+  district?: string;
+  ward?: string;
+  address: string;
+  farmingAreaHa?: number;
+  cropTypeIds: number[];
+  certifications: string[];
+  evidenceDocumentUrls?: string[];
+}

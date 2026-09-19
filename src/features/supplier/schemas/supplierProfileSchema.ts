@@ -1,0 +1,52 @@
+import { z } from 'zod';
+
+export const declareSupplierProfileSchema = z.object({
+  supplierName: z
+    .string()
+    .min(1, 'Tên doanh nghiệp / hợp tác xã không được để trống.')
+    .max(200, 'Tên doanh nghiệp không vượt quá 200 ký tự.'),
+  taxCode: z
+    .string()
+    .min(1, 'Mã số thuế / Mã số đăng ký không được để trống.')
+    .max(50, 'Mã số thuế không vượt quá 50 ký tự.'),
+  supplierType: z.string().optional(),
+  legalRepresentative: z
+    .string()
+    .min(1, 'Người đại diện pháp lý không được để trống.')
+    .max(100, 'Người đại diện không vượt quá 100 ký tự.'),
+  contactPerson: z
+    .string()
+    .min(1, 'Người liên hệ không được để trống.')
+    .max(100, 'Người liên hệ không vượt quá 100 ký tự.'),
+  phoneNumber: z
+    .string()
+    .regex(/^[0-9]{10,11}$/, 'Số điện thoại không hợp lệ (10-11 chữ số).')
+    .optional()
+    .or(z.literal('')),
+  email: z
+    .string()
+    .email('Định dạng email không hợp lệ.')
+    .optional()
+    .or(z.literal('')),
+  logoUrl: z.string().optional(),
+  province: z.string().min(1, 'Vui lòng chọn Tỉnh / Thành phố.'),
+  district: z.string().min(1, 'Vui lòng chọn Quận / Huyện.'),
+  ward: z.string().min(1, 'Vui lòng chọn Xã / Phường.'),
+  address: z
+    .string()
+    .min(1, 'Địa chỉ không được để trống.')
+    .max(500, 'Địa chỉ không vượt quá 500 ký tự.'),
+  farmingAreaHa: z.coerce
+    .number({ message: 'Diện tích phải là một số.' })
+    .positive('Diện tích phải lớn hơn 0.')
+    .optional(),
+  cropTypeIds: z
+    .array(z.number())
+    .min(1, 'Vui lòng chọn ít nhất một danh mục nông sản cung cấp.'),
+  certifications: z.array(z.string()),
+  evidenceDocumentUrls: z.array(z.string()).optional(),
+});
+
+export type DeclareSupplierProfileFormValues = z.infer<
+  typeof declareSupplierProfileSchema
+>;
