@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router'
-import { ROLE_HOME_ROUTES } from '@/constants/routes'
+import { ROLE_HOME_ROUTES, ROUTES } from '@/constants/routes'
 import { useAuth } from '@/hooks/useAuth'
 import AppIcon from '@/components/common/AppIcon'
 import BrandMark from '@/components/common/BrandMark'
@@ -11,6 +11,13 @@ export default function Sidebar({isOpen,onClose}:{isOpen:boolean;onClose:()=>voi
   const items = user?.role === ROLES.ADMINISTRATOR
     ? adminMenu
     : user ? roleDashboardConfigs[user.role].menu : []
+  const adminRoutes: Record<string, string> = {
+    'Bảng điều khiển': ROUTES.ADMIN,
+    'Người dùng': ROUTES.ADMIN_USER_ACCESS,
+    'Loại nông sản': ROUTES.ADMIN_CROP_TYPES,
+    'Tiêu chuẩn kiểm định': ROUTES.ADMIN_INSPECTION_STANDARDS,
+    'Nhật ký hệ thống': ROUTES.ADMIN_AUDIT_LOGS,
+  }
 
   return (
     <>
@@ -24,13 +31,13 @@ export default function Sidebar({isOpen,onClose}:{isOpen:boolean;onClose:()=>voi
           </div>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-5" aria-label="Điều hướng chính">
-          {user && items.map((item, i) => i === 0 ?
-            <NavLink key={item.label} to={ROLE_HOME_ROUTES[user.role]} onClick={onClose} end className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium ${isActive ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`}><AppIcon name={item.icon} className="size-[18px]" />{item.label}</NavLink> :
+          {user && items.map((item, i) => i === 0 || (user.role === ROLES.ADMINISTRATOR && adminRoutes[item.label]) ?
+            <NavLink key={item.label} to={i === 0 ? ROLE_HOME_ROUTES[user.role] : adminRoutes[item.label]} onClick={onClose} end={i === 0} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium ${isActive ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`}><AppIcon name={item.icon} className="size-[18px]" />{item.label}</NavLink> :
             <button key={item.label} type="button" className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-400 hover:bg-white/10 hover:text-white"><AppIcon name={item.icon} className="size-[18px]" />{item.label}</button>
           )}
         </nav>
         <div className="border-t border-white/10 p-3">
-          <button type="button" onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-slate-400 hover:bg-white/10 hover:text-white"><AppIcon name="logout" className="size-[18px]" />Đăng xuất</button>
+          <button type="button" onClick={() => void logout()} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-slate-400 hover:bg-white/10 hover:text-white"><AppIcon name="logout" className="size-[18px]" />Đăng xuất</button>
         </div>
       </aside>
     </>

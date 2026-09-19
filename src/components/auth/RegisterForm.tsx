@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import AuthField from '@/components/auth/AuthField'
 import { ROUTES } from '@/constants/routes'
 import { registerSchema, type RegisterFormValues } from '@/features/auth/schemas/registerSchema'
+import { getAuthErrorMessage, registerAccount } from '@/services/authService'
 
 const inputClassName =
   'h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100 aria-[invalid=true]:border-rose-400 aria-[invalid=true]:focus:ring-rose-100'
@@ -12,6 +13,9 @@ const inputClassName =
 export default function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const navigate = useNavigate()
   const {
     register,
     handleSubmit,
@@ -19,22 +23,56 @@ export default function RegisterForm() {
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      username: '',
       fullName: '',
       email: '',
       phoneNumber: '',
       password: '',
       confirmPassword: '',
+      roleId: 5,
+      organizationName: '',
+      taxCode: '',
+      address: '',
       acceptTerms: false,
     },
     mode: 'onBlur',
   })
 
-  const onSubmit = handleSubmit(async () => {
-    // Chỉ dựng khung FE. Gọi authService.register ở giai đoạn tích hợp Backend.
+  const onSubmit = handleSubmit(async (values) => {
+    setSubmitError(null)
+    setSuccessMessage(null)
+    try {
+      await registerAccount({
+        username: values.username,
+        email: values.email,
+        password: values.password,
+        fullName: values.fullName,
+        phoneNumber: values.phoneNumber,
+        roleId: Number(values.roleId),
+        organizationName: values.organizationName,
+        taxCode: values.taxCode,
+        address: values.address,
+      })
+      setSuccessMessage('Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản.')
+      window.setTimeout(() => navigate(ROUTES.LOGIN), 1800)
+    } catch (error) {
+      setSubmitError(getAuthErrorMessage(error, 'Đăng ký không thành công.'))
+    }
   })
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <AuthField htmlFor="username" label="Tên đăng nhập" error={errors.username?.message}>
+          <input id="username" autoComplete="username" placeholder="nongtrai_anphu" className={inputClassName} {...register('username')} />
+        </AuthField>
+        <AuthField htmlFor="roleId" label="Vai trò" error={errors.roleId?.message}>
+          <select id="roleId" className={inputClassName} {...register('roleId')}>
+            <option value={5}>Nhà cung cấp</option>
+            <option value={6}>Nhà phân phối</option>
+          </select>
+        </AuthField>
+      </div>
       <AuthField htmlFor="fullName" label="Họ và tên" error={errors.fullName?.message}>
         <input id="fullName" type="text" autoComplete="name" placeholder="Nguyễn Văn A" aria-invalid={Boolean(errors.fullName)} aria-describedby={errors.fullName ? 'fullName-error' : undefined} className={inputClassName} {...register('fullName')} />
       </AuthField>
@@ -45,6 +83,19 @@ export default function RegisterForm() {
 
       <AuthField htmlFor="phoneNumber" label="Số điện thoại" error={errors.phoneNumber?.message}>
         <input id="phoneNumber" type="tel" inputMode="tel" autoComplete="tel" placeholder="0912 345 789" aria-invalid={Boolean(errors.phoneNumber)} aria-describedby={errors.phoneNumber ? 'phoneNumber-error' : undefined} className={inputClassName} {...register('phoneNumber')} />
+      </AuthField>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <AuthField htmlFor="organizationName" label="Tên tổ chức" error={errors.organizationName?.message}>
+          <input id="organizationName" placeholder="Nông trại An Phú" className={inputClassName} {...register('organizationName')} />
+        </AuthField>
+        <AuthField htmlFor="taxCode" label="Mã số thuế" error={errors.taxCode?.message}>
+          <input id="taxCode" placeholder="1800123456" className={inputClassName} {...register('taxCode')} />
+        </AuthField>
+      </div>
+
+      <AuthField htmlFor="address" label="Địa chỉ" error={errors.address?.message}>
+        <input id="address" autoComplete="street-address" placeholder="Cần Thơ" className={inputClassName} {...register('address')} />
       </AuthField>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -62,6 +113,9 @@ export default function RegisterForm() {
           </div>
         </AuthField>
       </div>
+
+      {submitError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{submitError}</p>}
+      {successMessage && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{successMessage}</p>}
 
       <div>
         <label className="flex cursor-pointer items-start gap-3 text-sm leading-5 text-slate-600">
