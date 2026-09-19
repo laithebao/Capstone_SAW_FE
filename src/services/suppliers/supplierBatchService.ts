@@ -42,4 +42,11 @@ export const supplierBatchService = {
     const response = await apiClient.get(`/SupplierBatches/${id}/status`);
     return response.data;
   },
+
+  cancelBatch: async (batchId: number): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>(
+      `/SupplierBatches/${batchId}/cancel`
+    );
+    return response.data;
+  },
 };

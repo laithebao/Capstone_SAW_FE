@@ -20,25 +20,52 @@ export const BatchProcessDetailPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState<boolean>(true);
+  const [canceling, setCanceling] = useState<boolean>(false); // 1. Thêm state loading khi hủy
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<SupplierBatchStatusResponse | null>(null);
 
-  useEffect(() => {
+  // Hàm tải dữ liệu chi tiết
+  const fetchDetail = async () => {
     if (!id) return;
-    const fetchDetail = async () => {
-      try {
-        setLoading(true);
-        const response = await supplierBatchService.getBatchStatus(Number(id));
-        setData(response.data);
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Không thể tải thông tin tiến trình đơn hàng.');
-      } finally {
-        setLoading(false);
-      }
-    };
+    try {
+      setLoading(true);
+      const response = await supplierBatchService.getBatchStatus(Number(id));
+      setData(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Không thể tải thông tin tiến trình đơn hàng.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchDetail();
   }, [id]);
+
+  // 2. Xử lý logic khi bấm Hủy đơn
+  const handleCancelOrder = async () => {
+    if (!id) return;
+
+    // Xác nhận từ người dùng
+    const confirmCancel = window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?');
+    if (!confirmCancel) return;
+
+    try {
+      setCanceling(true);
+      // Gọi API hủy đơn
+      await supplierBatchService.cancelBatch(Number(id));
+      alert('Hủy đơn hàng thành công!');
+      
+      // Tải lại thông tin mới nhất sau khi hủy
+      await fetchDetail(); 
+      // Hoặc nếu muốn chuyển về trang danh sách:
+      // navigate('/supplier/batches');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi hủy đơn hàng.');
+    } finally {
+      setCanceling(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -63,7 +90,6 @@ export const BatchProcessDetailPage: React.FC = () => {
     );
   }
 
-  // Khai báo các bước tiến trình chuẩn UI
   const processSteps = [
     {
       statusKey: 'SUBMITTED',
@@ -92,6 +118,9 @@ export const BatchProcessDetailPage: React.FC = () => {
     },
   ];
 
+  // Kiểm tra xem đơn hàng đã hủy chưa để disable nút bấm (tùy chọn)
+  const isCanceled = data.currentStatus === 'CANCELLED' || data.currentStatus === 'CANCELED';
+
   return (
     <div className="min-h-screen bg-gray-50/60 p-6 max-w-7xl mx-auto space-y-6">
       {/* Header Bar */}
@@ -119,17 +148,25 @@ export const BatchProcessDetailPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(`/supplier/batches/${id}/status`)}
-            className="px-4 py-1.5 border border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-100/80 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+            disabled={canceling || isCanceled}
+            className="px-4 py-1.5 border border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-100/80 disabled:opacity-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
           >
             <Pencil className="w-4 h-4 text-blue-500" />
             <span>Chỉnh sửa</span>
           </button>
+
+          {/* 3. Gắn hàm handleCancelOrder vào nút Hủy đơn */}
           <button
-            onClick={() => {}}
-            className="px-4 py-1.5 border border-red-200 text-red-600 bg-red-50/50 hover:bg-red-100/80 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+            onClick={handleCancelOrder}
+            disabled={canceling || isCanceled}
+            className="px-4 py-1.5 border border-red-200 text-red-600 bg-red-50/50 hover:bg-red-100/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
           >
-            <XCircle className="w-4 h-4 text-red-500" />
-            <span>Hủy đơn</span>
+            {canceling ? (
+              <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+            ) : (
+              <XCircle className="w-4 h-4 text-red-500" />
+            )}
+            <span>{canceling ? 'Đang hủy...' : isCanceled ? 'Đã hủy' : 'Hủy đơn'}</span>
           </button>
         </div>
       </div>
@@ -147,7 +184,13 @@ export const BatchProcessDetailPage: React.FC = () => {
 
             {/* Status Badge ở góc trên phải */}
             <div className="absolute top-6 right-6">
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  isCanceled
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-emerald-100 text-emerald-700'
+                }`}
+              >
                 {data.statusDisplayName || data.currentStatus}
               </span>
             </div>
