@@ -1,6 +1,8 @@
+import type { DeclareBatchFormValues } from '@/features/supplier/schemas/supplierBatchSchema';
 import { apiClient } from '../apiClient';
 import type {
   GetSupplierBatchesQueryRequest,
+  SupplierBatchItemResponse,
   SupplierBatchListResponse,
 } from '@/types/supplierBatch';
 
@@ -13,6 +15,14 @@ export const supplierBatchService = {
       '/SupplierBatches',
       { params }
     );
+    return response.data;
+  },
+
+  // UC 3.2.45: Khai báo lô hàng mới
+  declareBatch: async (
+    data: DeclareBatchFormValues
+  ): Promise<{ message: string; data: SupplierBatchItemResponse }> => {
+    const response = await apiClient.post('/SupplierBatches', data);
     return response.data;
   },
 };
