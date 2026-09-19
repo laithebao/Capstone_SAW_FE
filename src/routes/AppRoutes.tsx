@@ -34,6 +34,10 @@ import WarehouseManagerDashboardPage from '@/pages/warehouse-manager/WarehouseMa
 import ProtectedRoute from '@/routes/ProtectedRoute'
 import RoleRoute from '@/routes/RoleRoute'
 import EditSupplierProfilePage from '@/pages/supplier/EditSupplierProfilePage'
+import BatchProcessDetailPage from '@/pages/supplier/BatchProcessDetailPage'
+import DeclareBatchPage from '@/pages/supplier/DeclareBatchPage'
+import EditBatchPage from '@/pages/supplier/EditBatchPage'
+import SupplierBatchListPage from '@/pages/supplier/SupplierBatchListPage'
 
 export default function AppRoutes() {
   const { user, isAuthenticated } = useAuth()
@@ -90,6 +94,10 @@ export default function AppRoutes() {
             <Route path={ROUTES.SUPPLIER_PROFILE} element={<SupplierProfilePage />} />
             <Route path={ROUTES.SUPPLIER_PROFILE_DECLARE} element={<DeclareSupplierProfilePage />} />
             <Route path={ROUTES.SUPPLIER_PROFILE_EDIT} element={<EditSupplierProfilePage />} />
+            <Route path={ROUTES.SUPPLIER_BATCHES} element={<SupplierBatchListPage />} />
+            <Route path={ROUTES.SUPPLIER_BATCH_NEW} element={<DeclareBatchPage />} />
+            <Route path={ROUTES.SUPPLIER_BATCH_EDIT} element={<EditBatchPage />} />
+            <Route path={ROUTES.SUPPLIER_BATCH_DETAIL} element={<BatchProcessDetailPage />} />
           </Route>
 
           <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>

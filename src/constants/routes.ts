@@ -32,6 +32,10 @@ export const ROUTES = {
   SUPPLIER_PROFILE_EDIT: '/supplier/profile/edit',
   SUPPLIER_FARMS: '/supplier/farms',
   SUPPLIER_CROPS: '/supplier/crops',
+  SUPPLIER_BATCHES: '/supplier/batches',
+  SUPPLIER_BATCH_DETAIL: '/supplier/batches/:id',
+  SUPPLIER_BATCH_NEW: '/supplier/batches/new',        
+  SUPPLIER_BATCH_EDIT: '/supplier/batches/:id/edit',
 
 
   DISTRIBUTOR: '/distributor',
