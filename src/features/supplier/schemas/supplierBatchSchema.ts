@@ -23,7 +23,11 @@ export const declareBatchSchema = z.object({
     .optional()
     .nullable()
     .transform((val) => (val === null || (typeof val === 'number' && isNaN(val)) ? undefined : val)),
+  expectedDeliveryDate: z.string().optional(),
   note: z.string().optional(),
 });
 
+export const updateBatchSchema = declareBatchSchema;
+
 export type DeclareBatchFormValues = z.infer<typeof declareBatchSchema>;
+export type UpdateBatchFormValues = z.infer<typeof updateBatchSchema>;
