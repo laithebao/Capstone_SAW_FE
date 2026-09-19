@@ -33,6 +33,7 @@ import TraceabilityPage from '@/pages/traceability/TraceabilityPage'
 import WarehouseManagerDashboardPage from '@/pages/warehouse-manager/WarehouseManagerDashboardPage'
 import ProtectedRoute from '@/routes/ProtectedRoute'
 import RoleRoute from '@/routes/RoleRoute'
+import EditSupplierProfilePage from '@/pages/supplier/EditSupplierProfilePage'
 
 export default function AppRoutes() {
   const { user, isAuthenticated } = useAuth()
@@ -87,7 +88,8 @@ export default function AppRoutes() {
           <Route element={<RoleRoute allowedRoles={[ROLES.SUPPLIER]} />}>
             <Route path={ROUTES.SUPPLIER} element={<SupplierDashboardPage />} />
             <Route path={ROUTES.SUPPLIER_PROFILE} element={<SupplierProfilePage />} />
-            <Route path={ROUTES.SUPPLIER_PROFILE_DECLARE} element={<DeclareSupplierProfilePage />} /> {/* <-- ĐĂNG KÝ ROUTE MỚI */}
+            <Route path={ROUTES.SUPPLIER_PROFILE_DECLARE} element={<DeclareSupplierProfilePage />} />
+            <Route path={ROUTES.SUPPLIER_PROFILE_EDIT} element={<EditSupplierProfilePage />} />
           </Route>
 
           <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>

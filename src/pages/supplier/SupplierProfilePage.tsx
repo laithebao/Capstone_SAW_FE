@@ -4,6 +4,7 @@ import { supplierService } from '../../services/suppliers/supplierService';
 import type { SupplierProfileResponse } from '../../types/supplier';
 import { SupplierProfileView } from '../../components/supplier/SupplierProfileView';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { ROUTES } from '@/constants/routes';
 
 export const SupplierProfilePage: React.FC = () => {
   const [profile, setProfile] = useState<SupplierProfileResponse | null>(null);
@@ -18,10 +19,18 @@ export const SupplierProfilePage: React.FC = () => {
         setLoading(true);
         setError(null);
         const data = await supplierService.getMyProfile();
+
+        // Nếu profile chưa tồn tại hoặc chưa ACTIVE -> Điều hướng sang trang Khai báo profile
+        if (!data || data.profileStatus !== 'ACTIVE') {
+          navigate(ROUTES.SUPPLIER_PROFILE_DECLARE);
+          return;
+        }
+
         setProfile(data);
       } catch (err: any) {
         if (err.response?.status === 404) {
-          navigate('/supplier/profile/declare');
+          // Chưa có thông tin hồ sơ -> Chuyển hướng sang trang Khai báo profile
+          navigate(ROUTES.SUPPLIER_PROFILE_DECLARE);
         } else {
           setError(err.response?.data?.message || 'Không thể tải thông tin hồ sơ.');
         }
@@ -59,7 +68,7 @@ export const SupplierProfilePage: React.FC = () => {
   return (
     <SupplierProfileView 
       profile={profile} 
-      onEdit={() => navigate('/supplier/profile/edit')} 
+      onEdit={() => navigate(ROUTES.SUPPLIER_PROFILE_DECLARE)} 
     />
   );
 };

@@ -1,5 +1,6 @@
 import { apiClient } from '../apiClient';
-import type { SupplierProfileResponse } from '../../types/supplier';
+import type { DeclareSupplierProfileRequest, SupplierProfileResponse } from '../../types/supplier';
+import type { DeclareSupplierProfileFormValues } from '@/features/supplier/schemas/supplierProfileSchema';
 
 export const supplierService = {
   getMyProfile: async (): Promise<SupplierProfileResponse> => {
@@ -14,6 +15,11 @@ export const supplierService = {
       message: string;
       data: SupplierProfileResponse;
     }>('/api/Suppliers/me/declare', data);
+    return response.data;
+  },
+
+  updateProfile: async (data: DeclareSupplierProfileFormValues): Promise<any> => {
+    const response = await apiClient.put('/Suppliers/me/profile', data);
     return response.data;
   },
 };
