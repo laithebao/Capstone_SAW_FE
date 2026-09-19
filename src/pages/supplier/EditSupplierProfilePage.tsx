@@ -1,71 +1,81 @@
 import React, { useEffect, useState } from 'react';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { useNavigate } from 'react-router';
-import { useForm, type SubmitHandler, type Resolver } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  Upload,
-  Save,
-  X,
-  Building2,
-  MapPin,
-  Sprout,
-  FileText,
-  Camera,
-  Loader2,
-  AlertCircle,
-} from 'lucide-react';
-import { declareSupplierProfileSchema } from '../../features/supplier/schemas/supplierProfileSchema';
-import type { DeclareSupplierProfileFormValues } from '../../features/supplier/schemas/supplierProfileSchema';
 import { supplierService } from '../../services/suppliers/supplierService';
-import type { SupplierProfileResponse } from '../../types/supplier';
-import { ROUTES } from '@/constants/routes';
+import type {
+  DeclareSupplierProfileRequest,
+  SupplierProfileResponse,
+} from '../../types/supplier'; // Import đúng đường dẫn file types của bạn
+ // Import đúng đường dẫn file types của bạn
 
-// Danh mục nông sản (CropTypes)
-const CROP_TYPE_OPTIONS = [
-  { id: 1, name: 'Lúa gạo' },
-  { id: 2, name: 'Ngô' },
-  { id: 3, name: 'Cà phê' },
-  { id: 4, name: 'Trái cây' },
-  { id: 5, name: 'Rau củ' },
-];
+// Options mẫu cho Dropdown & Checkbox
+const PROVINCE_OPTIONS = ['Vĩnh Long', 'Cần Thơ', 'Đồng Tháp', 'Lâm Đồng'];
+const DISTRICT_OPTIONS = ['Vũng Liêm', 'Long Hồ', 'Đà Lạt', 'Cái Răng'];
+const WARD_OPTIONS = ['Tân Phú', 'Phường 1', 'Phường 2', 'Trung Thành'];
 
-// Danh mục Chứng nhận
-const CERTIFICATION_OPTIONS = [
-  'VietGAP',
-  'GlobalGAP',
-  'Organic',
-  'HACCP',
-  'Không có chứng nhận',
+const CERTIFICATE_OPTIONS = ['VietGAP', 'GlobalGAP', 'Organic', 'HACCP', 'Không có chứng nhận'];
+
+const CROP_OPTIONS = [
+  { id: 1, label: 'Lúa gạo' },
+  { id: 2, label: 'Ngô' },
+  { id: 3, label: 'Cà phê' },
+  { id: 4, label: 'Trái cây' },
+  { id: 5, label: 'Rau củ' },
 ];
 
 export const EditSupplierProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+
+  // File Upload States (Bóc tách riêng khỏi React Hook Form)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>('');
   
-  // Thông tin hiển thị tĩnh/phụ ở cột bên phải
-  const [profileMeta, setProfileMeta] = useState<{
-    supplierCode?: string;
-    profileStatus?: string;
-  }>({});
+  const [existingDocumentUrls, setExistingDocumentUrls] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+
+  // System Metadata Info (Sidebar bên phải)
+  const [metaInfo, setMetaInfo] = useState({
+    code: 'NCC-2023-089',
+    createdAt: '12/08/2023 14:30',
+    updatedAt: '15/09/2023 09:15',
+    createdBy: 'Nguyễn Văn A',
+  });
 
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     reset,
-    formState: { errors },
-  } = useForm<DeclareSupplierProfileFormValues>({
-    resolver: zodResolver(declareSupplierProfileSchema) as Resolver<DeclareSupplierProfileFormValues>,
+    watch,
+    setValue,
+  } = useForm<DeclareSupplierProfileRequest>({
+    defaultValues: {
+      supplierName: '',
+      taxCode: '',
+      supplierType: 'Hợp tác xã',
+      legalRepresentative: '',
+      contactPerson: '',
+      phoneNumber: '',
+      email: '',
+      logoUrl: '',
+      province: PROVINCE_OPTIONS[0],
+      district: DISTRICT_OPTIONS[0],
+      ward: WARD_OPTIONS[0],
+      address: '',
+      farmingAreaHa: 0,
+      cropTypeIds: [],
+      certifications: [],
+      evidenceDocumentUrls: [],
+    },
   });
 
-  const selectedCropTypes = watch('cropTypeIds') || [];
-  const selectedCertifications = watch('certifications') || [];
+  const selectedCrops = watch('cropTypeIds') || [];
+  const selectedCerts = watch('certifications') || [];
 
-  // Fetch dữ liệu profile hiện tại từ GET /api/Suppliers/me/profile
+  // ==========================================
+  // 1. FETCH & MAP DATA TỪ SUPPLIERPROFILERESPONSE
+  // ==========================================
   useEffect(() => {
     const fetchCurrentProfile = async () => {
       try {
@@ -73,22 +83,32 @@ export const EditSupplierProfilePage: React.FC = () => {
         const profile: SupplierProfileResponse = await supplierService.getMyProfile();
 
         if (profile) {
-          // Trích xuất danh sách ID nông sản
-          const cropTypeIds = profile.cropTypes
-            ? profile.cropTypes.map((c) => c.cropTypeId)
+          // A. Bóc tách Vùng hoạt động (operatingRegion: "Vĩnh Long - Vũng Liêm - Tân Phú")
+          const regionParts = profile.operatingRegion
+            ? profile.operatingRegion.split('-').map((item) => item.trim())
             : [];
 
-          // Trích xuất tên chứng nhận từ SupplierCertificationDto[]
-          const certNames = profile.certifications
-            ? profile.certifications.map((c) => c.certificationName).filter(Boolean)
-            : [];
+          const rawProvince = regionParts[0] || '';
+          const rawDistrict = regionParts[1] || '';
+          const rawWard = regionParts[2] || '';
 
-          // Trích xuất URLs tài liệu từ SupplierDocumentDto[]
-          const documentUrls = profile.documents
-            ? profile.documents.map((d) => d.fileUrl).filter(Boolean)
-            : [];
+          const matchedProvince =
+            PROVINCE_OPTIONS.find((p) => p.toLowerCase() === rawProvince.toLowerCase()) || PROVINCE_OPTIONS[0];
+          const matchedDistrict =
+            DISTRICT_OPTIONS.find((d) => d.toLowerCase() === rawDistrict.toLowerCase()) || DISTRICT_OPTIONS[0];
+          const matchedWard =
+            WARD_OPTIONS.find((w) => w.toLowerCase() === rawWard.toLowerCase()) || WARD_OPTIONS[0];
 
-          // Mapping dữ liệu Response vào Form Update Request
+          // B. Map CropTypes, Certifications & Documents
+          const cropTypeIds = profile.cropTypes ? profile.cropTypes.map((c) => c.cropTypeId) : [];
+          const certificationsList = profile.certifications ? profile.certifications.map((c) => c.certificationName) : [];
+          const docs = profile.documents ? profile.documents.map((d) => d.fileUrl) : [];
+
+          setExistingDocumentUrls(docs);
+          if (profile.logoUrl) setAvatarPreview(profile.logoUrl);
+          if (profile.supplierCode) setMetaInfo((prev) => ({ ...prev, code: profile.supplierCode }));
+
+          // C. Reset Form
           reset({
             supplierName: profile.supplierName || '',
             taxCode: profile.taxCode || '',
@@ -97,459 +117,478 @@ export const EditSupplierProfilePage: React.FC = () => {
             contactPerson: profile.contactPerson || '',
             phoneNumber: profile.phoneNumber || '',
             email: profile.email || '',
-            province: 'Vĩnh Long', // Mặc định do Response Backend không trả về Province/District riêng
-            district: 'Vũng Liêm',
-            ward: 'Tân Phú',
+            logoUrl: profile.logoUrl || '',
+            province: matchedProvince,
+            district: matchedDistrict,
+            ward: matchedWard,
             address: profile.address || '',
             farmingAreaHa: profile.farmingAreaHa || 0,
             cropTypeIds: cropTypeIds,
-            certifications: certNames.length > 0 ? certNames : ['Không có chứng nhận'],
-            evidenceDocumentUrls: documentUrls,
-          });
-
-          setProfileMeta({
-            supplierCode: profile.supplierCode,
-            profileStatus: profile.profileStatus,
+            certifications: certificationsList,
+            evidenceDocumentUrls: docs,
           });
         }
-      } catch (err: any) {
-        if (err.response?.status === 404) {
-          navigate(ROUTES.SUPPLIER_PROFILE_DECLARE);
-        } else {
-          setSubmitError('Không thể tải thông tin hồ sơ nhà cung cấp.');
-        }
+      } catch (err) {
+        console.error('Lỗi khi tải thông tin:', err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchCurrentProfile();
-  }, [reset, navigate]);
+  }, [reset]);
 
-  const handleCropTypeToggle = (id: number) => {
-    if (selectedCropTypes.includes(id)) {
-      setValue(
-        'cropTypeIds',
-        selectedCropTypes.filter((item) => item !== id)
-      );
-    } else {
-      setValue('cropTypeIds', [...selectedCropTypes, id]);
+  // ==========================================
+  // 2. HANDLERS
+  // ==========================================
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
     }
+  };
+
+  const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setUploadedFiles((prev) => [...prev, ...newFiles]);
+    }
+  };
+
+  const handleCropToggle = (id: number) => {
+    const current = [...selectedCrops];
+    const idx = current.indexOf(id);
+    if (idx > -1) current.splice(idx, 1);
+    else current.push(id);
+    setValue('cropTypeIds', current);
   };
 
   const handleCertToggle = (cert: string) => {
+    let current = [...selectedCerts];
     if (cert === 'Không có chứng nhận') {
-      setValue('certifications', ['Không có chứng nhận']);
-      return;
-    }
-
-    let updated = selectedCertifications.filter(
-      (c) => c !== 'Không có chứng nhận'
-    );
-    if (updated.includes(cert)) {
-      updated = updated.filter((c) => c !== cert);
+      current = ['Không có chứng nhận'];
     } else {
-      updated.push(cert);
+      current = current.filter((c) => c !== 'Không có chứng nhận');
+      const idx = current.indexOf(cert);
+      if (idx > -1) current.splice(idx, 1);
+      else current.push(cert);
     }
-    setValue('certifications', updated);
+    setValue('certifications', current);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const filesArray = Array.from(e.target.files);
-      setUploadedFiles((prev) => [...prev, ...filesArray]);
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const onSubmit: SubmitHandler<DeclareSupplierProfileFormValues> = async (values) => {
+  // ==========================================
+  // 3. SUBMIT FORM (XỬ LÝ UPLOAD RỜI -> CHUẨN PAYLOAD REQUEST)
+  // ==========================================
+  const onSubmit: SubmitHandler<DeclareSupplierProfileRequest> = async (values) => {
     setIsSubmitting(true);
-    setSubmitError(null);
-
     try {
-      const mockDocUrls = [
-        ...(values.evidenceDocumentUrls || []),
-        ...uploadedFiles.map((file) => `https://storage.saw.vn/docs/${file.name}`),
+      // Step 1: Upload Logo mới (nếu người dùng chọn file)
+      let finalLogoUrl = values.logoUrl || '';
+      if (avatarFile) {
+        finalLogoUrl = await supplierService.uploadFile(avatarFile);
+      }
+
+      // Step 2: Upload các File đính kèm mới (nếu người dùng chọn file)
+      let newUploadedUrls: string[] = [];
+      if (uploadedFiles.length > 0) {
+        newUploadedUrls = await Promise.all(
+          uploadedFiles.map((file) => supplierService.uploadFile(file))
+        );
+      }
+
+      const finalEvidenceUrls = [
+        ...existingDocumentUrls,
+        ...newUploadedUrls.filter(Boolean),
       ];
 
-      // Gọi API PUT /api/Suppliers/me/profile
-      await supplierService.updateProfile({
+      // Step 3: Đóng gói đúng DeclareSupplierProfileRequest DTO
+      const payload: DeclareSupplierProfileRequest = {
         ...values,
-        evidenceDocumentUrls: mockDocUrls,
-      });
+        address: values.address.trim(),
+        logoUrl: finalLogoUrl,
+        farmingAreaHa: Number(values.farmingAreaHa) || 0,
+        cropTypeIds: (values.cropTypeIds || []).map((id) => Number(id)),
+        certifications: values.certifications || [], // Đã đúng dạng string[]
+        evidenceDocumentUrls: finalEvidenceUrls,
+      };
 
-      // Thành công -> Quay lại trang hiển thị profile
-      navigate(ROUTES.SUPPLIER_PROFILE);
+      console.log('Payload gửi lên API:', payload);
+
+      await supplierService.updateProfile(payload);
+      alert('Cập nhật thông tin thành công!');
+      navigate('/supplier/profile');
     } catch (err: any) {
-      setSubmitError(
-        err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin.'
-      );
+      console.error('Submit Error:', err);
+      alert('Cập nhật thất bại: ' + (err?.response?.data?.message || err.message));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-        <p className="text-sm text-gray-500 font-medium">Đang tải dữ liệu hồ sơ...</p>
-      </div>
-    );
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Đang tải thông tin...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6">
-      {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Chỉnh sửa Nhà cung cấp
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Cập nhật thông tin chi tiết cho{' '}
-          <span className="font-medium text-gray-700">
-            {profileMeta.supplierCode || 'NCC-2023-089'}
-          </span>
-        </p>
-      </div>
-
-      {submitError && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>{submitError}</span>
+    <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', padding: '24px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <form onSubmit={handleSubmit(onSubmit)} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        
+        {/* HEADER TRANG */}
+        <div style={{ marginBottom: '20px' }}>
+          <h1 style={{ fontSize: '26px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#111' }}>Chỉnh sửa Nhà cung cấp</h1>
+          <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Cập nhật thông tin chi tiết cho {metaInfo.code}</p>
         </div>
-      )}
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT COLUMN - 2 COLUMNS WIDE */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Section 1: Thông tin cơ bản */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-6 text-gray-800 font-semibold text-base border-b pb-3">
-                <Building2 className="w-5 h-5 text-gray-600" />
-                <span>Thông tin cơ bản</span>
-              </div>
-
-              {/* Logo / Avatar Upload Box */}
-              <div className="mb-6">
-                <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50/50 w-32 h-32 mx-auto relative group hover:border-gray-400 transition cursor-pointer">
-                  <img
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop"
-                    alt="Logo/Avatar"
-                    className="w-full h-full object-cover rounded-md"
-                  />
-                  <div className="absolute bottom-1 right-1 bg-gray-800/80 text-white p-1.5 rounded-full shadow-md">
-                    <Camera className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-                <p className="text-center text-xs text-gray-500 mt-2 font-medium">
-                  LOGO / ẢNH ĐẠI DIỆN
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                {/* Tên DN */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                    TÊN DOANH NGHIỆP / HỢP TÁC XÃ <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    {...register('supplierName')}
-                    className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  {errors.supplierName && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.supplierName.message}
-                    </p>
-                  )}
-                </div>
-
-                {/* MST & Loại hình */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      MST / MÃ SỐ ĐĂNG KÝ <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      {...register('taxCode')}
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        {/* BỐ CỤC 2 CỘT */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px', alignItems: 'start' }}>
+          
+          {/* ================= CỘT TRÁI (FORM CHÍNH) ================= */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* CARD 1: THÔNG TIN CƠ BẢN */}
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>📄 Thông tin cơ bản</div>
+              <div style={{ padding: '20px' }}>
+                
+                {/* LOGO UPLOAD */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
+                  <div style={{ position: 'relative', width: '90px', height: '90px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e5e7eb', backgroundColor: '#f3f4f6' }}>
+                    <img
+                      src={avatarPreview || 'https://via.placeholder.com/90'}
+                      alt="Avatar"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
-                    {errors.taxCode && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {errors.taxCode.message}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      LOẠI HÌNH NHÀ CUNG CẤP <span className="text-red-500">*</span>
+                    <label style={{ position: 'absolute', bottom: '4px', right: '4px', backgroundColor: '#333', color: '#fff', borderRadius: '50%', padding: '6px', cursor: 'pointer', display: 'flex' }}>
+                      📷
+                      <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
                     </label>
-                    <select
-                      {...register('supplierType')}
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="Hợp tác xã">Hợp tác xã</option>
-                      <option value="Doanh nghiệp">Doanh nghiệp</option>
-                      <option value="Hộ kinh doanh">Hộ kinh doanh</option>
-                      <option value="Trang trại">Trang trại</option>
-                    </select>
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#374151', marginTop: '8px', letterSpacing: '0.5px' }}>
+                    LOGO / Ảnh ĐẠI DIỆN
+                  </span>
+                </div>
+
+                {/* FORM INPUTS */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <label style={labelStyle}>TÊN DOANH NGHIỆP / HỢP TÁC XÃ *</label>
+                    <input {...register('supplierName', { required: true })} style={inputStyle} />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <label style={labelStyle}>MST / MÃ SỐ ĐĂNG KÝ *</label>
+                      <input {...register('taxCode', { required: true })} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>LOẠI HÌNH NHÀ CUNG CẤP *</label>
+                      <select {...register('supplierType')} style={selectStyle}>
+                        <option value="Hợp tác xã">Hợp tác xã</option>
+                        <option value="Doanh nghiệp">Doanh nghiệp</option>
+                        <option value="Hộ kinh doanh">Hộ kinh doanh</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <label style={labelStyle}>NGƯỜI ĐẠI DIỆN PHÁP LÝ *</label>
+                      <input {...register('legalRepresentative')} placeholder="Họ và tên" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>NGƯỜI LIÊN HỆ *</label>
+                      <input {...register('contactPerson')} placeholder="Họ và tên / SĐT" style={inputStyle} />
+                    </div>
                   </div>
                 </div>
 
-                {/* Đại diện & Liên hệ */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      NGƯỜI ĐẠI DIỆN PHÁP LÝ <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      {...register('legalRepresentative')}
-                      placeholder="Họ và tên"
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      NGƯỜI LIÊN HỆ <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      {...register('contactPerson')}
-                      placeholder="Họ và tên / SĐT"
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-                </div>
               </div>
             </div>
 
-            {/* Section 2: Vùng trồng chi tiết */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-6 text-gray-800 font-semibold text-base border-b pb-3">
-                <MapPin className="w-5 h-5 text-gray-600" />
-                <span>Vùng trồng chi tiết</span>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* CARD 2: VÙNG TRỒNG CHI TIẾT */}
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>📍 Vùng trồng chi tiết</div>
+              <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      TỈNH / THÀNH PHỐ <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...register('province')}
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="Vĩnh Long">Vĩnh Long</option>
-                      <option value="Cần Thơ">Cần Thơ</option>
-                      <option value="Đồng Tháp">Đồng Tháp</option>
+                    <label style={labelStyle}>TỈNH / THÀNH PHỐ *</label>
+                    <select {...register('province')} style={selectStyle}>
+                      {PROVINCE_OPTIONS.map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      QUẬN / HUYỆN <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...register('district')}
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="Vũng Liêm">Vũng Liêm</option>
-                      <option value="Long Hồ">Long Hồ</option>
+                    <label style={labelStyle}>QUẬN / HUYỆN *</label>
+                    <select {...register('district')} style={selectStyle}>
+                      {DISTRICT_OPTIONS.map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      XÃ / PHƯỜNG <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      {...register('ward')}
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
+                    <label style={labelStyle}>XÃ / PHƯỜNG *</label>
+                    <select {...register('ward')} style={selectStyle}>
+                      {WARD_OPTIONS.map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      DIỆN TÍCH CANH TÁC (HA) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      {...register('farmingAreaHa', { valueAsNumber: true })}
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
+                    <label style={labelStyle}>DIỆN TÍCH CANH TÁC (HA) *</label>
+                    <input type="number" step="0.1" {...register('farmingAreaHa', { valueAsNumber: true })} style={inputStyle} />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                    ĐỊA CHỈ CHI TIẾT
-                  </label>
-                  <input
-                    type="text"
-                    {...register('address')}
-                    className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
+                  <label style={labelStyle}>ĐỊA CHỈ CHI TIẾT</label>
+                  <input {...register('address')} placeholder="Ấp, thôn, số nhà..." style={inputStyle} />
+                </div>
+
+              </div>
+            </div>
+
+            {/* CARD 3: THÔNG TIN SẢN XUẤT */}
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>🚜 Thông tin sản xuất</div>
+              <div style={{ padding: '20px' }}>
+                <label style={{ ...labelStyle, marginBottom: '12px', display: 'block' }}>DANH MỤC NÔNG SẢN *</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  {CROP_OPTIONS.map((crop) => {
+                    const isChecked = selectedCrops.includes(crop.id);
+                    return (
+                      <label key={crop.id} style={{ display: 'flex', alignItems: 'center', fontSize: '14px', color: '#374151', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleCropToggle(crop.id)}
+                          style={{ marginRight: '8px' }}
+                        />
+                        {crop.label}
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            {/* Section 3: Thông tin sản xuất */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-6 text-gray-800 font-semibold text-base border-b pb-3">
-                <Sprout className="w-5 h-5 text-gray-600" />
-                <span>Thông tin sản xuất</span>
+          </div>
+
+
+          {/* ================= CỘT PHẢI (SIDEBAR ACTION) ================= */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* HÀNH ĐỘNG */}
+            <div style={cardStyle}>
+              <div style={{ padding: '16px', fontWeight: 'bold', fontSize: '15px', borderBottom: '1px solid #eee' }}>
+                Hành động
+              </div>
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  style={{
+                    backgroundColor: '#374151',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '10px',
+                    borderRadius: '6px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  💾 {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  style={{
+                    backgroundColor: '#fff',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    padding: '10px',
+                    borderRadius: '6px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ✕ Hủy
+                </button>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 uppercase mb-3">
-                  DANH MỤC NÔNG SẢN <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {CROP_TYPE_OPTIONS.map((crop) => (
+              {/* METADATA */}
+              <div style={{ padding: '16px', borderTop: '1px solid #eee', fontSize: '12px', color: '#6b7280', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Tạo lúc:</span>
+                  <span style={{ color: '#374151' }}>{metaInfo.createdAt}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Cập nhật cuối:</span>
+                  <span style={{ color: '#374151' }}>{metaInfo.updatedAt}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Người tạo:</span>
+                  <span style={{ color: '#374151' }}>{metaInfo.createdBy}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CHỨNG NHẬN */}
+            <div style={cardStyle}>
+              <div style={{ padding: '16px', fontWeight: 'bold', fontSize: '15px', borderBottom: '1px solid #eee' }}>
+                Chứng nhận
+              </div>
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {CERTIFICATE_OPTIONS.map((cert) => {
+                  const isChecked = selectedCerts.includes(cert);
+                  return (
                     <label
-                      key={crop.id}
-                      className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 hover:text-gray-900"
+                      key={cert}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        backgroundColor: '#f3f4f6',
+                        border: isChecked ? '1px solid #4b5563' : '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        color: '#374151',
+                        cursor: 'pointer',
+                      }}
                     >
                       <input
                         type="checkbox"
-                        checked={selectedCropTypes.includes(crop.id)}
-                        onChange={() => handleCropTypeToggle(crop.id)}
-                        className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                        checked={isChecked}
+                        onChange={() => handleCertToggle(cert)}
+                        style={{ marginRight: '10px' }}
                       />
-                      <span>{crop.name}</span>
+                      {cert}
                     </label>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
-          </div>
 
-          {/* RIGHT COLUMN - 1 COLUMN WIDE */}
-          <div className="space-y-6">
-            {/* Box 1: Hành động */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
-              <h3 className="font-semibold text-gray-800 text-sm">Hành động</h3>
-              
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-zinc-800 hover:bg-zinc-900 text-white font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition disabled:opacity-50 text-sm"
-              >
-                <Save className="w-4 h-4" />
-                <span>{isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigate(ROUTES.SUPPLIER_PROFILE)}
-                className="w-full bg-white hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg border border-gray-300 flex items-center justify-center gap-2 transition text-sm"
-              >
-                <X className="w-4 h-4" />
-                <span>Hủy</span>
-              </button>
-
-              {/* Status Meta Info */}
-              <div className="pt-4 border-t border-gray-100 text-xs text-gray-500 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span>Trạng thái:</span>
-                  <span className="font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    {profileMeta.profileStatus || 'Active'}
+            {/* FILE ĐÍNH KÈM */}
+            <div style={cardStyle}>
+              <div style={{ padding: '16px', fontWeight: 'bold', fontSize: '15px', borderBottom: '1px solid #eee' }}>
+                📎 File đính kèm
+              </div>
+              <div style={{ padding: '16px' }}>
+                
+                {/* DRAG DROP AREA */}
+                <label style={{
+                  border: '2px dashed #d1d5db',
+                  borderRadius: '8px',
+                  padding: '20px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#fafafa',
+                  cursor: 'pointer',
+                }}>
+                  <div style={{ fontSize: '28px', color: '#9ca3af', marginBottom: '8px' }}>☁️</div>
+                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151', textAlign: 'center' }}>
+                    Kéo thả hoặc nhấn để tải lên
                   </span>
-                </div>
-              </div>
-            </div>
+                  <span style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                    Hỗ trợ: PDF, JPG, PNG (Tối đa 10MB/file)
+                  </span>
+                  <input type="file" multiple onChange={handleDocumentChange} style={{ display: 'none' }} />
+                </label>
 
-            {/* Box 2: Chứng nhận */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-              <h3 className="font-semibold text-gray-800 text-sm mb-4">Chứng nhận</h3>
-              <div className="space-y-2.5">
-                {CERTIFICATION_OPTIONS.map((cert) => (
-                  <label
-                    key={cert}
-                    className="flex items-center gap-3 p-2.5 border border-gray-100 rounded-lg hover:bg-gray-50/80 cursor-pointer transition"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedCertifications.includes(cert)}
-                      onChange={() => handleCertToggle(cert)}
-                      className="w-4 h-4 rounded border-gray-300 text-zinc-800 focus:ring-zinc-700"
-                    />
-                    <span className="text-sm text-gray-700">{cert}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Box 3: File đính kèm */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <FileText className="w-4 h-4 text-gray-600" />
-                <h3 className="font-semibold text-gray-800 text-sm">File đính kèm</h3>
-              </div>
-
-              {/* Upload Dropzone */}
-              <label className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 bg-gray-50/50 transition mb-4">
-                <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                <p className="text-xs font-semibold text-gray-700 text-center">
-                  Kéo thả hoặc nhấn để tải lên
-                </p>
-                <p className="text-[11px] text-gray-400 text-center mt-1">
-                  Hỗ trợ: PDF, JPG, PNG (Tối đa 10MB/file)
-                </p>
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                />
-              </label>
-
-              {/* Selected Files List */}
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  DANH SÁCH TÀI LIỆU ĐÃ CHỌN
-                </p>
-                {uploadedFiles.length === 0 ? (
-                  <p className="text-xs italic text-gray-400">
-                    Chưa có tệp nào mới được thêm
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {uploadedFiles.map((file, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-700"
-                      >
-                        <span className="truncate max-w-[180px]">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeFile(idx)}
-                          className="text-gray-400 hover:text-red-500"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                {/* DANH SÁCH TỆP */}
+                <div style={{ marginTop: '16px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '8px' }}>
+                    DANH SÁCH TÀI LIỆU ĐÃ CHỌN
                   </div>
-                )}
+                  
+                  {existingDocumentUrls.length === 0 && uploadedFiles.length === 0 ? (
+                    <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>Chưa có tệp nào được chọn</span>
+                  ) : (
+                    <ul style={{ paddingLeft: '16px', margin: 0, fontSize: '12px', color: '#374151' }}>
+                      {existingDocumentUrls.map((url, i) => (
+                        <li key={`exist-${i}`} style={{ marginBottom: '4px' }}>
+                          <a href={url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>Tài liệu {i + 1}</a>
+                        </li>
+                      ))}
+                      {uploadedFiles.map((file, i) => (
+                        <li key={`new-${i}`} style={{ color: '#059669', marginBottom: '4px' }}>
+                          {file.name} (mới)
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
               </div>
             </div>
+
           </div>
+
         </div>
       </form>
     </div>
   );
+};
+
+// CSS STYLES
+const cardStyle: React.CSSProperties = {
+  backgroundColor: '#ffffff',
+  borderRadius: '8px',
+  border: '1px solid #e5e7eb',
+  overflow: 'hidden',
+};
+
+const cardHeaderStyle: React.CSSProperties = {
+  backgroundColor: '#f3f4f6',
+  padding: '12px 20px',
+  fontWeight: 'bold',
+  fontSize: '15px',
+  color: '#1f2937',
+  borderBottom: '1px solid #e5e7eb',
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: '11px',
+  fontWeight: 'bold',
+  color: '#4b5563',
+  marginBottom: '6px',
+  letterSpacing: '0.3px',
+};
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px',
+  backgroundColor: '#eeeeee',
+  border: '1px solid #d1d5db',
+  borderRadius: '6px',
+  fontSize: '14px',
+  color: '#1f2937',
+  boxSizing: 'border-box',
+};
+
+const selectStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px',
+  backgroundColor: '#eeeeee',
+  border: '1px solid #d1d5db',
+  borderRadius: '6px',
+  fontSize: '14px',
+  color: '#1f2937',
+  boxSizing: 'border-box',
 };
 
 export default EditSupplierProfilePage;

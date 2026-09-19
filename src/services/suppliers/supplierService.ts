@@ -19,34 +19,43 @@ export const supplierService = {
     return response.data;
   },
 
-  updateProfile: async (data: DeclareSupplierProfileFormValues): Promise<any> => {
-    const response = await apiClient.put('/Suppliers/me/profile', data);
+  updateProfile: async (payload: any) => {
+    const response = await apiClient.put('/suppliers/me/profile', payload, {
+      headers: { 'Content-Type': 'application/json' },
+    });
     return response.data;
   },
 
-  // GET /api/SupplierBatches - UC46 (Danh sách lô hàng)
-    getBatches: async (params?: GetSupplierBatchesQueryRequest): Promise<SupplierBatchListResponse> => {
-      const response = await apiClient.get<SupplierBatchListResponse>('/SupplierBatches', { params });
-      return response.data;
-    },
+  uploadFile: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
 
-    // POST /api/SupplierBatches - UC44 (Tạo mới lô hàng)
-    createBatch: async (data: any): Promise<any> => {
-      const response = await apiClient.post('/SupplierBatches', data);
-      return response.data;
-    },
+    const response = await apiClient.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    // Trả về chuỗi URL (Ví dụ: "https://domain.com/uploads/logo.png")
+    return response.data.url || response.data; 
+  },
 
-    // PUT /api/SupplierBatches/{id} - UC45 (Cập nhật lô hàng)
-    updateBatch: async (id: number, data: any): Promise<any> => {
-      const response = await apiClient.put(`/SupplierBatches/${id}`, data);
-      return response.data;
-    },
+  getBatches: async (params?: GetSupplierBatchesQueryRequest): Promise<SupplierBatchListResponse> => {
+    const response = await apiClient.get<SupplierBatchListResponse>('/SupplierBatches', { params });
+    return response.data;
+  },
 
-    // GET /api/SupplierBatches/{id}/status - UC47 (Chi tiết tiến trình xử lý đơn/lô hàng)
-    getBatchStatus: async (id: number): Promise<{ message?: string; data: SupplierBatchStatusResponse }> => {
-      const response = await apiClient.get<{ message?: string; data: SupplierBatchStatusResponse }>(
-        `/SupplierBatches/${id}/status`
-      );
-      return response.data;
-    },
+  createBatch: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/SupplierBatches', data);
+    return response.data;
+  },
+
+  updateBatch: async (id: number, data: any): Promise<any> => {
+    const response = await apiClient.put(`/SupplierBatches/${id}`, data);
+    return response.data;
+  },
+
+  getBatchStatus: async (id: number): Promise<{ message?: string; data: SupplierBatchStatusResponse }> => {
+    const response = await apiClient.get<{ message?: string; data: SupplierBatchStatusResponse }>(
+      `/SupplierBatches/${id}/status`
+    );
+    return response.data;
+  },
 };
