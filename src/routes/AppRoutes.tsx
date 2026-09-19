@@ -25,6 +25,7 @@ import DistributorDashboardPage from '@/pages/distributor/DistributorDashboardPa
 import OperationDashboardPage from '@/pages/operation/OperationDashboardPage'
 import QCDashboardPage from '@/pages/qc/QCDashboardPage'
 import SupplierDashboardPage from '@/pages/supplier/SupplierDashboardPage'
+import SupplierProfilePage from '@/pages/supplier/SupplierProfilePage'
 import ForbiddenPage from '@/pages/system/ForbiddenPage'
 import NotFoundPage from '@/pages/system/NotFoundPage'
 import TraceabilityPage from '@/pages/traceability/TraceabilityPage'
@@ -82,6 +83,7 @@ export default function AppRoutes() {
           </Route>
           <Route element={<RoleRoute allowedRoles={[ROLES.SUPPLIER]} />}>
             <Route path={ROUTES.SUPPLIER} element={<SupplierDashboardPage />} />
+            <Route path={ROUTES.SUPPLIER_PROFILE} element={<SupplierProfilePage />} />
           </Route>
           <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
             <Route path={ROUTES.DISTRIBUTOR} element={<DistributorDashboardPage />} />

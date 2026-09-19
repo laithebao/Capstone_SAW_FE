@@ -24,7 +24,16 @@ export const ROUTES = {
   WAREHOUSE_MANAGER: '/warehouse-manager',
   QC: '/qc',
   OPERATION: '/operation',
+
+
   SUPPLIER: '/supplier',
+  SUPPLIER_PROFILE: '/supplier/profile',
+  SUPPLIER_PROFILE_DECLARE: '/supplier/profile/declare',
+  SUPPLIER_PROFILE_EDIT: '/supplier/profile/edit',
+  SUPPLIER_FARMS: '/supplier/farms',
+  SUPPLIER_CROPS: '/supplier/crops',
+
+
   DISTRIBUTOR: '/distributor',
   FORBIDDEN: '/403',
 } as const
