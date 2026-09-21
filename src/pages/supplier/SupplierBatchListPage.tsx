@@ -25,35 +25,7 @@ import type {
   SupplierBatchItemResponse,
   SupplierBatchSummaryResponse,
 } from '@/types/supplierBatch';
-
-// Cấu trúc danh sách 63 tỉnh thành chia theo 3 Miền
-const REGION_DATA = [
-  {
-    region: 'Miền Bắc',
-    provinces: [
-      'Hà Nội', 'Hải Phòng', 'Bắc Ninh', 'Hà Nam', 'Hải Dương', 'Hưng Yên', 
-      'Nam Định', 'Ninh Bình', 'Thái Bình', 'Vĩnh Phúc', 'Hà Giang', 'Cao Bằng', 
-      'Bắc Kạn', 'Tuyên Quang', 'Lào Cai', 'Yên Bái', 'Thái Nguyên', 'Lạng Sơn', 
-      'Bắc Giang', 'Phú Thọ', 'Điện Biên', 'Lai Châu', 'Sơn La', 'Hòa Bình', 'Quảng Ninh'
-    ]
-  },
-  {
-    region: 'Miền Trung & Tây Nguyên',
-    provinces: [
-      'Thanh Hóa', 'Nghệ An', 'Hà Tĩnh', 'Quảng Bình', 'Quảng Trị', 'Thừa Thiên Huế', 
-      'Đà Nẵng', 'Quảng Nam', 'Quảng Ngãi', 'Bình Định', 'Phú Yên', 'Khánh Hòa', 
-      'Ninh Thuận', 'Bình Thuận', 'Kon Tum', 'Gia Lai', 'Đắk Lắk', 'Đắk Nông', 'Lâm Đồng'
-    ]
-  },
-  {
-    region: 'Miền Nam',
-    provinces: [
-      'TP. Hồ Chí Minh', 'Bình Dương', 'Bình Phước', 'Đồng Nai', 'Tây Ninh', 'Bà Rịa - Vũng Tàu', 
-      'Long An', 'Tiền Giang', 'Bến Tre', 'Trà Vinh', 'Vĩnh Long', 'Đồng Tháp', 
-      'An Giang', 'Kiên Giang', 'Cần Thơ', 'Hậu Giang', 'Sóc Trăng', 'Bạc Liêu', 'Cà Mau'
-    ]
-  }
-];
+import { VIETNAM_REGIONS } from '@/constants/regions';
 
 export const SupplierBatchListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -87,7 +59,7 @@ export const SupplierBatchListPage: React.FC = () => {
   const [batches, setBatches] = useState<SupplierBatchItemResponse[]>([]);
   const [totalPages, setTotalPages] = useState<number>(1);
 
-  // Lắng nghe sự kiện click ngoài Dropdown để tự động đóng (Hủy chọn/thoát)
+  // Lắng nghe sự kiện click ngoài Dropdown để tự động đóng
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -117,7 +89,6 @@ export const SupplierBatchListPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Chuẩn hóa param gửi lên Backend (Truyền undefined nếu chọn Tất cả hoặc chưa nhập)
       const queryOrigin = selectedOrigin ? selectedOrigin : undefined;
 
       const response: SupplierBatchListResponse =
@@ -143,14 +114,12 @@ export const SupplierBatchListPage: React.FC = () => {
 
         let fetchedItems = response.batches?.items || [];
 
-        // ⚠️ BỔ SUNG CLIENT-SIDE FILTER (Xử lý trường hợp Backend chưa lọc đúng khi origin là null/empty)
+        // Client-side filter bổ sung khi chọn UNASSIGNED
         if (selectedOrigin) {
           fetchedItems = fetchedItems.filter((item) => {
             if (selectedOrigin === 'UNASSIGNED') {
-              // Lọc các lô hàng CHƯA có khu vực
               return !item.origin || item.origin.trim() === '' || item.origin === 'Chưa cập nhật';
             }
-            // Lọc chính xác theo Tỉnh/Thành đã chọn
             return item.origin && item.origin.toLowerCase().includes(selectedOrigin.toLowerCase());
           });
         }
@@ -158,10 +127,12 @@ export const SupplierBatchListPage: React.FC = () => {
         setBatches(fetchedItems);
         setTotalPages(response.batches?.totalPages || 1);
       }
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message || 'Không thể tải danh sách lô hàng.'
-      );
+    } catch (err: unknown) {
+      const errorMessage =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : null;
+      setError(errorMessage || 'Không thể tải danh sách lô hàng.');
     } finally {
       setLoading(false);
     }
@@ -346,7 +317,7 @@ export const SupplierBatchListPage: React.FC = () => {
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={() => navigate('/supplier/batches/new')}
-          className="bg-zinc-800 hover:bg-zinc-900 text-white font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm transition shadow-sm"
+          className="bg-zinc-800 hover:bg-zinc-900 text-white font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm transition shadow-sm cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Khai báo lô hàng mới</span>
@@ -354,7 +325,7 @@ export const SupplierBatchListPage: React.FC = () => {
 
         <button
           onClick={() => navigate('/supplier/profile/edit')}
-          className="bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2.5 rounded-lg border border-gray-300 flex items-center gap-2 text-sm transition shadow-sm"
+          className="bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2.5 rounded-lg border border-gray-300 flex items-center gap-2 text-sm transition shadow-sm cursor-pointer"
         >
           <Building2 className="w-4 h-4 text-gray-500" />
           <span>Cập nhật thông tin NCC</span>
@@ -368,7 +339,7 @@ export const SupplierBatchListPage: React.FC = () => {
             setKeyword('');
             setPageIndex(1);
           }}
-          className="bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2.5 rounded-lg border border-gray-300 flex items-center gap-2 text-sm transition shadow-sm"
+          className="bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2.5 rounded-lg border border-gray-300 flex items-center gap-2 text-sm transition shadow-sm cursor-pointer"
         >
           <List className="w-4 h-4 text-gray-500" />
           <span>Xem toàn bộ danh sách</span>
@@ -406,7 +377,7 @@ export const SupplierBatchListPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsRegionDropdownOpen(!isRegionDropdownOpen)}
-                className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 hover:bg-white focus:ring-2 focus:ring-emerald-500 flex items-center gap-2 justify-between min-w-[150px]"
+                className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 hover:bg-white focus:ring-2 focus:ring-emerald-500 flex items-center gap-2 justify-between min-w-[150px] cursor-pointer"
               >
                 <span className="truncate">
                   {selectedOrigin === 'UNASSIGNED'
@@ -415,7 +386,7 @@ export const SupplierBatchListPage: React.FC = () => {
                 </span>
                 {selectedOrigin ? (
                   <X
-                    className="w-3.5 h-3.5 text-gray-400 hover:text-red-500"
+                    className="w-3.5 h-3.5 text-gray-400 hover:text-red-500 cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedOrigin('');
@@ -427,10 +398,9 @@ export const SupplierBatchListPage: React.FC = () => {
                 )}
               </button>
 
-              {/* Menu xổ xuống 3 Miền & Tỉnh */}
+              {/* Menu xổ xuống dùng VIETNAM_REGIONS từ constants/regions */}
               {isRegionDropdownOpen && (
                 <div className="absolute right-0 mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50 p-2 space-y-1 text-xs">
-                  {/* Lựa chọn Mặc định */}
                   <div
                     onClick={() => {
                       setSelectedOrigin('');
@@ -459,8 +429,8 @@ export const SupplierBatchListPage: React.FC = () => {
 
                   <div className="border-t border-gray-100 my-1"></div>
 
-                  {/* Danh sách Miền */}
-                  {REGION_DATA.map((item) => (
+                  {/* Render danh sách Miền từ VIETNAM_REGIONS */}
+                  {VIETNAM_REGIONS.map((item) => (
                     <div key={item.region} className="space-y-1">
                       <div
                         onClick={() =>
@@ -478,7 +448,6 @@ export const SupplierBatchListPage: React.FC = () => {
                         />
                       </div>
 
-                      {/* Danh sách tỉnh theo Miền (Mở khi click vào Miền) */}
                       {activeRegionTab === item.region && (
                         <div className="pl-3 pr-1 py-1 max-h-48 overflow-y-auto space-y-0.5 border-l-2 border-emerald-500 ml-2">
                           {item.provinces.map((province) => (
@@ -574,7 +543,7 @@ export const SupplierBatchListPage: React.FC = () => {
               ) : batches.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="py-12 text-center text-gray-400">
-                    Không tìm thấy lô hàng nào phù hợp với bộ lọc khu vực hiện tại.
+                    Không tìm thấy lô hàng nào phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
               ) : (
@@ -631,7 +600,7 @@ export const SupplierBatchListPage: React.FC = () => {
                     <td className="py-3.5 px-4 text-center">
                       <button
                         onClick={() => navigate(`/supplier/batches/${batch.batchId}`)}
-                        className="p-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition"
+                        className="p-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer"
                         title="Xem chi tiết lô hàng"
                       >
                         <Eye className="w-4 h-4" />
@@ -653,14 +622,14 @@ export const SupplierBatchListPage: React.FC = () => {
             <button
               disabled={pageIndex <= 1 || loading}
               onClick={() => setPageIndex((prev) => prev - 1)}
-              className="p-1.5 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
+              className="p-1.5 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               disabled={pageIndex >= totalPages || loading}
               onClick={() => setPageIndex((prev) => prev + 1)}
-              className="p-1.5 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
+              className="p-1.5 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
