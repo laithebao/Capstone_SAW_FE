@@ -8,10 +8,12 @@ export const declareBatchSchema = z.object({
     .string()
     .min(1, 'Tên/Giống sản phẩm không được để trống')
     .max(200, 'Tên sản phẩm tối đa 200 ký tự'),
-  origin: z
-    .string()
-    .min(1, 'Vùng trồng / trang trại không được để trống')
-    .max(250, 'Vùng trồng tối đa 250 ký tự'),
+  
+  // Đã sửa: origin string -> growingAreaId number
+  growingAreaId: z
+    .number({ message: 'Vui lòng chọn vùng trồng' })
+    .min(1, 'Vui lòng chọn vùng trồng'),
+    
   declaredQuantity: z
     .number({ message: 'Vui lòng nhập số lượng hợp lệ' })
     .gt(0, 'Số lượng khai báo phải lớn hơn 0'),

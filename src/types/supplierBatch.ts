@@ -1,9 +1,19 @@
-// Request lọc danh sách lô hàng (UC 3.2.44)
+// Định dạng vùng trồng cho Dropdown UI
+export interface GrowingAreaOption {
+  growingAreaId: number;
+  areaName: string;
+  region: string;
+  province: string;
+  district: string;
+  ward: string;
+}
+
+// Request lọc danh sách lô hàng
 export interface GetSupplierBatchesQueryRequest {
-  keyword?: string; // Tìm kiếm theo Mã lô hàng hoặc Tên sản phẩm
-  status?: string; // SUBMITTED, PENDING_QC, APPROVED, REJECTED...
-  origin?: string; // Lọc theo Khu vực (Đắk Lắk, Gia Lai...)
-  consumptionStatus?: string; // Lọc theo Trạng thái tiêu thụ
+  keyword?: string;
+  status?: string;
+  province?: string; // Đã sửa: Đổi origin thành province
+  consumptionStatus?: string;
   fromDate?: string;
   toDate?: string;
   pageIndex?: number;
@@ -15,14 +25,20 @@ export interface SupplierBatchItemResponse {
   batchId: number;
   batchCode: string;
   productName: string;
-  origin?: string; // Khu vực sản xuất / Nguồn gốc
-  note?: string | null; // Ghi chú / Mô tả lô hàng
+  
+  // Thông tin hiển thị cột Vùng trồng trên UI
+  areaName?: string; 
+  province?: string; 
+  district?: string;
+  ward?: string;
+  
+  note?: string | null;
   quantityInTons: number;
-  submittedDate: string; // Ngày tạo / Ngày nộp
-  completedDate?: string | null; // Ngày hoàn thành
+  submittedDate: string;
+  completedDate?: string | null;
   status: string;
   statusDisplayName: string;
-  consumptionStatus?: string; // Trạng thái tiêu thụ (IN_STOCK, CONSUMING, CONSUMED)
+  consumptionStatus?: string;
   consumptionStatusDisplayName?: string;
 }
 
@@ -35,7 +51,6 @@ export interface SupplierBatchSummaryResponse {
   rejectedBatches: number;
 }
 
-// Phân trang chung
 export interface PagingResult<T> {
   items: T[];
   totalCount: number;
@@ -44,13 +59,11 @@ export interface PagingResult<T> {
   totalPages: number;
 }
 
-// Response trả về danh sách lô hàng
 export interface SupplierBatchListResponse {
   summary: SupplierBatchSummaryResponse;
   batches: PagingResult<SupplierBatchItemResponse>;
 }
 
-// Lịch sử tiến trình chuyển trạng thái
 export interface BatchStatusHistoryDto {
   oldStatus: string;
   newStatus: string;
@@ -59,22 +72,26 @@ export interface BatchStatusHistoryDto {
   changedBy?: string | null;
 }
 
-// Response chi tiết trạng thái lô hàng (UC 3.2.47)
+// Response chi tiết trạng thái lô hàng
 export interface SupplierBatchStatusResponse {
   batchId: number;
   batchCode: string;
   productName: string;
   cropTypeName: string;
-  origin: string;
-  harvestDate: string; // DateOnly -> string (YYYY-MM-DD)
+  
+  // Tách chi tiết Vùng trồng
+  areaName: string;
+  province: string;
+  district: string;
+  ward: string;
+  
+  harvestDate: string;
 
-  // Khối lượng & Số lượng
   declaredQuantity: number;
   unit: string;
   receivedQuantity: number;
   weightInKg: number;
 
-  // Trạng thái & Kết quả QC
   currentStatus: string;
   statusDisplayName: string;
   qcResult?: string | null;
@@ -82,10 +99,8 @@ export interface SupplierBatchStatusResponse {
   rejectionReason?: string | null;
   warehouseNote?: string | null;
 
-  // Ngày tháng liên quan
   expectedDeliveryDate?: string | null;
   createdAt: string;
 
-  // Lịch sử tiến trình xử lý
   statusHistory: BatchStatusHistoryDto[];
 }
