@@ -95,7 +95,7 @@ export const SupplierBatchListPage: React.FC = () => {
         await supplierBatchService.getDeclaredBatches({
           keyword: debouncedKeyword.trim() || undefined,
           status: selectedStatus || undefined,
-          origin: queryOrigin, 
+          province: queryOrigin, 
           consumptionStatus: selectedConsumptionStatus || undefined,
           pageIndex,
           pageSize,
@@ -118,12 +118,14 @@ export const SupplierBatchListPage: React.FC = () => {
         if (selectedOrigin) {
           fetchedItems = fetchedItems.filter((item) => {
             if (selectedOrigin === 'UNASSIGNED') {
-              return !item.origin || item.origin.trim() === '' || item.origin === 'Chưa cập nhật';
+              // Lưu ý: Đổi origin thành province hoặc thuộc tính bạn trả về từ DTO
+              // @ts-ignore
+              return !item.province || item.province.trim() === '';
             }
-            return item.origin && item.origin.toLowerCase().includes(selectedOrigin.toLowerCase());
+            // @ts-ignore
+            return item.province && item.province.toLowerCase().includes(selectedOrigin.toLowerCase());
           });
         }
-
         setBatches(fetchedItems);
         setTotalPages(response.batches?.totalPages || 1);
       }
@@ -560,7 +562,12 @@ export const SupplierBatchListPage: React.FC = () => {
                     <td className="py-3.5 px-4 text-gray-600 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                        <span>{batch.origin || 'Chưa cập nhật'}</span>
+                        <div className="flex flex-col">
+                          {/* @ts-ignore - Hiển thị Tên vùng trồng và Tỉnh */}
+                          <span className="font-medium text-xs">{batch.areaName || 'Chưa cập nhật'}</span>
+                          {/* @ts-ignore */}
+                          <span className="text-[10px] text-gray-400">{batch.province || ''}</span>
+                        </div>
                       </div>
                     </td>
 
