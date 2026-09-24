@@ -1,3 +1,17 @@
+export interface SupplierGrowingAreaInputDto {
+  growingAreaId: number;
+  areaInHectares?: number;
+}
+
+export interface SupplierGrowingAreaDto {
+  growingAreaId: number;
+  areaName: string;
+  province: string;
+  district: string;
+  ward: string;
+  areaInHectares?: number;
+}
+
 export interface SupplierCropTypeDto {
   cropTypeId: number;
   cropCode: string;
@@ -30,7 +44,7 @@ export interface SupplierProfileResponse {
   supplierName: string;
   taxCode: string;
   address: string;
-  operatingRegion?: string;
+  growingAreas: SupplierGrowingAreaDto[];
   profileStatus: string;
   logoUrl?: string;
   supplierType?: string;
@@ -39,7 +53,6 @@ export interface SupplierProfileResponse {
   phoneNumber?: string;
   email?: string;
   detailedPlantingArea?: string;
-  farmingAreaHa?: number;
   cropTypes: SupplierCropTypeDto[];
   certifications: SupplierCertificationDto[];
   documents: SupplierDocumentDto[];
@@ -54,11 +67,8 @@ export interface DeclareSupplierProfileRequest {
   phoneNumber?: string;
   email?: string;
   logoUrl?: string;
-  province?: string;
-  district?: string;
-  ward?: string;
   address: string;
-  farmingAreaHa?: number;
+  growingAreas: SupplierGrowingAreaInputDto[];
   cropTypeIds: number[];
   certifications: string[];
   evidenceDocumentUrls?: string[];

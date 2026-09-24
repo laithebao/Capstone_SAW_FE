@@ -1,5 +1,17 @@
 import { z } from 'zod';
 
+export const supplierGrowingAreaInputSchema = z.object({
+  growingAreaId: z
+    .number({ message: 'Vui lòng chọn vùng trồng' })
+    .min(1, 'Vui lòng chọn vùng trồng'),
+  areaInHectares: z
+    .coerce
+    .number({ message: 'Diện tích phải là một số.' })
+    .positive('Diện tích phải lớn hơn 0.')
+    .optional()
+    .nullable(),
+});
+
 export const declareSupplierProfileSchema = z.object({
   supplierName: z
     .string()
@@ -29,17 +41,13 @@ export const declareSupplierProfileSchema = z.object({
     .optional()
     .or(z.literal('')),
   logoUrl: z.string().optional(),
-  province: z.string().min(1, 'Vui lòng chọn Tỉnh / Thành phố.'),
-  district: z.string().min(1, 'Vui lòng chọn Quận / Huyện.'),
-  ward: z.string().min(1, 'Vui lòng chọn Xã / Phường.'),
   address: z
     .string()
     .min(1, 'Địa chỉ không được để trống.')
     .max(500, 'Địa chỉ không vượt quá 500 ký tự.'),
-  farmingAreaHa: z.coerce
-    .number({ message: 'Diện tích phải là một số.' })
-    .positive('Diện tích phải lớn hơn 0.')
-    .optional(),
+  growingAreas: z
+    .array(supplierGrowingAreaInputSchema)
+    .min(1, 'Vui lòng chọn ít nhất một vùng trồng.'),
   cropTypeIds: z
     .array(z.number())
     .min(1, 'Vui lòng chọn ít nhất một danh mục nông sản cung cấp.'),
