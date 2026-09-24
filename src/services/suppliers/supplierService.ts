@@ -11,15 +11,11 @@ export const supplierService = {
 
   getGrowingAreas: async (): Promise<SupplierGrowingAreaDto[]> => {
     try {
-      const response = await apiClient.get<SupplierGrowingAreaDto[]>('/api/GrowingAreas');
+      const response = await apiClient.get<SupplierGrowingAreaDto[]>('/GrowingAreas');
       return response.data;
-    } catch {
-      return [
-        { growingAreaId: 1, areaName: 'Nông trường Mộc Châu', province: 'Sơn La', district: 'Mộc Châu', ward: 'Đông Sang' },
-        { growingAreaId: 2, areaName: 'Trang trại GlobalGAP Đà Lạt', province: 'Lâm Đồng', district: 'Đà Lạt', ward: 'Phường 3' },
-        { growingAreaId: 3, areaName: 'Vùng trồng Vĩnh Long', province: 'Vĩnh Long', district: 'Long Hồ', ward: 'Phú Quới' },
-        { growingAreaId: 4, areaName: 'Trang trại Chợ Mới', province: 'An Giang', district: 'Chợ Mới', ward: 'Mỹ Luông' },
-      ];
+    } catch (error) {
+      console.error('Lỗi khi tải danh sách Vùng trồng từ server:', error);
+    return [];
     }
   },
 
