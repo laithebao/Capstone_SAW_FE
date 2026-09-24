@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useForm, type SubmitHandler, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,7 +18,7 @@ import {
 } from '@/features/supplier/schemas/supplierBatchSchema';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
 import { supplierService } from '@/services/suppliers/supplierService';
-import type { SupplierGrowingAreaDto } from '@/types/supplier';
+import type { SupplierGrowingAreaDto, SupplierCropTypeDto } from '@/types/supplier';
 
 export const EditBatchPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,19 +28,27 @@ export const EditBatchPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [batchCode, setBatchCode] = useState<string>('');
-  
-  // State lưu danh sách vùng trồng của Supplier
+
+  // States danh sách Cây trồng & Vùng trồng
+  const [cropTypeOptions, setCropTypeOptions] = useState<SupplierCropTypeDto[]>([]);
   const [growingAreas, setGrowingAreas] = useState<SupplierGrowingAreaDto[]>([]);
   const [isLoadingAreas, setIsLoadingAreas] = useState<boolean>(true);
+
+  // State quản lý Category đang chọn cho Dropdown 1
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<UpdateBatchFormValues>({
     resolver: zodResolver(updateBatchSchema) as Resolver<UpdateBatchFormValues>,
   });
+
+  const currentCropTypeId = watch('cropTypeId');
 
   useEffect(() => {
     if (!id) return;
@@ -49,15 +57,43 @@ export const EditBatchPage: React.FC = () => {
         setLoading(true);
         setIsLoadingAreas(true);
 
-        const [statusResponse, profile] = await Promise.all([
+        const [statusResponse, profile, allCrops] = await Promise.all([
           supplierBatchService.getBatchStatus(Number(id)),
           supplierService.getMyProfile().catch(() => null),
+          supplierService.getCropTypes().catch(() => []),
         ]);
 
         const data = statusResponse.data;
         setBatchCode(data.batchCode);
 
-        // Lấy danh sách vùng trồng từ Profile
+        // 1. Tải danh sách cây trồng
+        let crops: SupplierCropTypeDto[] = [];
+        if (profile && Array.isArray(profile.cropTypes) && profile.cropTypes.length > 0) {
+          crops = profile.cropTypes;
+        } else {
+          crops = allCrops;
+        }
+        setCropTypeOptions(crops);
+
+        // Tìm CropType khớp với dữ liệu lô hàng hiện tại
+        const matchedCrop = crops.find(
+          (c) => c.cropName === data.cropTypeName || Number(c.cropTypeId) === Number((data as any).cropTypeId)
+        );
+
+        let initialCat = '';
+        let initialCropId = 0;
+
+        if (matchedCrop) {
+          initialCat = matchedCrop.categoryName || 'Nông sản khác';
+          initialCropId = Number(matchedCrop.cropTypeId);
+        } else if (crops.length > 0) {
+          initialCat = crops[0].categoryName || 'Nông sản khác';
+          initialCropId = Number(crops[0].cropTypeId);
+        }
+
+        setSelectedCategory(initialCat);
+
+        // 2. Tải danh sách vùng trồng
         let userAreas: SupplierGrowingAreaDto[] = [];
         if (profile && profile.growingAreas && profile.growingAreas.length > 0) {
           userAreas = profile.growingAreas;
@@ -66,15 +102,14 @@ export const EditBatchPage: React.FC = () => {
         }
         setGrowingAreas(userAreas);
 
-        // Tìm growingAreaId tương ứng theo tên vùng trồng từ batch detail nếu có
         const matchedArea = userAreas.find(
           (a) => a.areaName === data.areaName || (a.province === data.province && a.district === data.district)
         );
         const selectedAreaId = matchedArea ? matchedArea.growingAreaId : userAreas[0]?.growingAreaId || 1;
 
-        // Fill form data
+        // 3. Fill data vào Form
         reset({
-          cropTypeId: 1, // mapping theo API
+          cropTypeId: initialCropId,
           productName: data.productName,
           growingAreaId: selectedAreaId,
           declaredQuantity: data.declaredQuantity,
@@ -93,6 +128,54 @@ export const EditBatchPage: React.FC = () => {
 
     fetchDetailAndProfile();
   }, [id, reset]);
+
+  // Unique Categories cho Dropdown 1
+  const categories = useMemo(() => {
+    const setCat = new Set<string>();
+    cropTypeOptions.forEach((c) => {
+      setCat.add(c.categoryName || 'Nông sản khác');
+    });
+    return Array.from(setCat);
+  }, [cropTypeOptions]);
+
+  // Danh sách cây trồng thuộc Category đang chọn cho Dropdown 2
+  const filteredCropTypes = useMemo(() => {
+    if (!selectedCategory) return cropTypeOptions;
+    return cropTypeOptions.filter(
+      (c) => (c.categoryName || 'Nông sản khác') === selectedCategory
+    );
+  }, [cropTypeOptions, selectedCategory]);
+
+  // Khi chọn Category mới ở Dropdown 1
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCat = e.target.value;
+    setSelectedCategory(newCat);
+
+    const firstCrop = cropTypeOptions.find(
+      (c) => (c.categoryName || 'Nông sản khác') === newCat
+    );
+
+    if (firstCrop) {
+      setValue('cropTypeId', Number(firstCrop.cropTypeId), { shouldValidate: true });
+      setValue('productName', firstCrop.cropName, { shouldValidate: true });
+    } else {
+      setValue('cropTypeId', 0, { shouldValidate: true });
+      setValue('productName', '', { shouldValidate: true });
+    }
+  };
+
+  // Khi chọn CropType mới ở Dropdown 2
+  const handleCropTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCropId = Number(e.target.value);
+    setValue('cropTypeId', newCropId, { shouldValidate: true });
+
+    const selectedCrop = cropTypeOptions.find(
+      (c) => Number(c.cropTypeId) === newCropId
+    );
+    if (selectedCrop) {
+      setValue('productName', selectedCrop.cropName, { shouldValidate: true });
+    }
+  };
 
   const onSubmit: SubmitHandler<UpdateBatchFormValues> = async (values) => {
     if (!id) return;
@@ -182,37 +265,69 @@ export const EditBatchPage: React.FC = () => {
               </div>
 
               <div className="space-y-4">
+                {/* DROPDOWN LIÊN HOÀN 2 CỘT */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* DROPDOWN 1: DANH MỤC NÔNG SẢN */}
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      DANH MỤC SẢN PHẨM <span className="text-red-500">*</span>
+                      LOẠI NÔNG SẢN <span className="text-red-500">*</span>
                     </label>
                     <select
-                      {...register('cropTypeId', { valueAsNumber: true })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={selectedCategory}
+                      onChange={handleCategoryChange}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
-                      <option value={1}>Trái cây</option>
-                      <option value={2}>Lúa gạo</option>
-                      <option value={3}>Cà phê</option>
+                      <option value="">Chọn loại nông sản</option>
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
+                  {/* DROPDOWN 2: GIỐNG / PHÂN LOẠI SẢN PHẨM */}
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      TÊN SẢN PHẨM <span className="text-red-500">*</span>
+                      GIỐNG / PHÂN LOẠI SẢN PHẨM <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      {...register('productName')}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                    {errors.productName && (
-                      <p className="text-[11px] text-red-500 mt-1">{errors.productName.message}</p>
+                    <select
+                      value={currentCropTypeId || ''}
+                      onChange={handleCropTypeChange}
+                      disabled={!selectedCategory}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 cursor-pointer"
+                    >
+                      <option value="">Chọn phân loại sản phẩm</option>
+                      {filteredCropTypes.map((crop) => (
+                        <option key={crop.cropTypeId} value={crop.cropTypeId}>
+                          {crop.cropName}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.cropTypeId && (
+                      <p className="text-[11px] text-red-500 mt-1">
+                        {errors.cropTypeId.message}
+                      </p>
                     )}
                   </div>
                 </div>
 
-                {/* VÙNG TRỒNG (Dropdown thay cho Origin text input) */}
+                {/* TÊN SẢN PHẨM */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                    TÊN SẢN PHẨM <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    {...register('productName')}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  {errors.productName && (
+                    <p className="text-[11px] text-red-500 mt-1">{errors.productName.message}</p>
+                  )}
+                </div>
+
+                {/* VÙNG TRỒNG (Dropdown) */}
                 <div>
                   <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
                     VÙNG TRỒNG / TRANG TRẠI <span className="text-red-500">*</span>

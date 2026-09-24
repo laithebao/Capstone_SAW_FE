@@ -30,16 +30,16 @@ export const declareSupplierProfileSchema = z.object({
     .string()
     .min(1, 'Người liên hệ không được để trống.')
     .max(100, 'Người liên hệ không vượt quá 100 ký tự.'),
+  // Bỏ optional(), bắt buộc nhập số điện thoại
   phoneNumber: z
     .string()
-    .regex(/^[0-9]{10,11}$/, 'Số điện thoại không hợp lệ (10-11 chữ số).')
-    .optional()
-    .or(z.literal('')),
+    .min(1, 'Số điện thoại không được để trống.')
+    .regex(/^[0-9]{10,11}$/, 'Số điện thoại không hợp lệ (10-11 chữ số).'),
+  // Bỏ optional(), bắt buộc nhập email
   email: z
     .string()
-    .email('Định dạng email không hợp lệ.')
-    .optional()
-    .or(z.literal('')),
+    .min(1, 'Email không được để trống.')
+    .email('Định dạng email không hợp lệ.'),
   logoUrl: z.string().optional(),
   address: z
     .string()

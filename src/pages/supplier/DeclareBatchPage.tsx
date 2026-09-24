@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useForm, type SubmitHandler, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,6 +11,8 @@ import {
   Loader2,
   AlertCircle,
   MapPin,
+  Calendar,
+  MessageSquare,
 } from 'lucide-react';
 import {
   declareBatchSchema,
@@ -18,52 +20,77 @@ import {
 } from '@/features/supplier/schemas/supplierBatchSchema';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
 import { supplierService } from '@/services/suppliers/supplierService';
-import type { SupplierGrowingAreaDto } from '@/types/supplier';
-
-// Danh mục Nông sản mock
-const CROP_TYPE_OPTIONS = [
-  { id: 1, name: 'Lúa gạo' },
-  { id: 2, name: 'Cà phê' },
-  { id: 3, name: 'Hồ tiêu' },
-  { id: 4, name: 'Rau củ quả' },
-  { id: 5, name: 'Trái cây' },
-];
+import type { SupplierGrowingAreaDto, SupplierCropTypeDto } from '@/types/supplier';
 
 export const DeclareBatchPage: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  
-  // State lưu danh sách vùng trồng đã đăng ký của Supplier
+
+  // State lưu danh sách cây trồng & vùng trồng của Supplier
+  const [cropTypeOptions, setCropTypeOptions] = useState<SupplierCropTypeDto[]>([]);
   const [growingAreas, setGrowingAreas] = useState<SupplierGrowingAreaDto[]>([]);
   const [isLoadingAreas, setIsLoadingAreas] = useState<boolean>(true);
+
+  // State quản lý Category đang chọn ở Dropdown Loại nông sản
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   const {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<DeclareBatchFormValues>({
     resolver: zodResolver(declareBatchSchema) as Resolver<DeclareBatchFormValues>,
     defaultValues: {
       unit: 'Tấn',
-      cropTypeId: 1,
+      cropTypeId: 0,
+      productName: '',
+      note: '',
     },
   });
 
-  // Fetch danh sách vùng trồng từ hồ sơ Supplier hiện tại
+  const currentCropTypeId = watch('cropTypeId');
+
+  // Fetch danh sách vùng trồng & cây trồng từ hệ thống
   useEffect(() => {
-    const fetchGrowingAreas = async () => {
+    const fetchInitialData = async () => {
       try {
         setIsLoadingAreas(true);
-        const profile = await supplierService.getMyProfile();
-        
-        if (profile && profile.growingAreas && profile.growingAreas.length > 0) {
+        const [profile, allCrops] = await Promise.all([
+          supplierService.getMyProfile().catch(() => null),
+          supplierService.getCropTypes().catch(() => []),
+        ]);
+
+        // 1. Lấy danh sách cây trồng
+        let crops: SupplierCropTypeDto[] = [];
+        if (profile && Array.isArray(profile.cropTypes) && profile.cropTypes.length > 0) {
+          crops = profile.cropTypes;
+        } else {
+          crops = allCrops;
+        }
+        setCropTypeOptions(crops);
+
+        if (crops.length > 0) {
+          const firstCat = crops[0].categoryName || 'Nông sản khác';
+          setSelectedCategory(firstCat);
+
+          const firstCropInCat = crops.find(
+            (c) => (c.categoryName || 'Nông sản khác') === firstCat
+          );
+          if (firstCropInCat) {
+            setValue('cropTypeId', Number(firstCropInCat.cropTypeId));
+            setValue('productName', firstCropInCat.cropName);
+          }
+        }
+
+        // 2. Lấy danh sách vùng trồng
+        if (profile && Array.isArray(profile.growingAreas) && profile.growingAreas.length > 0) {
           setGrowingAreas(profile.growingAreas);
           setValue('growingAreaId', profile.growingAreas[0].growingAreaId);
         } else {
-          // Fallback lấy từ danh sách hệ thống nếu hồ sơ chưa khai báo vùng trồng
           const fallbackAreas = await supplierService.getGrowingAreas();
           setGrowingAreas(fallbackAreas);
           if (fallbackAreas.length > 0) {
@@ -71,14 +98,62 @@ export const DeclareBatchPage: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error('Lỗi khi tải danh sách vùng trồng:', error);
+        console.error('Lỗi khi tải dữ liệu khởi tạo:', error);
       } finally {
         setIsLoadingAreas(false);
       }
     };
 
-    fetchGrowingAreas();
+    fetchInitialData();
   }, [setValue]);
+
+  // Lọc ra các Category không trùng lặp cho Dropdown "LOẠI NÔNG SẢN"
+  const categories = useMemo(() => {
+    const setCat = new Set<string>();
+    cropTypeOptions.forEach((c) => {
+      setCat.add(c.categoryName || 'Nông sản khác');
+    });
+    return Array.from(setCat);
+  }, [cropTypeOptions]);
+
+  // Lọc ra danh sách cây trồng thuộc Category đang chọn cho Dropdown "GIỐNG / PHÂN LOẠI SẢN PHẨM"
+  const filteredCropTypes = useMemo(() => {
+    if (!selectedCategory) return cropTypeOptions;
+    return cropTypeOptions.filter(
+      (c) => (c.categoryName || 'Nông sản khác') === selectedCategory
+    );
+  }, [cropTypeOptions, selectedCategory]);
+
+  // Khi chọn Category khác ở Dropdown 1
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCat = e.target.value;
+    setSelectedCategory(newCat);
+
+    const firstCrop = cropTypeOptions.find(
+      (c) => (c.categoryName || 'Nông sản khác') === newCat
+    );
+
+    if (firstCrop) {
+      setValue('cropTypeId', Number(firstCrop.cropTypeId), { shouldValidate: true });
+      setValue('productName', firstCrop.cropName, { shouldValidate: true });
+    } else {
+      setValue('cropTypeId', 0, { shouldValidate: true });
+      setValue('productName', '', { shouldValidate: true });
+    }
+  };
+
+  // Khi chọn CropType ở Dropdown 2
+  const handleCropTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCropId = Number(e.target.value);
+    setValue('cropTypeId', newCropId, { shouldValidate: true });
+
+    const selectedCrop = cropTypeOptions.find(
+      (c) => Number(c.cropTypeId) === newCropId
+    );
+    if (selectedCrop) {
+      setValue('productName', selectedCrop.cropName, { shouldValidate: true });
+    }
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -110,6 +185,7 @@ export const DeclareBatchPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 max-w-5xl mx-auto">
       <form onSubmit={handleSubmit(onSubmit)}>
+        {/* TOP BAR */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
@@ -156,18 +232,40 @@ export const DeclareBatchPage: React.FC = () => {
 
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* DROPDOWN 1: LOẠI NÔNG SẢN (DANH MỤC) */}
                 <div>
                   <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
                     LOẠI NÔNG SẢN <span className="text-red-500">*</span>
                   </label>
                   <select
-                    {...register('cropTypeId', { valueAsNumber: true })}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    value={selectedCategory}
+                    onChange={handleCategoryChange}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                   >
                     <option value="">Chọn loại nông sản</option>
-                    {CROP_TYPE_OPTIONS.map((crop) => (
-                      <option key={crop.id} value={crop.id}>
-                        {crop.name}
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* DROPDOWN 2: GIỐNG / PHÂN LOẠI SẢN PHẨM */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                    GIỐNG / PHÂN LOẠI SẢN PHẨM <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={currentCropTypeId || ''}
+                    onChange={handleCropTypeChange}
+                    disabled={!selectedCategory}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 cursor-pointer"
+                  >
+                    <option value="">Chọn phân loại sản phẩm</option>
+                    {filteredCropTypes.map((crop) => (
+                      <option key={crop.cropTypeId} value={crop.cropTypeId}>
+                        {crop.cropName}
                       </option>
                     ))}
                   </select>
@@ -177,26 +275,27 @@ export const DeclareBatchPage: React.FC = () => {
                     </p>
                   )}
                 </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                    GIỐNG / PHÂN LOẠI SẢN PHẨM <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    {...register('productName')}
-                    placeholder="Ví dụ: Gạo ST25, xoài cát Hòa Lộc..."
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  {errors.productName && (
-                    <p className="text-[11px] text-red-500 mt-1">
-                      {errors.productName.message}
-                    </p>
-                  )}
-                </div>
               </div>
 
-              {/* VÙNG TRỒNG (Select growingAreaId từ danh sách vùng trồng NCC) */}
+              {/* TÊN / TÊN CHI TIẾT SẢN PHẨM */}
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                  TÊN SẢN PHẨM KHAI BÁO <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  {...register('productName')}
+                  placeholder="Ví dụ: Gạo ST25, xoài cát Hòa Lộc..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                {errors.productName && (
+                  <p className="text-[11px] text-red-500 mt-1">
+                    {errors.productName.message}
+                  </p>
+                )}
+              </div>
+
+              {/* VÙNG TRỒNG (Select growingAreaId) */}
               <div>
                 <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
                   VÙNG TRỒNG / TRANG TRẠI <span className="text-red-500">*</span>
@@ -299,19 +398,46 @@ export const DeclareBatchPage: React.FC = () => {
                   <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
                     NGÀY THU HOẠCH <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      {...register('harvestDate')}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
+                  <input
+                    type="date"
+                    {...register('harvestDate')}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
                   {errors.harvestDate && (
                     <p className="text-[11px] text-red-500 mt-1">
                       {errors.harvestDate.message}
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* NGÀY GIAO HÀNG DỰ KIẾN (Giữ lại giao diện gốc) */}
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                  NGÀY GIAO HÀNG DỰ KIẾN
+                </label>
+                <div className="relative">
+                  <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
+                  <input
+                    type="date"
+                    {...register('expectedDeliveryDate')}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* MÔ TẢ / GHI CHÚ BỔ SUNG */}
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-gray-400" />
+                  <span>MÔ TẢ / GHI CHÚ BỔ SUNG</span>
+                </label>
+                <textarea
+                  {...register('note')}
+                  rows={3}
+                  placeholder="Ghi chú về điều kiện bảo quản, chất lượng sản phẩm hoặc lưu ý khi vận chuyển..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                />
               </div>
             </div>
           </div>
@@ -354,7 +480,7 @@ export const DeclareBatchPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => removeFile(idx)}
-                      className="text-gray-400 hover:text-red-500 p-1"
+                      className="text-gray-400 hover:text-red-500 p-1 cursor-pointer"
                     >
                       <X className="w-4 h-4" />
                     </button>

@@ -1,11 +1,34 @@
 import { apiClient } from '../apiClient';
-import type { DeclareSupplierProfileRequest, SupplierGrowingAreaDto, SupplierProfileResponse } from '../../types/supplier';
-import type { DeclareSupplierProfileFormValues } from '@/features/supplier/schemas/supplierProfileSchema';
-import type { GetSupplierBatchesQueryRequest, SupplierBatchListResponse, SupplierBatchStatusResponse } from '@/types/supplierBatch';
+import type {
+  DeclareSupplierProfileRequest,
+  SupplierCropTypeDto,
+  SupplierGrowingAreaDto,
+  SupplierProfileResponse,
+} from '../../types/supplier';
+import type {
+  GetSupplierBatchesQueryRequest,
+  SupplierBatchListResponse,
+  SupplierBatchStatusResponse,
+} from '@/types/supplierBatch';
+
+// Hàm helper chuẩn hóa mọi định dạng DTO trả về từ Backend về chuẩn SupplierCropTypeDto
+const normalizeCropType = (item: any): SupplierCropTypeDto => {
+  return {
+    cropTypeId: Number(item?.cropTypeId ?? item?.id ?? 0),
+    cropCode: String(item?.cropCode ?? item?.code ?? ''),
+    cropName: String(item?.cropName ?? item?.name ?? item?.title ?? 'Nông sản không tên'),
+    categoryName: String(item?.categoryName ?? item?.category ?? 'Nông sản khác'),
+  };
+};
 
 export const supplierService = {
   getMyProfile: async (): Promise<SupplierProfileResponse> => {
     const response = await apiClient.get<SupplierProfileResponse>('/suppliers/me/profile');
+    
+    // Chuẩn hóa danh sách cropTypes trong Profile
+    if (response.data && Array.isArray(response.data.cropTypes)) {
+      response.data.cropTypes = response.data.cropTypes.map(normalizeCropType);
+    }
     return response.data;
   },
 
@@ -15,7 +38,33 @@ export const supplierService = {
       return response.data;
     } catch (error) {
       console.error('Lỗi khi tải danh sách Vùng trồng từ server:', error);
-    return [];
+      return [];
+    }
+  },
+
+  getCropTypes: async (): Promise<SupplierCropTypeDto[]> => {
+    try {
+      const response = await apiClient.get<any>('/crop-types', {
+        params: { pageSize: 100, isActive: true },
+      });
+      
+      const resData = response.data;
+      let rawList: any[] = [];
+
+      if (resData?.data?.items && Array.isArray(resData.data.items)) {
+        rawList = resData.data.items;
+      } else if (resData?.items && Array.isArray(resData.items)) {
+        rawList = resData.items;
+      } else if (Array.isArray(resData?.data)) {
+        rawList = resData.data;
+      } else if (Array.isArray(resData)) {
+        rawList = resData;
+      }
+
+      return rawList.map(normalizeCropType);
+    } catch (error) {
+      console.error('Lỗi khi tải danh sách Cây trồng từ server:', error);
+      return [];
     }
   },
 
@@ -25,7 +74,7 @@ export const supplierService = {
     const response = await apiClient.post<{
       message: string;
       data: SupplierProfileResponse;
-    }>('/api/Suppliers/me/declare', data);
+    }>('/suppliers/me/declare', data);
     return response.data;
   },
 
@@ -43,8 +92,7 @@ export const supplierService = {
     const response = await apiClient.post('/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    // Trả về chuỗi URL (Ví dụ: "https://domain.com/uploads/logo.png")
-    return response.data.url || response.data; 
+    return response.data.url || response.data;
   },
 
   getBatches: async (params?: GetSupplierBatchesQueryRequest): Promise<SupplierBatchListResponse> => {

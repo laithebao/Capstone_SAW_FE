@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router';
 import { useForm, useFieldArray, type SubmitHandler, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -12,22 +13,29 @@ import {
   X,
   Plus,
   Trash2,
+  Lock
 } from 'lucide-react';
 import { declareSupplierProfileSchema } from '../../features/supplier/schemas/supplierProfileSchema';
 import type { DeclareSupplierProfileFormValues } from '../../features/supplier/schemas/supplierProfileSchema';
 import { supplierService } from '../../services/suppliers/supplierService';
-import type { SupplierGrowingAreaDto } from '../../types/supplier';
+import type { SupplierCropTypeDto, SupplierGrowingAreaDto } from '../../types/supplier';
 
-// Mock Data Danh mục nông sản (CropTypes)
-const CROP_TYPE_OPTIONS = [
-  { id: 1, name: 'Lúa gạo' },
-  { id: 2, name: 'Ngô' },
-  { id: 3, name: 'Cà phê' },
-  { id: 4, name: 'Trái cây' },
-  { id: 5, name: 'Rau củ' },
-];
+const getEmailFromToken = (): string => {
+  try {
+    const authSessionRaw = sessionStorage.getItem('saw.auth-session'); 
+    
+    if (!authSessionRaw) return '';
 
-// Mock Data Chứng nhận
+    const authSession = JSON.parse(authSessionRaw);
+    
+    return authSession?.user?.email || '';
+  } catch (error) {
+    console.error('Lỗi khi lấy email từ auth session:', error);
+    return '';
+  }
+};
+
+// Data Chứng nhận cố định
 const CERTIFICATION_OPTIONS = [
   'VietGAP',
   'GlobalGAP',
@@ -42,6 +50,9 @@ export const DeclareSupplierProfilePage: React.FC = () => {
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [growingAreaOptions, setGrowingAreaOptions] = useState<SupplierGrowingAreaDto[]>([]);
+  const [cropTypeOptions, setCropTypeOptions] = useState<SupplierCropTypeDto[]>([]);
+  
+  const navigate = useNavigate();
 
   const {
     register,
@@ -73,30 +84,61 @@ export const DeclareSupplierProfilePage: React.FC = () => {
     name: 'growingAreas',
   });
 
-  useEffect(() => {
-    const fetchAreas = async () => {
-      try {
-        const areas = await supplierService.getGrowingAreas();
-        setGrowingAreaOptions(areas || []);
-      } catch (err) {
-        console.error('Lỗi khi lấy danh sách vùng trồng:', err);
-      }
-    };
-    fetchAreas();
-  }, []);
-
   const selectedCropTypes = watch('cropTypeIds') || [];
   const selectedCertifications = watch('certifications') || [];
 
-  const handleCropTypeToggle = (id: number) => {
-    if (selectedCropTypes.includes(id)) {
-      setValue(
-        'cropTypeIds',
-        selectedCropTypes.filter((item) => item !== id)
-      );
-    } else {
-      setValue('cropTypeIds', [...selectedCropTypes, id]);
+  // Gom nhóm danh sách cây trồng theo CategoryName
+  const groupedCropTypes = useMemo(() => {
+    const groups: { [category: string]: SupplierCropTypeDto[] } = {};
+    const safeCropList = Array.isArray(cropTypeOptions) ? cropTypeOptions : [];
+
+    safeCropList.forEach((crop) => {
+      const category = crop.categoryName || 'Nông sản khác';
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(crop);
+    });
+    return groups;
+  }, [cropTypeOptions]);
+
+  // Tự động lấy Email từ Token khi vào trang
+  useEffect(() => {
+    const userEmail = getEmailFromToken();
+    if (userEmail) {
+      setValue('email', userEmail, { shouldValidate: true });
     }
+  }, [setValue]);
+
+  // Tải danh sách Vùng trồng và Cây trồng từ Server
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const [areas, crops] = await Promise.all([
+          supplierService.getGrowingAreas(),
+          supplierService.getCropTypes(),
+        ]);
+        setGrowingAreaOptions(Array.isArray(areas) ? areas : []);
+        setCropTypeOptions(Array.isArray(crops) ? crops : []);
+      } catch (err) {
+        console.error('Lỗi khi tải dữ liệu khởi tạo:', err);
+      }
+    };
+    fetchMetadata();
+  }, []);
+
+  const handleCropTypeToggle = (id: number) => {
+    const numericId = Number(id);
+    if (!numericId) return;
+
+    const current = selectedCropTypes.map(Number);
+    const idx = current.indexOf(numericId);
+    if (idx > -1) {
+      current.splice(idx, 1);
+    } else {
+      current.push(numericId);
+    }
+    setValue('cropTypeIds', current, { shouldValidate: true });
   };
 
   const handleCertToggle = (cert: string) => {
@@ -128,7 +170,6 @@ export const DeclareSupplierProfilePage: React.FC = () => {
   };
 
   const onSubmit: SubmitHandler<DeclareSupplierProfileFormValues> = async (values) => {
-    // 1. Validate người dùng không được bỏ trống Vùng trồng khi bấm thêm dòng
     const hasInvalidArea = values.growingAreas?.some(
       (ga) => !ga.growingAreaId || Number(ga.growingAreaId) === 0
     );
@@ -142,7 +183,6 @@ export const DeclareSupplierProfilePage: React.FC = () => {
     setSubmitSuccess(null);
 
     try {
-      // Tải từng file lên server thực tế thay vì mock URL chuỗi
       let uploadedDocUrls: string[] = [];
       if (uploadedFiles.length > 0) {
         uploadedDocUrls = await Promise.all(
@@ -150,7 +190,6 @@ export const DeclareSupplierProfilePage: React.FC = () => {
         );
       }
 
-      // 2. Lọc bỏ các Vùng trồng không hợp lệ / = 0
       const validGrowingAreas = (values.growingAreas || [])
         .filter((ga) => ga && Number(ga.growingAreaId) > 0)
         .map((ga) => ({
@@ -160,15 +199,48 @@ export const DeclareSupplierProfilePage: React.FC = () => {
 
       const payload = {
         ...values,
+        cropTypeIds: (values.cropTypeIds || []).map(Number),
         growingAreas: validGrowingAreas,
         evidenceDocumentUrls: uploadedDocUrls.filter(Boolean),
       };
 
-      await supplierService.declareProfile(payload);
+      try {
+        // Cố gắng gọi API Khai báo mới trước
+        await supplierService.declareProfile(payload);
+        setSubmitSuccess('Khai báo hồ sơ Nhà cung cấp thành công!');
+      } catch (declareErr: any) {
+        // Nếu Server báo lỗi 409 (Hồ sơ đã tồn tại do hệ thống tự sinh bản ghi lúc login)
+        // -> Tự động chuyển sang gọi API Cập nhật (PUT) để lưu thông tin đè lên
+        if (declareErr.response?.status === 409 || declareErr.response?.data?.message?.includes('đã tồn tại')) {
+          await supplierService.updateProfile(payload);
+          setSubmitSuccess('Cập nhật hồ sơ Nhà cung cấp thành công!');
+        } else {
+          // Nếu là lỗi khác thì ném ra ngoài để nhảy vào catch tổng bên dưới
+          throw declareErr;
+        }
+      }
 
-      setSubmitSuccess('Khai báo hồ sơ Nhà cung cấp thành công!');
+      // Đợi 1.5 giây rồi điều hướng về trang quản lý lô hàng hoặc trang chủ
+      setTimeout(() => {
+        navigate('/supplier/batches');
+      }, 1500);
+
     } catch (err: any) {
-      if (err.response?.status === 409) {
+      console.error('Lỗi khi submit:', err.response?.data); 
+      if (err.response?.status === 400) {
+        const serverErrors = err.response.data.errors;
+        if (serverErrors) {
+          const errorMessages = Object.entries(serverErrors)
+            .map(([field, messages]) => {
+              const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
+              return `${field}: ${msgs}`;
+            })
+            .join(' | ');
+          setSubmitError(`Dữ liệu không hợp lệ: ${errorMessages}`);
+        } else {
+          setSubmitError(err.response?.data?.title || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.');
+        }
+      } else if (err.response?.status === 409) {
         setSubmitError('Mã số thuế này đã được đăng ký trên hệ thống.');
       } else {
         setSubmitError(
@@ -182,7 +254,6 @@ export const DeclareSupplierProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-6">
-      {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
           Khai báo thông tin Nhà cung cấp
@@ -207,7 +278,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT COLUMN - 2 COLUMNS WIDE */}
+          {/* LEFT COLUMN */}
           <div className="lg:col-span-2 space-y-6">
             {/* Section 1: Thông tin cơ bản */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
@@ -309,7 +380,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                     <input
                       type="text"
                       {...register('contactPerson')}
-                      placeholder="Họ và tên / SĐT"
+                      placeholder="Họ và tên"
                       className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                     {errors.contactPerson && (
@@ -317,6 +388,40 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                         {errors.contactPerson.message}
                       </p>
                     )}
+                  </div>
+                </div>
+
+                {/* SĐT & Email */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                      SỐ ĐIỆN THOẠI <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      {...register('phoneNumber')}
+                      placeholder="VD: 0901234567"
+                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    {errors.phoneNumber && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {errors.phoneNumber.message}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1 flex items-center gap-1.5">
+                      EMAIL
+                      <Lock className="w-3 h-3 text-gray-400" />
+                    </label>
+                    <input
+                      type="email"
+                      {...register('email')}
+                      readOnly
+                      disabled
+                      title="Email liên kết với tài khoản, không thể thay đổi."
+                      className="w-full bg-gray-200/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-500 cursor-not-allowed"
+                    />
                   </div>
                 </div>
               </div>
@@ -333,7 +438,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                   type="button"
                   onClick={() =>
                     append({
-                      growingAreaId: 0, // Đặt mặc định = 0 hiển thị option "-- Chọn Vùng trồng --"
+                      growingAreaId: 0,
                       areaInHectares: undefined,
                     })
                   }
@@ -447,22 +552,42 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                 <label className="block text-xs font-semibold text-gray-600 uppercase mb-3">
                   DANH MỤC NÔNG SẢN <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {CROP_TYPE_OPTIONS.map((crop) => (
-                    <label
-                      key={crop.id}
-                      className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 hover:text-gray-900"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedCropTypes.includes(crop.id)}
-                        onChange={() => handleCropTypeToggle(crop.id)}
-                        className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                      />
-                      <span>{crop.name}</span>
-                    </label>
-                  ))}
-                </div>
+
+                {Object.keys(groupedCropTypes).length === 0 ? (
+                  <div className="text-xs text-gray-500 italic">
+                    Chưa có dữ liệu cây trồng hoặc đang tải...
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {Object.entries(groupedCropTypes).map(([category, crops]) => (
+                      <div key={category} className="border-b border-dashed border-gray-200 pb-3">
+                        <div className="text-xs font-bold text-emerald-700 uppercase mb-2">
+                          📁 {category}
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {crops.map((crop) => {
+                            const isChecked = selectedCropTypes.map(Number).includes(Number(crop.cropTypeId));
+                            return (
+                              <label
+                                key={crop.cropTypeId}
+                                className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 hover:text-gray-900"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleCropTypeToggle(crop.cropTypeId)}
+                                  className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span>{crop.cropName}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {errors.cropTypeIds && (
                   <p className="text-xs text-red-500 mt-2">
                     {errors.cropTypeIds.message}
@@ -472,7 +597,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN - 1 COLUMN WIDE */}
+          {/* RIGHT COLUMN */}
           <div className="space-y-6">
             {/* Box 1: Hành động */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">

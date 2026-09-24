@@ -1,28 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useForm, useFieldArray, type SubmitHandler } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import { supplierService } from '../../services/suppliers/supplierService';
 import type {
   DeclareSupplierProfileRequest,
+  SupplierCropTypeDto,
   SupplierGrowingAreaDto,
-  SupplierProfileResponse,
 } from '../../types/supplier';
 
 const CERTIFICATE_OPTIONS = ['VietGAP', 'GlobalGAP', 'Organic', 'HACCP', 'Không có chứng nhận'];
-
-const CROP_OPTIONS = [
-  { id: 1, label: 'Lúa gạo' },
-  { id: 2, label: 'Ngô' },
-  { id: 3, label: 'Cà phê' },
-  { id: 4, label: 'Trái cây' },
-  { id: 5, label: 'Rau củ' },
-];
 
 export const EditSupplierProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [growingAreaOptions, setGrowingAreaOptions] = useState<SupplierGrowingAreaDto[]>([]);
+  const [cropTypeOptions, setCropTypeOptions] = useState<SupplierCropTypeDto[]>([]);
 
   // File Upload States
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -72,19 +65,36 @@ export const EditSupplierProfilePage: React.FC = () => {
   const selectedCrops = watch('cropTypeIds') || [];
   const selectedCerts = watch('certifications') || [];
 
+  // Gom nhóm danh sách cây trồng theo CategoryName
+  const groupedCropTypes = useMemo(() => {
+    const groups: { [category: string]: SupplierCropTypeDto[] } = {};
+    const safeCropList = Array.isArray(cropTypeOptions) ? cropTypeOptions : [];
+
+    safeCropList.forEach((crop) => {
+      const category = crop.categoryName || 'Nông sản khác';
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(crop);
+    });
+    return groups;
+  }, [cropTypeOptions]);
+
   useEffect(() => {
     const fetchCurrentProfile = async () => {
       try {
         setLoading(true);
-        const [profile, areas] = await Promise.all([
+        const [profile, areas, crops] = await Promise.all([
           supplierService.getMyProfile(),
           supplierService.getGrowingAreas(),
+          supplierService.getCropTypes(),
         ]);
 
-        setGrowingAreaOptions(areas || []);
+        setGrowingAreaOptions(Array.isArray(areas) ? areas : []);
+        setCropTypeOptions(Array.isArray(crops) ? crops : []);
 
         if (profile) {
-          const cropTypeIds = profile.cropTypes ? profile.cropTypes.map((c) => c.cropTypeId) : [];
+          const cropTypeIds = profile.cropTypes ? profile.cropTypes.map((c) => Number(c.cropTypeId)) : [];
           const certificationsList = profile.certifications ? profile.certifications.map((c) => c.certificationName) : [];
           const docs = profile.documents ? profile.documents.map((d) => d.fileUrl) : [];
 
@@ -97,12 +107,23 @@ export const EditSupplierProfilePage: React.FC = () => {
             areaInHectares: ga.areaInHectares || undefined,
           }));
 
+          let rawContact = profile.contactPerson || '';
+          let legalRep = profile.legalRepresentative || '';
+
+          if (rawContact.includes('| Đại diện PL:')) {
+            const parts = rawContact.split('| Đại diện PL:');
+            rawContact = parts[0].trim();
+            if (!legalRep) {
+              legalRep = parts[1]?.trim() || '';
+            }
+          }
+
           reset({
             supplierName: profile.supplierName || '',
             taxCode: profile.taxCode || '',
-            supplierType: profile.supplierType || 'Hợp tác xã',
-            legalRepresentative: profile.legalRepresentative || '',
-            contactPerson: profile.contactPerson || '',
+            supplierType: profile.supplierType || profile.detailedPlantingArea || 'Hợp tác xã',
+            legalRepresentative: legalRep,
+            contactPerson: rawContact,
             phoneNumber: profile.phoneNumber || '',
             email: profile.email || '',
             logoUrl: profile.logoUrl || '',
@@ -139,10 +160,14 @@ export const EditSupplierProfilePage: React.FC = () => {
   };
 
   const handleCropToggle = (id: number) => {
-    const current = [...selectedCrops];
-    const idx = current.indexOf(id);
+    const numericId = Number(id);
+    if (!numericId) return;
+
+    const current = [...selectedCrops].map(Number);
+    const idx = current.indexOf(numericId);
     if (idx > -1) current.splice(idx, 1);
-    else current.push(id);
+    else current.push(numericId);
+    
     setValue('cropTypeIds', current);
   };
 
@@ -160,7 +185,6 @@ export const EditSupplierProfilePage: React.FC = () => {
   };
 
   const onSubmit: SubmitHandler<DeclareSupplierProfileRequest> = async (values) => {
-    // 1. Kiểm tra nếu người dùng thêm vùng trồng nhưng chưa chọn từ dropdown (đang là 0 hoặc chưa chọn)
     const hasInvalidArea = values.growingAreas?.some(
       (ga) => !ga.growingAreaId || Number(ga.growingAreaId) === 0
     );
@@ -188,7 +212,6 @@ export const EditSupplierProfilePage: React.FC = () => {
         ...newUploadedUrls.filter(Boolean),
       ];
 
-      // 2. Lọc bỏ tuyệt đối các vùng trồng rỗng/không hợp lệ để ngăn chặn gửi ID = 0 lên server
       const validGrowingAreas = (values.growingAreas || [])
         .filter((ga) => ga && Number(ga.growingAreaId) > 0)
         .map((ga) => ({
@@ -306,7 +329,7 @@ export const EditSupplierProfilePage: React.FC = () => {
                   type="button"
                   onClick={() =>
                     append({
-                      growingAreaId: 0, // Mặc định hiển thị option "-- Chọn Vùng trồng --"
+                      growingAreaId: 0,
                       areaInHectares: undefined,
                     })
                   }
@@ -411,27 +434,43 @@ export const EditSupplierProfilePage: React.FC = () => {
               <div style={cardHeaderStyle}>🚜 Thông tin sản xuất</div>
               <div style={{ padding: '20px' }}>
                 <label style={{ ...labelStyle, marginBottom: '12px', display: 'block' }}>DANH MỤC NÔNG SẢN *</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                  {CROP_OPTIONS.map((crop) => {
-                    const isChecked = selectedCrops.includes(crop.id);
-                    return (
-                      <label key={crop.id} style={{ display: 'flex', alignItems: 'center', fontSize: '14px', color: '#374151', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleCropToggle(crop.id)}
-                          style={{ marginRight: '8px' }}
-                        />
-                        {crop.label}
-                      </label>
-                    );
-                  })}
-                </div>
+                
+                {Object.keys(groupedCropTypes).length === 0 ? (
+                  <div style={{ fontSize: '13px', color: '#6b7280', fontStyle: 'italic' }}>
+                    Chưa có dữ liệu cây trồng hoặc đang tải...
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {Object.entries(groupedCropTypes).map(([category, crops]) => (
+                      <div key={category} style={{ borderBottom: '1px dashed #e5e7eb', paddingBottom: '12px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#059669', marginBottom: '8px', textTransform: 'uppercase' }}>
+                          📁 {category}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                          {crops.map((crop) => {
+                            const isChecked = selectedCrops.map(Number).includes(Number(crop.cropTypeId));
+                            return (
+                              <label key={crop.cropTypeId} style={{ display: 'flex', alignItems: 'center', fontSize: '14px', color: '#374151', cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleCropToggle(crop.cropTypeId)}
+                                  style={{ marginRight: '8px' }}
+                                />
+                                {crop.cropName}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
               </div>
             </div>
 
           </div>
-
 
           {/* ================= CỘT PHẢI (SIDEBAR ACTION) ================= */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
