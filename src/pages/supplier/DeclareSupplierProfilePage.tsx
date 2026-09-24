@@ -61,7 +61,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
       phoneNumber: '',
       email: '',
       address: 'Ấp Phú Thạnh, Xã Tân Phú, Vũng Liêm, Vĩnh Long',
-      growingAreas: [{ growingAreaId: 1, areaInHectares: 5.5 }],
+      growingAreas: [],
       cropTypeIds: [],
       certifications: ['Không có chứng nhận'],
       evidenceDocumentUrls: [],
@@ -77,7 +77,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
     const fetchAreas = async () => {
       try {
         const areas = await supplierService.getGrowingAreas();
-        setGrowingAreaOptions(areas);
+        setGrowingAreaOptions(areas || []);
       } catch (err) {
         console.error('Lỗi khi lấy danh sách vùng trồng:', err);
       }
@@ -128,22 +128,40 @@ export const DeclareSupplierProfilePage: React.FC = () => {
   };
 
   const onSubmit: SubmitHandler<DeclareSupplierProfileFormValues> = async (values) => {
+    // 1. Validate người dùng không được bỏ trống Vùng trồng khi bấm thêm dòng
+    const hasInvalidArea = values.growingAreas?.some(
+      (ga) => !ga.growingAreaId || Number(ga.growingAreaId) === 0
+    );
+    if (hasInvalidArea) {
+      setSubmitError('Vui lòng chọn tên Vùng trồng hợp lệ cho tất cả các dòng đã thêm.');
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
     setSubmitSuccess(null);
 
     try {
-      const mockDocUrls = uploadedFiles.map(
-        (file) => `https://storage.saw.vn/docs/${file.name}`
-      );
+      // Tải từng file lên server thực tế thay vì mock URL chuỗi
+      let uploadedDocUrls: string[] = [];
+      if (uploadedFiles.length > 0) {
+        uploadedDocUrls = await Promise.all(
+          uploadedFiles.map((file) => supplierService.uploadFile(file))
+        );
+      }
+
+      // 2. Lọc bỏ các Vùng trồng không hợp lệ / = 0
+      const validGrowingAreas = (values.growingAreas || [])
+        .filter((ga) => ga && Number(ga.growingAreaId) > 0)
+        .map((ga) => ({
+          growingAreaId: Number(ga.growingAreaId),
+          areaInHectares: ga.areaInHectares ? Number(ga.areaInHectares) : undefined,
+        }));
 
       const payload = {
         ...values,
-        growingAreas: values.growingAreas.map((ga) => ({
-          growingAreaId: Number(ga.growingAreaId),
-          areaInHectares: ga.areaInHectares ? Number(ga.areaInHectares) : undefined,
-        })),
-        evidenceDocumentUrls: mockDocUrls,
+        growingAreas: validGrowingAreas,
+        evidenceDocumentUrls: uploadedDocUrls.filter(Boolean),
       };
 
       await supplierService.declareProfile(payload);
@@ -315,7 +333,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                   type="button"
                   onClick={() =>
                     append({
-                      growingAreaId: growingAreaOptions[0]?.growingAreaId || 1,
+                      growingAreaId: 0, // Đặt mặc định = 0 hiển thị option "-- Chọn Vùng trồng --"
                       areaInHectares: undefined,
                     })
                   }
@@ -462,7 +480,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-zinc-800 hover:bg-zinc-900 text-white font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition disabled:opacity-50"
+                className="w-full bg-zinc-800 hover:bg-zinc-900 text-white font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>{isSubmitting ? 'Đang lưu...' : 'Lưu'}</span>
@@ -535,7 +553,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => removeFile(idx)}
-                          className="text-gray-400 hover:text-red-500"
+                          className="text-gray-400 hover:text-red-500 cursor-pointer"
                         >
                           <X className="w-4 h-4" />
                         </button>
