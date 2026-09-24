@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useForm, type SubmitHandler, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +17,8 @@ import {
   type UpdateBatchFormValues,
 } from '@/features/supplier/schemas/supplierBatchSchema';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
+import { supplierService } from '@/services/suppliers/supplierService';
+import type { SupplierGrowingAreaDto } from '@/types/supplier';
 
 export const EditBatchPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +28,10 @@ export const EditBatchPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [batchCode, setBatchCode] = useState<string>('');
+  
+  // State lưu danh sách vùng trồng của Supplier
+  const [growingAreas, setGrowingAreas] = useState<SupplierGrowingAreaDto[]>([]);
+  const [isLoadingAreas, setIsLoadingAreas] = useState<boolean>(true);
 
   const {
     register,
@@ -38,18 +44,39 @@ export const EditBatchPage: React.FC = () => {
 
   useEffect(() => {
     if (!id) return;
-    const fetchDetail = async () => {
+    const fetchDetailAndProfile = async () => {
       try {
         setLoading(true);
-        const response = await supplierBatchService.getBatchStatus(Number(id));
-        const data = response.data;
+        setIsLoadingAreas(true);
+
+        const [statusResponse, profile] = await Promise.all([
+          supplierBatchService.getBatchStatus(Number(id)),
+          supplierService.getMyProfile().catch(() => null),
+        ]);
+
+        const data = statusResponse.data;
         setBatchCode(data.batchCode);
+
+        // Lấy danh sách vùng trồng từ Profile
+        let userAreas: SupplierGrowingAreaDto[] = [];
+        if (profile && profile.growingAreas && profile.growingAreas.length > 0) {
+          userAreas = profile.growingAreas;
+        } else {
+          userAreas = await supplierService.getGrowingAreas();
+        }
+        setGrowingAreas(userAreas);
+
+        // Tìm growingAreaId tương ứng theo tên vùng trồng từ batch detail nếu có
+        const matchedArea = userAreas.find(
+          (a) => a.areaName === data.areaName || (a.province === data.province && a.district === data.district)
+        );
+        const selectedAreaId = matchedArea ? matchedArea.growingAreaId : userAreas[0]?.growingAreaId || 1;
 
         // Fill form data
         reset({
           cropTypeId: 1, // mapping theo API
           productName: data.productName,
-          origin: data.origin,
+          growingAreaId: selectedAreaId,
           declaredQuantity: data.declaredQuantity,
           unit: data.unit || 'Kg',
           harvestDate: data.harvestDate,
@@ -60,10 +87,11 @@ export const EditBatchPage: React.FC = () => {
         setSubmitError('Không thể tải thông tin lô hàng.');
       } finally {
         setLoading(false);
+        setIsLoadingAreas(false);
       }
     };
 
-    fetchDetail();
+    fetchDetailAndProfile();
   }, [id, reset]);
 
   const onSubmit: SubmitHandler<UpdateBatchFormValues> = async (values) => {
@@ -120,7 +148,7 @@ export const EditBatchPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate(`/supplier/batches/${id}/status`)}
-              className="bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg border border-gray-300 text-xs flex items-center gap-1.5 shadow-sm"
+              className="bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg border border-gray-300 text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
               <History className="w-3.5 h-3.5" />
               <span>Lịch sử</span>
@@ -128,7 +156,7 @@ export const EditBatchPage: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-zinc-800 hover:bg-zinc-900 text-white font-medium px-5 py-2 rounded-lg text-xs flex items-center gap-2 shadow-sm disabled:opacity-50"
+              className="bg-zinc-800 hover:bg-zinc-900 text-white font-medium px-5 py-2 rounded-lg text-xs flex items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               <span>Lưu thay đổi</span>
@@ -184,18 +212,33 @@ export const EditBatchPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* VÙNG TRỒNG (Dropdown thay cho Origin text input) */}
                 <div>
                   <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                    VÙNG TRỒNG / NGUỒN GỐC <span className="text-red-500">*</span>
+                    VÙNG TRỒNG / TRANG TRẠI <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      {...register('origin')}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
+                    <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
+                    <select
+                      {...register('growingAreaId', { valueAsNumber: true })}
+                      disabled={isLoadingAreas}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 cursor-pointer"
+                    >
+                      <option value="">
+                        {isLoadingAreas ? 'Đang tải vùng trồng...' : 'Chọn vùng trồng đã đăng ký'}
+                      </option>
+                      {growingAreas.map((area) => (
+                        <option key={area.growingAreaId} value={area.growingAreaId}>
+                          {area.areaName} ({[area.ward, area.district, area.province].filter(Boolean).join(', ')})
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                  {errors.growingAreaId && (
+                    <p className="text-[11px] text-red-500 mt-1">
+                      {errors.growingAreaId.message}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

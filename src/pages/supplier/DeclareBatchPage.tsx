@@ -11,13 +11,14 @@ import {
   Loader2,
   AlertCircle,
   MapPin,
-  Calendar,
 } from 'lucide-react';
 import {
   declareBatchSchema,
   type DeclareBatchFormValues,
 } from '@/features/supplier/schemas/supplierBatchSchema';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
+import { supplierService } from '@/services/suppliers/supplierService';
+import type { SupplierGrowingAreaDto } from '@/types/supplier';
 
 // Danh mục Nông sản mock
 const CROP_TYPE_OPTIONS = [
@@ -28,59 +29,56 @@ const CROP_TYPE_OPTIONS = [
   { id: 5, name: 'Trái cây' },
 ];
 
-// Interface tạm thời cho Growing Area (Nên chuyển vào file types)
-interface GrowingAreaOption {
-  growingAreaId: number;
-  areaName: string;
-  province: string;
-}
-
 export const DeclareBatchPage: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   
-  // State lưu danh sách vùng trồng của Supplier
-  const [growingAreas, setGrowingAreas] = useState<GrowingAreaOption[]>([]);
+  // State lưu danh sách vùng trồng đã đăng ký của Supplier
+  const [growingAreas, setGrowingAreas] = useState<SupplierGrowingAreaDto[]>([]);
   const [isLoadingAreas, setIsLoadingAreas] = useState<boolean>(true);
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<DeclareBatchFormValues>({
     resolver: zodResolver(declareBatchSchema) as Resolver<DeclareBatchFormValues>,
     defaultValues: {
       unit: 'Tấn',
       cropTypeId: 1,
-      // Đảm bảo schema của bạn đã đổi `origin` (string) thành `growingAreaId` (number)
     },
   });
 
-  // Fetch danh sách vùng trồng khi load trang
+  // Fetch danh sách vùng trồng từ hồ sơ Supplier hiện tại
   useEffect(() => {
     const fetchGrowingAreas = async () => {
       try {
         setIsLoadingAreas(true);
-        // FIXME: Thay bằng hàm fetch API thực tế từ supplierBatchService
-        // const data = await supplierBatchService.getMyGrowingAreas();
+        const profile = await supplierService.getMyProfile();
         
-        // Dữ liệu mock tạm thời:
-        const mockData = [
-          { growingAreaId: 1, areaName: 'Nông trường Mộc Châu', province: 'Sơn La' },
-          { growingAreaId: 2, areaName: 'Trang trại GlobalGAP', province: 'Lâm Đồng' },
-        ];
-        setGrowingAreas(mockData);
+        if (profile && profile.growingAreas && profile.growingAreas.length > 0) {
+          setGrowingAreas(profile.growingAreas);
+          setValue('growingAreaId', profile.growingAreas[0].growingAreaId);
+        } else {
+          // Fallback lấy từ danh sách hệ thống nếu hồ sơ chưa khai báo vùng trồng
+          const fallbackAreas = await supplierService.getGrowingAreas();
+          setGrowingAreas(fallbackAreas);
+          if (fallbackAreas.length > 0) {
+            setValue('growingAreaId', fallbackAreas[0].growingAreaId);
+          }
+        }
       } catch (error) {
-        console.error('Lỗi khi tải danh sách vùng trồng', error);
+        console.error('Lỗi khi tải danh sách vùng trồng:', error);
       } finally {
         setIsLoadingAreas(false);
       }
     };
 
     fetchGrowingAreas();
-  }, []);
+  }, [setValue]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -198,33 +196,30 @@ export const DeclareBatchPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* VÙNG TRỒNG (Dropdown thay vì nhập text) */}
+              {/* VÙNG TRỒNG (Select growingAreaId từ danh sách vùng trồng NCC) */}
               <div>
                 <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
                   VÙNG TRỒNG / TRANG TRẠI <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
                   <select
-                    // Trong schema nhớ đổi origin thành growingAreaId kiểu number
                     {...register('growingAreaId', { valueAsNumber: true })}
                     disabled={isLoadingAreas}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 cursor-pointer"
                   >
                     <option value="">
                       {isLoadingAreas ? 'Đang tải vùng trồng...' : 'Chọn vùng trồng đã đăng ký'}
                     </option>
                     {growingAreas.map((area) => (
                       <option key={area.growingAreaId} value={area.growingAreaId}>
-                        {area.areaName} ({area.province})
+                        {area.areaName} ({[area.ward, area.district, area.province].filter(Boolean).join(', ')})
                       </option>
                     ))}
                   </select>
                 </div>
-                {/* @ts-ignore */}
                 {errors.growingAreaId && (
                   <p className="text-[11px] text-red-500 mt-1">
-                    {/* @ts-ignore */}
                     {errors.growingAreaId.message}
                   </p>
                 )}
