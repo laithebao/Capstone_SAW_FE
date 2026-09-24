@@ -7,7 +7,6 @@ import {
   Clock,
   FlaskConical,
   PackageCheck,
-  Building2,
   Loader2,
   AlertCircle,
   XCircle,
@@ -31,7 +30,6 @@ export const BatchStatusDetailPage: React.FC = () => {
       try {
         setLoading(true);
         const response = await supplierBatchService.getBatchStatus(Number(id));
-        // Đã cập nhật đúng dữ liệu trả về từ API Backend
         setData(response.data);
       } catch (err: any) {
         setError(err.response?.data?.message || 'Không thể tải thông tin lô hàng.');
@@ -42,6 +40,36 @@ export const BatchStatusDetailPage: React.FC = () => {
 
     fetchDetail();
   }, [id]);
+
+  // Hàm format thời gian chuẩn Việt Nam và sửa lỗi lệch múi giờ UTC
+  const formatVNTime = (dateInput?: string | Date): string => {
+    if (!dateInput) return 'N/A';
+
+    try {
+      const dateStr = typeof dateInput === 'string' ? dateInput : dateInput.toISOString();
+      // Bổ sung ký tự 'Z' nếu thiếu để Date object hiểu chính xác đây là chuẩn giờ UTC
+      const isoStr = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : `${dateStr}Z`;
+      let dateObj = new Date(isoStr);
+
+      // Nếu parse ra thời gian vẫn lớn hơn hiện tại quá 5 phút (do BE lỡ lưu nhầm Local vào DB), tự trừ 7h
+      const now = new Date();
+      if (dateObj.getTime() - now.getTime() > 5 * 60 * 1000) {
+        dateObj = new Date(dateObj.getTime() - 7 * 60 * 60 * 1000);
+      }
+
+      return dateObj.toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch {
+      return String(dateInput);
+    }
+  };
 
   if (loading) {
     return (
@@ -250,7 +278,7 @@ export const BatchStatusDetailPage: React.FC = () => {
             )}
           </div>
 
-          {/* Lịch sử tiến trình chuyển trạng thái (render từ statusHistory của DTO) */}
+          {/* Lịch sử tiến trình chuyển trạng thái */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <div className="flex items-center gap-2 text-xs font-bold text-gray-800 border-b pb-3 mb-4">
               <History className="w-4 h-4 text-gray-500" />
@@ -259,27 +287,35 @@ export const BatchStatusDetailPage: React.FC = () => {
 
             {data.statusHistory && data.statusHistory.length > 0 ? (
               <div className="space-y-4 relative pl-4 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-                {data.statusHistory.map((item, index) => (
-                  <div key={index} className="relative text-xs">
-                    <span className="absolute -left-4 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white" />
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold text-gray-800">
-                        {item.oldStatus ? `${item.oldStatus} → ${item.newStatus}` : item.newStatus}
-                      </p>
-                      <span className="text-[10px] text-gray-400">
-                        {new Date(item.changedAt).toLocaleString('vi-VN')}
-                      </span>
+                {data.statusHistory
+                  // Tự động lọc bỏ các bản ghi rác không có lý do thay đổi hoặc bị vống giờ
+                  .filter((item) => {
+                    if (!item.changeReason && item.oldStatus === null && item.newStatus === 'SUBMITTED') {
+                      return false; // Loại bỏ dòng ma bị trigger chèn dư ở BE
+                    }
+                    return true;
+                  })
+                  .map((item, index) => (
+                    <div key={index} className="relative text-xs">
+                      <span className="absolute -left-4 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white" />
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-gray-800">
+                          {item.oldStatus ? `${item.oldStatus} → ${item.newStatus}` : item.newStatus}
+                        </p>
+                        <span className="text-[10px] text-gray-400">
+                          {formatVNTime(item.changedAt)}
+                        </span>
+                      </div>
+                      {item.changedBy && (
+                        <p className="text-[11px] text-gray-500 mt-0.5">Người thực hiện: {item.changedBy}</p>
+                      )}
+                      {item.changeReason && (
+                        <p className="text-[11px] text-gray-600 bg-gray-50 p-2 rounded mt-1 italic">
+                          "{item.changeReason}"
+                        </p>
+                      )}
                     </div>
-                    {item.changedBy && (
-                      <p className="text-[11px] text-gray-500 mt-0.5">Người thực hiện: {item.changedBy}</p>
-                    )}
-                    {item.changeReason && (
-                      <p className="text-[11px] text-gray-600 bg-gray-50 p-2 rounded mt-1 italic">
-                        "{item.changeReason}"
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  ))}
               </div>
             ) : (
               <p className="text-xs text-gray-500 text-center py-4">Chưa có lịch sử thay đổi trạng thái.</p>

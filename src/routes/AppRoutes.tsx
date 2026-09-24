@@ -39,6 +39,7 @@ import DeclareBatchPage from '@/pages/supplier/DeclareBatchPage'
 import EditBatchPage from '@/pages/supplier/EditBatchPage'
 import SupplierBatchListPage from '@/pages/supplier/SupplierBatchListPage'
 import BatchStatusDetailPage from '@/pages/supplier/BatchStatusDetailPage'
+import { SupplierGuard } from '@/routes/SupplierGuard'
 
 export default function AppRoutes() {
   const { user, isAuthenticated } = useAuth()
@@ -91,15 +92,17 @@ export default function AppRoutes() {
           
           {/* PHÂN HỆ SUPPLIER */}
           <Route element={<RoleRoute allowedRoles={[ROLES.SUPPLIER]} />}>
-            <Route path={ROUTES.SUPPLIER} element={<SupplierDashboardPage />} />
-            <Route path={ROUTES.SUPPLIER_PROFILE} element={<SupplierProfilePage />} />
-            <Route path={ROUTES.SUPPLIER_PROFILE_DECLARE} element={<DeclareSupplierProfilePage />} />
-            <Route path={ROUTES.SUPPLIER_PROFILE_EDIT} element={<EditSupplierProfilePage />} />
-            <Route path={ROUTES.SUPPLIER_BATCHES} element={<SupplierBatchListPage />} />
-            <Route path={ROUTES.SUPPLIER_BATCH_NEW} element={<DeclareBatchPage />} />
-            <Route path={ROUTES.SUPPLIER_BATCH_EDIT} element={<EditBatchPage />} />
-            <Route path={ROUTES.SUPPLIER_BATCH_STATUS} element={<BatchStatusDetailPage />} />
-            <Route path={ROUTES.SUPPLIER_BATCH_DETAIL} element={<BatchProcessDetailPage />} />
+            <Route element={<SupplierGuard />}>
+              <Route path={ROUTES.SUPPLIER} element={<SupplierDashboardPage />} />
+              <Route path={ROUTES.SUPPLIER_PROFILE} element={<SupplierProfilePage />} />
+              <Route path={ROUTES.SUPPLIER_PROFILE_DECLARE} element={<DeclareSupplierProfilePage />} />
+              <Route path={ROUTES.SUPPLIER_PROFILE_EDIT} element={<EditSupplierProfilePage />} />
+              <Route path={ROUTES.SUPPLIER_BATCHES} element={<SupplierBatchListPage />} />
+              <Route path={ROUTES.SUPPLIER_BATCH_NEW} element={<DeclareBatchPage />} />
+              <Route path={ROUTES.SUPPLIER_BATCH_EDIT} element={<EditBatchPage />} />
+              <Route path={ROUTES.SUPPLIER_BATCH_STATUS} element={<BatchStatusDetailPage />} />
+              <Route path={ROUTES.SUPPLIER_BATCH_DETAIL} element={<BatchProcessDetailPage />} />
+            </Route>
           </Route>
 
           <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
