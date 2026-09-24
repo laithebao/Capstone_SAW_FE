@@ -81,7 +81,7 @@ export const EditSupplierProfilePage: React.FC = () => {
           supplierService.getGrowingAreas(),
         ]);
 
-        setGrowingAreaOptions(areas);
+        setGrowingAreaOptions(areas || []);
 
         if (profile) {
           const cropTypeIds = profile.cropTypes ? profile.cropTypes.map((c) => c.cropTypeId) : [];
@@ -160,6 +160,15 @@ export const EditSupplierProfilePage: React.FC = () => {
   };
 
   const onSubmit: SubmitHandler<DeclareSupplierProfileRequest> = async (values) => {
+    // 1. Kiểm tra nếu người dùng thêm vùng trồng nhưng chưa chọn từ dropdown (đang là 0 hoặc chưa chọn)
+    const hasInvalidArea = values.growingAreas?.some(
+      (ga) => !ga.growingAreaId || Number(ga.growingAreaId) === 0
+    );
+    if (hasInvalidArea) {
+      alert('Vui lòng chọn tên Vùng trồng hợp lệ cho tất cả các dòng đã thêm!');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       let finalLogoUrl = values.logoUrl || '';
@@ -179,14 +188,19 @@ export const EditSupplierProfilePage: React.FC = () => {
         ...newUploadedUrls.filter(Boolean),
       ];
 
+      // 2. Lọc bỏ tuyệt đối các vùng trồng rỗng/không hợp lệ để ngăn chặn gửi ID = 0 lên server
+      const validGrowingAreas = (values.growingAreas || [])
+        .filter((ga) => ga && Number(ga.growingAreaId) > 0)
+        .map((ga) => ({
+          growingAreaId: Number(ga.growingAreaId),
+          areaInHectares: ga.areaInHectares ? Number(ga.areaInHectares) : undefined,
+        }));
+
       const payload: DeclareSupplierProfileRequest = {
         ...values,
         address: values.address.trim(),
         logoUrl: finalLogoUrl,
-        growingAreas: (values.growingAreas || []).map((ga) => ({
-          growingAreaId: Number(ga.growingAreaId),
-          areaInHectares: ga.areaInHectares ? Number(ga.areaInHectares) : undefined,
-        })),
+        growingAreas: validGrowingAreas,
         cropTypeIds: (values.cropTypeIds || []).map((id) => Number(id)),
         certifications: values.certifications || [],
         evidenceDocumentUrls: finalEvidenceUrls,
@@ -292,7 +306,7 @@ export const EditSupplierProfilePage: React.FC = () => {
                   type="button"
                   onClick={() =>
                     append({
-                      growingAreaId: growingAreaOptions[0]?.growingAreaId || 1,
+                      growingAreaId: 0, // Mặc định hiển thị option "-- Chọn Vùng trồng --"
                       areaInHectares: undefined,
                     })
                   }
