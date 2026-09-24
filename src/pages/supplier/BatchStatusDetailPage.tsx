@@ -12,6 +12,7 @@ import {
   AlertCircle,
   XCircle,
   History,
+  MapPin,
 } from 'lucide-react';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
 import type { SupplierBatchStatusResponse } from '@/types/supplierBatch';
@@ -175,8 +176,14 @@ export const BatchStatusDetailPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <p className="text-[10px] text-gray-400 uppercase font-semibold">NGUỒN GỐC / VÙNG TRỒNG</p>
-              <p className="text-gray-700 mt-0.5">{data.origin}</p>
+              <p className="text-[10px] text-gray-400 uppercase font-semibold">VÙNG TRỒNG KHAI THÁC</p>
+              <p className="font-bold text-gray-800 text-sm mt-0.5">{data.areaName || 'Chưa cập nhật'}</p>
+              {(data.province || data.district || data.ward) && (
+                <p className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>{[data.ward, data.district, data.province].filter(Boolean).join(', ')}</span>
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>

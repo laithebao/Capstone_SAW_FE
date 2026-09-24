@@ -118,11 +118,8 @@ export const SupplierBatchListPage: React.FC = () => {
         if (selectedOrigin) {
           fetchedItems = fetchedItems.filter((item) => {
             if (selectedOrigin === 'UNASSIGNED') {
-              // Lưu ý: Đổi origin thành province hoặc thuộc tính bạn trả về từ DTO
-              // @ts-ignore
               return !item.province || item.province.trim() === '';
             }
-            // @ts-ignore
             return item.province && item.province.toLowerCase().includes(selectedOrigin.toLowerCase());
           });
         }
@@ -524,7 +521,7 @@ export const SupplierBatchListPage: React.FC = () => {
               <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
                 <th className="py-3 px-4">MÃ LÔ HÀNG</th>
                 <th className="py-3 px-4">TÊN SẢN PHẨM</th>
-                <th className="py-3 px-4">KHU VỰC</th>
+                <th className="py-3 px-4">VÙNG TRỒNG / NGUỒN GỐC</th>
                 <th className="py-3 px-4">MÔ TẢ / GHI CHÚ</th>
                 <th className="py-3 px-4 text-right">SỐ LƯỢNG (TẤN)</th>
                 <th className="py-3 px-4 text-center">NGÀY TẠO</th>
@@ -560,13 +557,13 @@ export const SupplierBatchListPage: React.FC = () => {
                     </td>
 
                     <td className="py-3.5 px-4 text-gray-600 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                         <div className="flex flex-col">
-                          {/* @ts-ignore - Hiển thị Tên vùng trồng và Tỉnh */}
-                          <span className="font-medium text-xs">{batch.areaName || 'Chưa cập nhật'}</span>
-                          {/* @ts-ignore */}
-                          <span className="text-[10px] text-gray-400">{batch.province || ''}</span>
+                          <span className="font-semibold text-xs text-gray-800">{batch.areaName || 'Chưa cập nhật'}</span>
+                          {batch.province && (
+                            <span className="text-[10px] text-gray-400 font-normal">{batch.province}</span>
+                          )}
                         </div>
                       </div>
                     </td>

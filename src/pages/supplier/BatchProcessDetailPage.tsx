@@ -11,6 +11,7 @@ import {
   FileText,
   Info,
   Pencil,
+  MapPin,
 } from 'lucide-react';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
 import type { SupplierBatchStatusResponse } from '@/types/supplierBatch';
@@ -238,11 +239,17 @@ export const BatchProcessDetailPage: React.FC = () => {
 
               <div className="md:col-span-2">
                 <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  KHO XỬ LÝ
+                  VÙNG TRỒNG KHAI THÁC
                 </p>
-                <p className="text-gray-700 font-medium mt-1">
-                  {data.origin || 'Kho Tổng Miền Nam (SGN-01)'}
+                <p className="text-gray-800 font-bold mt-1">
+                  {data.areaName || 'Chưa cập nhật'}
                 </p>
+                {(data.province || data.district || data.ward) && (
+                  <p className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{[data.ward, data.district, data.province].filter(Boolean).join(', ')}</span>
+                  </p>
+                )}
               </div>
             </div>
           </div>
