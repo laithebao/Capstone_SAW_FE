@@ -4,7 +4,8 @@ import {
   MapPin, 
   FileText, 
   Download, 
-  Pencil 
+  Pencil,
+  Sprout
 } from 'lucide-react';
 import type { SupplierProfileResponse } from '../../types/supplier';
 
@@ -22,7 +23,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
         {onEdit && (
           <button
             onClick={onEdit}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg shadow-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg shadow-sm transition-colors cursor-pointer"
           >
             <Pencil className="w-4 h-4" />
             Chỉnh sửa thông tin
@@ -44,12 +45,9 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
           </div>
           <div>
             <h3 className="text-xl font-bold text-gray-900">{profile.supplierName}</h3>
-            {profile.operatingRegion && (
-              <p className="flex items-center gap-1.5 text-sm text-gray-500 mt-1">
-                <MapPin className="w-4 h-4 text-gray-400" />
-                {profile.operatingRegion}
-              </p>
-            )}
+            <p className="text-sm text-gray-500 mt-1 font-medium">
+              Mã NCC: <span className="text-gray-700">{profile.supplierCode}</span>
+            </p>
           </div>
         </div>
 
@@ -74,25 +72,55 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
 
           <div className="md:col-span-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 block mb-1">
-              ĐỊA CHỈ
+              ĐỊA CHỈ TRỤ SỞ
             </span>
             <span className="text-sm font-medium text-gray-800">
               {profile.address}
             </span>
           </div>
-
-          <div className="md:col-span-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 block mb-1">
-              VÙNG HOẠT ĐỘNG
-            </span>
-            <span className="text-sm font-medium text-gray-800">
-              {profile.operatingRegion || 'Chưa cập nhật'}
-            </span>
-          </div>
         </div>
       </div>
 
-      {/* Block 2: Thông tin liên hệ */}
+      {/* Block 2: Danh sách Vùng trồng */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-4">
+        <div className="flex items-center gap-2">
+          <MapPin className="w-5 h-5 text-emerald-600" />
+          <h2 className="text-lg font-semibold text-gray-800">Danh sách Vùng trồng khai thác</h2>
+        </div>
+
+        {profile.growingAreas && profile.growingAreas.length > 0 ? (
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-left text-sm text-gray-700 border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase text-gray-500">
+                  <th className="py-3 px-4">Tên vùng trồng</th>
+                  <th className="py-3 px-4">Tỉnh / Thành phố</th>
+                  <th className="py-3 px-4">Quận / Huyện / Xã</th>
+                  <th className="py-3 px-4 text-right">Diện tích (ha)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {profile.growingAreas.map((area, index) => (
+                  <tr key={area.growingAreaId || index} className="hover:bg-gray-50/60 transition-colors">
+                    <td className="py-3 px-4 font-medium text-gray-900">{area.areaName}</td>
+                    <td className="py-3 px-4">{area.province || '—'}</td>
+                    <td className="py-3 px-4">
+                      {[area.ward, area.district].filter(Boolean).join(', ') || '—'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-semibold text-emerald-700">
+                      {area.areaInHectares ? `${area.areaInHectares} ha` : 'Chưa cập nhật'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400 italic">Chưa đăng ký vùng trồng nào.</p>
+        )}
+      </div>
+
+      {/* Block 3: Thông tin liên hệ */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-6">
         <h2 className="text-lg font-semibold text-gray-800">Thông tin liên hệ</h2>
         
@@ -135,9 +163,12 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
         </div>
       </div>
 
-      {/* Block 3: Thông tin sản xuất */}
+      {/* Block 4: Thông tin sản xuất & Chứng nhận */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-6">
-        <h2 className="text-lg font-semibold text-gray-800">Thông tin sản xuất</h2>
+        <div className="flex items-center gap-2">
+          <Sprout className="w-5 h-5 text-emerald-600" />
+          <h2 className="text-lg font-semibold text-gray-800">Thông tin sản xuất & Chứng nhận</h2>
+        </div>
         
         <div className="space-y-4">
           <div>
@@ -157,26 +188,6 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
               ) : (
                 <span className="text-sm text-gray-400">Chưa chọn danh mục</span>
               )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 pt-2">
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 block mb-1">
-                VÙNG TRỒNG CHI TIẾT
-              </span>
-              <span className="text-sm font-medium text-gray-800">
-                {profile.detailedPlantingArea || 'Chưa cập nhật'}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 block mb-1">
-                DIỆN TÍCH CANH TÁC
-              </span>
-              <span className="text-sm font-medium text-gray-800">
-                {profile.farmingAreaHa ? `${profile.farmingAreaHa} ha` : 'Chưa cập nhật'}
-              </span>
             </div>
           </div>
 
@@ -202,7 +213,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
         </div>
       </div>
 
-      {/* Block 4: File đính kèm */}
+      {/* Block 5: File đính kèm */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-4">
         <h2 className="text-lg font-semibold text-gray-800">File đính kèm</h2>
         

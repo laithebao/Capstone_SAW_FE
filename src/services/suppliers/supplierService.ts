@@ -1,5 +1,5 @@
 import { apiClient } from '../apiClient';
-import type { DeclareSupplierProfileRequest, SupplierProfileResponse } from '../../types/supplier';
+import type { DeclareSupplierProfileRequest, SupplierGrowingAreaDto, SupplierProfileResponse } from '../../types/supplier';
 import type { DeclareSupplierProfileFormValues } from '@/features/supplier/schemas/supplierProfileSchema';
 import type { GetSupplierBatchesQueryRequest, SupplierBatchListResponse, SupplierBatchStatusResponse } from '@/types/supplierBatch';
 
@@ -7,6 +7,20 @@ export const supplierService = {
   getMyProfile: async (): Promise<SupplierProfileResponse> => {
     const response = await apiClient.get<SupplierProfileResponse>('/suppliers/me/profile');
     return response.data;
+  },
+
+  getGrowingAreas: async (): Promise<SupplierGrowingAreaDto[]> => {
+    try {
+      const response = await apiClient.get<SupplierGrowingAreaDto[]>('/api/GrowingAreas');
+      return response.data;
+    } catch {
+      return [
+        { growingAreaId: 1, areaName: 'Nông trường Mộc Châu', province: 'Sơn La', district: 'Mộc Châu', ward: 'Đông Sang' },
+        { growingAreaId: 2, areaName: 'Trang trại GlobalGAP Đà Lạt', province: 'Lâm Đồng', district: 'Đà Lạt', ward: 'Phường 3' },
+        { growingAreaId: 3, areaName: 'Vùng trồng Vĩnh Long', province: 'Vĩnh Long', district: 'Long Hồ', ward: 'Phú Quới' },
+        { growingAreaId: 4, areaName: 'Trang trại Chợ Mới', province: 'An Giang', district: 'Chợ Mới', ward: 'Mỹ Luông' },
+      ];
+    }
   },
 
   declareProfile: async (

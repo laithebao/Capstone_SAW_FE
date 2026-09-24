@@ -1,17 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
+import { useForm, useFieldArray, type SubmitHandler } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import { supplierService } from '../../services/suppliers/supplierService';
 import type {
   DeclareSupplierProfileRequest,
+  SupplierGrowingAreaDto,
   SupplierProfileResponse,
-} from '../../types/supplier'; // Import đúng đường dẫn file types của bạn
- // Import đúng đường dẫn file types của bạn
-
-// Options mẫu cho Dropdown & Checkbox
-const PROVINCE_OPTIONS = ['Vĩnh Long', 'Cần Thơ', 'Đồng Tháp', 'Lâm Đồng'];
-const DISTRICT_OPTIONS = ['Vũng Liêm', 'Long Hồ', 'Đà Lạt', 'Cái Răng'];
-const WARD_OPTIONS = ['Tân Phú', 'Phường 1', 'Phường 2', 'Trung Thành'];
+} from '../../types/supplier';
 
 const CERTIFICATE_OPTIONS = ['VietGAP', 'GlobalGAP', 'Organic', 'HACCP', 'Không có chứng nhận'];
 
@@ -27,15 +22,16 @@ export const EditSupplierProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [growingAreaOptions, setGrowingAreaOptions] = useState<SupplierGrowingAreaDto[]>([]);
 
-  // File Upload States (Bóc tách riêng khỏi React Hook Form)
+  // File Upload States
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>('');
   
   const [existingDocumentUrls, setExistingDocumentUrls] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
-  // System Metadata Info (Sidebar bên phải)
+  // System Metadata Info
   const [metaInfo, setMetaInfo] = useState({
     code: 'NCC-2023-089',
     createdAt: '12/08/2023 14:30',
@@ -49,6 +45,7 @@ export const EditSupplierProfilePage: React.FC = () => {
     reset,
     watch,
     setValue,
+    control,
   } = useForm<DeclareSupplierProfileRequest>({
     defaultValues: {
       supplierName: '',
@@ -59,47 +56,34 @@ export const EditSupplierProfilePage: React.FC = () => {
       phoneNumber: '',
       email: '',
       logoUrl: '',
-      province: PROVINCE_OPTIONS[0],
-      district: DISTRICT_OPTIONS[0],
-      ward: WARD_OPTIONS[0],
       address: '',
-      farmingAreaHa: 0,
+      growingAreas: [],
       cropTypeIds: [],
       certifications: [],
       evidenceDocumentUrls: [],
     },
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'growingAreas',
+  });
+
   const selectedCrops = watch('cropTypeIds') || [];
   const selectedCerts = watch('certifications') || [];
 
-  // ==========================================
-  // 1. FETCH & MAP DATA TỪ SUPPLIERPROFILERESPONSE
-  // ==========================================
   useEffect(() => {
     const fetchCurrentProfile = async () => {
       try {
         setLoading(true);
-        const profile: SupplierProfileResponse = await supplierService.getMyProfile();
+        const [profile, areas] = await Promise.all([
+          supplierService.getMyProfile(),
+          supplierService.getGrowingAreas(),
+        ]);
+
+        setGrowingAreaOptions(areas);
 
         if (profile) {
-          // A. Bóc tách Vùng hoạt động (operatingRegion: "Vĩnh Long - Vũng Liêm - Tân Phú")
-          const regionParts = profile.operatingRegion
-            ? profile.operatingRegion.split('-').map((item) => item.trim())
-            : [];
-
-          const rawProvince = regionParts[0] || '';
-          const rawDistrict = regionParts[1] || '';
-          const rawWard = regionParts[2] || '';
-
-          const matchedProvince =
-            PROVINCE_OPTIONS.find((p) => p.toLowerCase() === rawProvince.toLowerCase()) || PROVINCE_OPTIONS[0];
-          const matchedDistrict =
-            DISTRICT_OPTIONS.find((d) => d.toLowerCase() === rawDistrict.toLowerCase()) || DISTRICT_OPTIONS[0];
-          const matchedWard =
-            WARD_OPTIONS.find((w) => w.toLowerCase() === rawWard.toLowerCase()) || WARD_OPTIONS[0];
-
-          // B. Map CropTypes, Certifications & Documents
           const cropTypeIds = profile.cropTypes ? profile.cropTypes.map((c) => c.cropTypeId) : [];
           const certificationsList = profile.certifications ? profile.certifications.map((c) => c.certificationName) : [];
           const docs = profile.documents ? profile.documents.map((d) => d.fileUrl) : [];
@@ -108,7 +92,11 @@ export const EditSupplierProfilePage: React.FC = () => {
           if (profile.logoUrl) setAvatarPreview(profile.logoUrl);
           if (profile.supplierCode) setMetaInfo((prev) => ({ ...prev, code: profile.supplierCode }));
 
-          // C. Reset Form
+          const formattedAreas = (profile.growingAreas || []).map((ga) => ({
+            growingAreaId: ga.growingAreaId,
+            areaInHectares: ga.areaInHectares || undefined,
+          }));
+
           reset({
             supplierName: profile.supplierName || '',
             taxCode: profile.taxCode || '',
@@ -118,11 +106,8 @@ export const EditSupplierProfilePage: React.FC = () => {
             phoneNumber: profile.phoneNumber || '',
             email: profile.email || '',
             logoUrl: profile.logoUrl || '',
-            province: matchedProvince,
-            district: matchedDistrict,
-            ward: matchedWard,
             address: profile.address || '',
-            farmingAreaHa: profile.farmingAreaHa || 0,
+            growingAreas: formattedAreas,
             cropTypeIds: cropTypeIds,
             certifications: certificationsList,
             evidenceDocumentUrls: docs,
@@ -138,9 +123,6 @@ export const EditSupplierProfilePage: React.FC = () => {
     fetchCurrentProfile();
   }, [reset]);
 
-  // ==========================================
-  // 2. HANDLERS
-  // ==========================================
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -177,19 +159,14 @@ export const EditSupplierProfilePage: React.FC = () => {
     setValue('certifications', current);
   };
 
-  // ==========================================
-  // 3. SUBMIT FORM (XỬ LÝ UPLOAD RỜI -> CHUẨN PAYLOAD REQUEST)
-  // ==========================================
   const onSubmit: SubmitHandler<DeclareSupplierProfileRequest> = async (values) => {
     setIsSubmitting(true);
     try {
-      // Step 1: Upload Logo mới (nếu người dùng chọn file)
       let finalLogoUrl = values.logoUrl || '';
       if (avatarFile) {
         finalLogoUrl = await supplierService.uploadFile(avatarFile);
       }
 
-      // Step 2: Upload các File đính kèm mới (nếu người dùng chọn file)
       let newUploadedUrls: string[] = [];
       if (uploadedFiles.length > 0) {
         newUploadedUrls = await Promise.all(
@@ -202,18 +179,18 @@ export const EditSupplierProfilePage: React.FC = () => {
         ...newUploadedUrls.filter(Boolean),
       ];
 
-      // Step 3: Đóng gói đúng DeclareSupplierProfileRequest DTO
       const payload: DeclareSupplierProfileRequest = {
         ...values,
         address: values.address.trim(),
         logoUrl: finalLogoUrl,
-        farmingAreaHa: Number(values.farmingAreaHa) || 0,
+        growingAreas: (values.growingAreas || []).map((ga) => ({
+          growingAreaId: Number(ga.growingAreaId),
+          areaInHectares: ga.areaInHectares ? Number(ga.areaInHectares) : undefined,
+        })),
         cropTypeIds: (values.cropTypeIds || []).map((id) => Number(id)),
-        certifications: values.certifications || [], // Đã đúng dạng string[]
+        certifications: values.certifications || [],
         evidenceDocumentUrls: finalEvidenceUrls,
       };
-
-      console.log('Payload gửi lên API:', payload);
 
       await supplierService.updateProfile(payload);
       alert('Cập nhật thông tin thành công!');
@@ -287,6 +264,7 @@ export const EditSupplierProfilePage: React.FC = () => {
                         <option value="Hợp tác xã">Hợp tác xã</option>
                         <option value="Doanh nghiệp">Doanh nghiệp</option>
                         <option value="Hộ kinh doanh">Hộ kinh doanh</option>
+                        <option value="Trang trại">Trang trại</option>
                       </select>
                     </div>
                   </div>
@@ -306,48 +284,109 @@ export const EditSupplierProfilePage: React.FC = () => {
               </div>
             </div>
 
-            {/* CARD 2: VÙNG TRỒNG CHI TIẾT */}
+            {/* CARD 2: VÙNG TRỒNG CHI TIẾT & ĐỊA CHỈ */}
             <div style={cardStyle}>
-              <div style={cardHeaderStyle}>📍 Vùng trồng chi tiết</div>
+              <div style={{ ...cardHeaderStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>📍 Vùng trồng chi tiết & Địa chỉ</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    append({
+                      growingAreaId: growingAreaOptions[0]?.growingAreaId || 1,
+                      areaInHectares: undefined,
+                    })
+                  }
+                  style={{
+                    backgroundColor: '#059669',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Thêm vùng trồng
+                </button>
+              </div>
               <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={labelStyle}>TỈNH / THÀNH PHỐ *</label>
-                    <select {...register('province')} style={selectStyle}>
-                      {PROVINCE_OPTIONS.map((item) => (
-                        <option key={item} value={item}>{item}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>QUẬN / HUYỆN *</label>
-                    <select {...register('district')} style={selectStyle}>
-                      {DISTRICT_OPTIONS.map((item) => (
-                        <option key={item} value={item}>{item}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={labelStyle}>XÃ / PHƯỜNG *</label>
-                    <select {...register('ward')} style={selectStyle}>
-                      {WARD_OPTIONS.map((item) => (
-                        <option key={item} value={item}>{item}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>DIỆN TÍCH CANH TÁC (HA) *</label>
-                    <input type="number" step="0.1" {...register('farmingAreaHa', { valueAsNumber: true })} style={inputStyle} />
-                  </div>
-                </div>
-
                 <div>
-                  <label style={labelStyle}>ĐỊA CHỈ CHI TIẾT</label>
-                  <input {...register('address')} placeholder="Ấp, thôn, số nhà..." style={inputStyle} />
+                  <label style={labelStyle}>ĐỊA CHỈ TRỤ SỞ CHI TIẾT *</label>
+                  <input {...register('address', { required: true })} placeholder="Số nhà, đường, xã/phường, tỉnh/thành..." style={inputStyle} />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <label style={labelStyle}>DANH SÁCH VÙNG TRỒNG KHAI THÁC *</label>
+                  
+                  {fields.length === 0 ? (
+                    <div style={{ padding: '16px', border: '1px dashed #d1d5db', borderRadius: '6px', textAlign: 'center', fontSize: '13px', color: '#6b7280' }}>
+                      Chưa chọn vùng trồng nào. Hãy bấm nút "+ Thêm vùng trồng" ở trên.
+                    </div>
+                  ) : (
+                    fields.map((field, index) => (
+                      <div
+                        key={field.id}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 140px 40px',
+                          gap: '12px',
+                          alignItems: 'center',
+                          backgroundColor: '#fafafa',
+                          padding: '12px',
+                          borderRadius: '6px',
+                          border: '1px solid #e5e7eb',
+                        }}
+                      >
+                        <div>
+                          <label style={{ ...labelStyle, fontSize: '10px', color: '#6b7280' }}>
+                            VÙNG TRỒNG #{index + 1}
+                          </label>
+                          <select
+                            {...register(`growingAreas.${index}.growingAreaId` as const, { valueAsNumber: true })}
+                            style={{ ...selectStyle, backgroundColor: '#ffffff' }}
+                          >
+                            <option value={0}>-- Chọn Vùng trồng --</option>
+                            {growingAreaOptions.map((area) => (
+                              <option key={area.growingAreaId} value={area.growingAreaId}>
+                                {area.areaName} ({[area.ward, area.district, area.province].filter(Boolean).join(', ')})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ ...labelStyle, fontSize: '10px', color: '#6b7280' }}>
+                            DIỆN TÍCH (HA)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            {...register(`growingAreas.${index}.areaInHectares` as const, { valueAsNumber: true })}
+                            placeholder="VD: 5.5"
+                            style={{ ...inputStyle, backgroundColor: '#ffffff' }}
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => remove(index)}
+                          style={{
+                            marginTop: '16px',
+                            backgroundColor: 'transparent',
+                            color: '#ef4444',
+                            border: 'none',
+                            fontSize: '18px',
+                            cursor: 'pointer',
+                          }}
+                          title="Xóa vùng trồng"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
 
               </div>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useForm, type SubmitHandler, type Resolver } from 'react-hook-form';
+import React, { useEffect, useState } from 'react';
+import { useForm, useFieldArray, type SubmitHandler, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Upload,
@@ -10,10 +10,13 @@ import {
   FileText,
   Camera,
   X,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { declareSupplierProfileSchema } from '../../features/supplier/schemas/supplierProfileSchema';
 import type { DeclareSupplierProfileFormValues } from '../../features/supplier/schemas/supplierProfileSchema';
 import { supplierService } from '../../services/suppliers/supplierService';
+import type { SupplierGrowingAreaDto } from '../../types/supplier';
 
 // Mock Data Danh mục nông sản (CropTypes)
 const CROP_TYPE_OPTIONS = [
@@ -38,12 +41,14 @@ export const DeclareSupplierProfilePage: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [growingAreaOptions, setGrowingAreaOptions] = useState<SupplierGrowingAreaDto[]>([]);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<DeclareSupplierProfileFormValues>({
     resolver: zodResolver(declareSupplierProfileSchema) as Resolver<DeclareSupplierProfileFormValues>,
@@ -55,16 +60,30 @@ export const DeclareSupplierProfilePage: React.FC = () => {
       contactPerson: '',
       phoneNumber: '',
       email: '',
-      province: 'Vĩnh Long',
-      district: 'Vũng Liêm',
-      ward: 'Tân Phú',
-      address: 'Ấp Phú Thạnh, Xã Tân Phú',
-      farmingAreaHa: 5.5,
+      address: 'Ấp Phú Thạnh, Xã Tân Phú, Vũng Liêm, Vĩnh Long',
+      growingAreas: [{ growingAreaId: 1, areaInHectares: 5.5 }],
       cropTypeIds: [],
       certifications: ['Không có chứng nhận'],
       evidenceDocumentUrls: [],
     },
   });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'growingAreas',
+  });
+
+  useEffect(() => {
+    const fetchAreas = async () => {
+      try {
+        const areas = await supplierService.getGrowingAreas();
+        setGrowingAreaOptions(areas);
+      } catch (err) {
+        console.error('Lỗi khi lấy danh sách vùng trồng:', err);
+      }
+    };
+    fetchAreas();
+  }, []);
 
   const selectedCropTypes = watch('cropTypeIds') || [];
   const selectedCertifications = watch('certifications') || [];
@@ -118,10 +137,16 @@ export const DeclareSupplierProfilePage: React.FC = () => {
         (file) => `https://storage.saw.vn/docs/${file.name}`
       );
 
-      await supplierService.declareProfile({
+      const payload = {
         ...values,
+        growingAreas: values.growingAreas.map((ga) => ({
+          growingAreaId: Number(ga.growingAreaId),
+          areaInHectares: ga.areaInHectares ? Number(ga.areaInHectares) : undefined,
+        })),
         evidenceDocumentUrls: mockDocUrls,
-      });
+      };
+
+      await supplierService.declareProfile(payload);
 
       setSubmitSuccess('Khai báo hồ sơ Nhà cung cấp thành công!');
     } catch (err: any) {
@@ -281,77 +306,113 @@ export const DeclareSupplierProfilePage: React.FC = () => {
 
             {/* Section 2: Vùng trồng chi tiết */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-6 text-gray-800 font-semibold text-base border-b pb-3">
-                <MapPin className="w-5 h-5 text-gray-600" />
-                <span>Vùng trồng chi tiết</span>
+              <div className="flex items-center justify-between mb-6 border-b pb-3">
+                <div className="flex items-center gap-2 text-gray-800 font-semibold text-base">
+                  <MapPin className="w-5 h-5 text-gray-600" />
+                  <span>Vùng trồng & Địa chỉ</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    append({
+                      growingAreaId: growingAreaOptions[0]?.growingAreaId || 1,
+                      areaInHectares: undefined,
+                    })
+                  }
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Thêm vùng trồng</span>
+                </button>
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      TỈNH / THÀNH PHỐ <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...register('province')}
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="Vĩnh Long">Vĩnh Long</option>
-                      <option value="Cần Thơ">Cần Thơ</option>
-                      <option value="Đồng Tháp">Đồng Tháp</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      QUẬN / HUYỆN <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...register('district')}
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="Vũng Liêm">Vũng Liêm</option>
-                      <option value="Long Hồ">Long Hồ</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      XÃ / PHƯỜNG <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      {...register('ward')}
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                      DIỆN TÍCH CANH TÁC (HA) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      {...register('farmingAreaHa', { valueAsNumber: true })}
-                      className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-                </div>
-
+                {/* Địa chỉ trụ sở */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                    ĐỊA CHỈ CHI TIẾT
+                    ĐỊA CHỈ TRỤ SỞ CHI TIẾT <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     {...register('address')}
                     className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="Số nhà, tên đường, thôn/xã, quận/huyện, tỉnh/thành..."
                   />
                   {errors.address && (
                     <p className="text-xs text-red-500 mt-1">
                       {errors.address.message}
                     </p>
+                  )}
+                </div>
+
+                {/* Danh sách vùng trồng */}
+                <div className="space-y-3 pt-2">
+                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                    DANH SÁCH VÙNG TRỒNG KHAI THÁC <span className="text-red-500">*</span>
+                  </label>
+
+                  {fields.length === 0 ? (
+                    <div className="p-4 border border-dashed border-gray-300 rounded-lg text-center text-xs text-gray-500">
+                      Chưa chọn vùng trồng nào. Vui lòng nhấn "Thêm vùng trồng".
+                    </div>
+                  ) : (
+                    fields.map((field, index) => (
+                      <div
+                        key={field.id}
+                        className="p-3.5 bg-gray-50/80 border border-gray-200 rounded-lg flex flex-col md:flex-row gap-3 items-start md:items-center"
+                      >
+                        <div className="flex-1 w-full">
+                          <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">
+                            VÙNG TRỒNG #{index + 1}
+                          </label>
+                          <select
+                            {...register(`growingAreas.${index}.growingAreaId` as const, {
+                              valueAsNumber: true,
+                            })}
+                            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          >
+                            <option value={0}>-- Chọn Vùng trồng --</option>
+                            {growingAreaOptions.map((area) => (
+                              <option key={area.growingAreaId} value={area.growingAreaId}>
+                                {area.areaName} ({[area.ward, area.district, area.province].filter(Boolean).join(', ')})
+                              </option>
+                            ))}
+                          </select>
+                          {errors.growingAreas?.[index]?.growingAreaId && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {errors.growingAreas[index]?.growingAreaId?.message}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="w-full md:w-44">
+                          <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">
+                            DIỆN TÍCH (HA)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            {...register(`growingAreas.${index}.areaInHectares` as const, {
+                              valueAsNumber: true,
+                            })}
+                            placeholder="VD: 5.5"
+                            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => remove(index)}
+                          className="mt-6 md:mt-4 p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition cursor-pointer"
+                          title="Xóa vùng trồng"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                  {errors.growingAreas && typeof errors.growingAreas.message === 'string' && (
+                    <p className="text-xs text-red-500 mt-1">{errors.growingAreas.message}</p>
                   )}
                 </div>
               </div>
