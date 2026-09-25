@@ -25,12 +25,21 @@ import DistributorDashboardPage from '@/pages/distributor/DistributorDashboardPa
 import OperationDashboardPage from '@/pages/operation/OperationDashboardPage'
 import QCDashboardPage from '@/pages/qc/QCDashboardPage'
 import SupplierDashboardPage from '@/pages/supplier/SupplierDashboardPage'
+import SupplierProfilePage from '@/pages/supplier/SupplierProfilePage'
+import { DeclareSupplierProfilePage } from '@/pages/supplier/DeclareSupplierProfilePage' // <-- IMPORT THÊM Ở ĐÂY
 import ForbiddenPage from '@/pages/system/ForbiddenPage'
 import NotFoundPage from '@/pages/system/NotFoundPage'
 import TraceabilityPage from '@/pages/traceability/TraceabilityPage'
 import WarehouseManagerDashboardPage from '@/pages/warehouse-manager/WarehouseManagerDashboardPage'
 import ProtectedRoute from '@/routes/ProtectedRoute'
 import RoleRoute from '@/routes/RoleRoute'
+import EditSupplierProfilePage from '@/pages/supplier/EditSupplierProfilePage'
+import BatchProcessDetailPage from '@/pages/supplier/BatchProcessDetailPage'
+import DeclareBatchPage from '@/pages/supplier/DeclareBatchPage'
+import EditBatchPage from '@/pages/supplier/EditBatchPage'
+import SupplierBatchListPage from '@/pages/supplier/SupplierBatchListPage'
+import BatchStatusDetailPage from '@/pages/supplier/BatchStatusDetailPage'
+import { SupplierGuard } from '@/routes/SupplierGuard'
 
 export default function AppRoutes() {
   const { user, isAuthenticated } = useAuth()
@@ -80,9 +89,22 @@ export default function AppRoutes() {
           <Route element={<RoleRoute allowedRoles={[ROLES.OPERATION_STAFF]} />}>
             <Route path={ROUTES.OPERATION} element={<OperationDashboardPage />} />
           </Route>
+          
+          {/* PHÂN HỆ SUPPLIER */}
           <Route element={<RoleRoute allowedRoles={[ROLES.SUPPLIER]} />}>
-            <Route path={ROUTES.SUPPLIER} element={<SupplierDashboardPage />} />
+            <Route element={<SupplierGuard />}>
+              <Route path={ROUTES.SUPPLIER} element={<SupplierDashboardPage />} />
+              <Route path={ROUTES.SUPPLIER_PROFILE} element={<SupplierProfilePage />} />
+              <Route path={ROUTES.SUPPLIER_PROFILE_DECLARE} element={<DeclareSupplierProfilePage />} />
+              <Route path={ROUTES.SUPPLIER_PROFILE_EDIT} element={<EditSupplierProfilePage />} />
+              <Route path={ROUTES.SUPPLIER_BATCHES} element={<SupplierBatchListPage />} />
+              <Route path={ROUTES.SUPPLIER_BATCH_NEW} element={<DeclareBatchPage />} />
+              <Route path={ROUTES.SUPPLIER_BATCH_EDIT} element={<EditBatchPage />} />
+              <Route path={ROUTES.SUPPLIER_BATCH_STATUS} element={<BatchStatusDetailPage />} />
+              <Route path={ROUTES.SUPPLIER_BATCH_DETAIL} element={<BatchProcessDetailPage />} />
+            </Route>
           </Route>
+
           <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
             <Route path={ROUTES.DISTRIBUTOR} element={<DistributorDashboardPage />} />
           </Route>
