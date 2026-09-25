@@ -64,14 +64,14 @@ export const DeclareSupplierProfilePage: React.FC = () => {
   } = useForm<DeclareSupplierProfileFormValues>({
     resolver: zodResolver(declareSupplierProfileSchema) as Resolver<DeclareSupplierProfileFormValues>,
     defaultValues: {
-      supplierName: 'Hợp tác xã Nông nghiệp Xanh Vĩnh Long',
-      taxCode: '1500456789',
+      supplierName: '',
+      taxCode: '',
       supplierType: 'Hợp tác xã',
       legalRepresentative: '',
       contactPerson: '',
       phoneNumber: '',
       email: '',
-      address: 'Ấp Phú Thạnh, Xã Tân Phú, Vũng Liêm, Vĩnh Long',
+      address: '',
       growingAreas: [],
       cropTypeIds: [],
       certifications: ['Không có chứng nhận'],
@@ -313,7 +313,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                     type="text"
                     {...register('supplierName')}
                     className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="Nhập tên doanh nghiệp..."
+                    placeholder="VD: Hợp tác xã Nông nghiệp Xanh Vĩnh Long"
                   />
                   {errors.supplierName && (
                     <p className="text-xs text-red-500 mt-1">
@@ -332,6 +332,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                       type="text"
                       {...register('taxCode')}
                       className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="VD: 1500456789"
                     />
                     {errors.taxCode && (
                       <p className="text-xs text-red-500 mt-1">
@@ -459,7 +460,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                     type="text"
                     {...register('address')}
                     className="w-full bg-gray-100/70 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="Số nhà, tên đường, thôn/xã, quận/huyện, tỉnh/thành..."
+                    placeholder="VD: Ấp Phú Thạnh, Xã Tân Phú, Vũng Liêm, Vĩnh Long"
                   />
                   {errors.address && (
                     <p className="text-xs text-red-500 mt-1">
