@@ -45,9 +45,9 @@ export const SupplierGuard: React.FC = () => {
     return <Navigate to={ROUTES.SUPPLIER_PROFILE_DECLARE} replace />;
   }
 
-  // 2. Đã khai báo thành công mà cố vào trang Declare -> Redirect về Dashboard/Batches
+  // 2. Đã khai báo thành công mà cố vào trang Declare -> Redirect về Edit
   if (isDeclared && isDeclarePage) {
-    return <Navigate to={ROUTES.SUPPLIER_BATCHES} replace />;
+    return <Navigate to={ROUTES.SUPPLIER_PROFILE_EDIT} replace />;
   }
 
   return <Outlet />;
