@@ -170,7 +170,6 @@ export default function InspectionStandardDetailPage() {
       .finally(() => setLoading(false))
   }, [setId])
 
-  const latestVersion = detail?.versions[0]
   // Allow creating new version as long as the set is active (versions are created as PUBLISHED directly)
   const canCreateVersion = !!detail?.isActive
 
