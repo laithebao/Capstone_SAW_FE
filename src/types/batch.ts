@@ -26,6 +26,7 @@ export interface ProductBatchDetail extends ProductBatchListItem {
   growingAreaName: string
   expectedDeliveryDate: string | null
   expiryDate: string | null
+  note: string | null
 }
 
 export interface ProductBatchFilterOption {

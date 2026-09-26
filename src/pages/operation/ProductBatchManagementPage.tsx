@@ -2,6 +2,8 @@ import axios from 'axios'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Eye, RotateCw } from 'lucide-react'
+import ProductBatchStatusBadge from '@/features/operation/components/ProductBatchStatusBadge'
+import { getProductBatchStatusPresentation } from '@/features/operation/productBatchStatus'
 import { ROUTES } from '@/constants/routes'
 import { getProductBatchFilterOptions, getProductBatches } from '@/services/batchService'
 import { getAuthErrorMessage } from '@/services/authService'
@@ -22,14 +24,6 @@ const dateTime = (value: string) => {
   return `${day} · ${time}`
 }
 const quantity = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(value)
-
-function statusTone(status: string): string {
-  if (status === 'PENDING_QC' || status.startsWith('PENDING_')) return 'bg-amber-50 text-amber-700'
-  if (status === 'SUBMITTED') return 'bg-sky-50 text-sky-700'
-  if (status === 'APPROVED' || status === 'COMMITTED') return 'bg-emerald-50 text-emerald-700'
-  if (status === 'REJECTED' || status === 'CANCELLED') return 'bg-rose-50 text-rose-700'
-  return 'bg-slate-100 text-slate-700'
-}
 
 function loadError(error: unknown): string {
   if (axios.isAxiosError(error) && error.response?.status === 403) return 'You are not allowed to access this page.'
@@ -121,7 +115,7 @@ export default function ProductBatchManagementPage() {
         <input aria-label="Mã lô hàng" value={batchCode} maxLength={50} onChange={(event) => setBatchCode(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') applyFilters() }} placeholder="Tìm theo mã lô..." className="h-9 min-w-0 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
         <select aria-label="Nhà cung cấp" value={supplierId} onChange={(event) => setSupplierId(event.target.value)} className="h-9 min-w-0 rounded-lg border border-slate-200 px-3 text-sm"><option value="">Tất cả nhà cung cấp</option>{options.suppliers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
         <select aria-label="Loại nông sản" value={cropTypeId} onChange={(event) => setCropTypeId(event.target.value)} className="h-9 min-w-0 rounded-lg border border-slate-200 px-3 text-sm"><option value="">Tất cả loại nông sản</option>{options.cropTypes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-        <select aria-label="Trạng thái lô hàng" value={status} onChange={(event) => setStatus(event.target.value)} className="h-9 min-w-0 rounded-lg border border-slate-200 px-3 text-sm"><option value="">Tất cả trạng thái</option>{options.statuses.map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</select>
+        <select aria-label="Trạng thái lô hàng" value={status} onChange={(event) => setStatus(event.target.value)} className="h-9 min-w-0 rounded-lg border border-slate-200 px-3 text-sm"><option value="">Tất cả trạng thái</option>{options.statuses.map((value) => <option key={value} value={value}>{getProductBatchStatusPresentation(value).label}</option>)}</select>
         <select aria-label="Sắp xếp" value={sortBy} onChange={(event) => setSortBy(event.target.value as ProductBatchSort)} className="h-9 min-w-0 rounded-lg border border-slate-200 px-3 text-sm"><option value="createdAtDesc">Mới tạo gần đây</option><option value="createdAtAsc">Tạo sớm nhất</option><option value="updatedAtDesc">Mới cập nhật gần đây</option><option value="updatedAtAsc">Cập nhật sớm nhất</option></select>
         <button type="button" onClick={applyFilters} className="h-9 whitespace-nowrap rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800">Áp dụng bộ lọc</button>
       </div>
@@ -158,7 +152,7 @@ export default function ProductBatchManagementPage() {
                     <td className="px-3 py-3.5"><span className="line-clamp-2 max-w-[190px] leading-5">{item.supplierName}</span></td>
                     <td className="whitespace-nowrap px-3 py-3.5 text-left tabular-nums">{quantity(item.quantity)} {item.unit}</td>
                     <td className="whitespace-nowrap px-3 py-3.5 text-[13px] tabular-nums text-slate-600">{dateTime(item.createdAt)}</td>
-                    <td className="px-3 py-3.5 text-center"><span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusTone(item.batchStatus)}`}>{item.batchStatus.replaceAll('_', ' ')}</span></td>
+                    <td className="px-3 py-3.5 text-center"><ProductBatchStatusBadge status={item.batchStatus} compact /></td>
                     <td className="px-2 py-3.5 text-center"><Link to={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL.replace(':id', String(item.id))} className="inline-grid size-9 place-items-center rounded-lg text-emerald-700 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600" aria-label={`Xem chi tiết lô ${item.batchCode}`} title={`Xem chi tiết lô ${item.batchCode}`}><Eye className="size-4" /></Link></td>
                   </tr>)}
           </tbody>

@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router'
 import { ROUTES } from '@/constants/routes'
 import { getProductBatch } from '@/services/batchService'
 import { getAuthErrorMessage } from '@/services/authService'
+import ProductBatchStatusBadge from '@/features/operation/components/ProductBatchStatusBadge'
 import type { ProductBatchDetail } from '@/types/batch'
 
 const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -51,7 +52,7 @@ export default function ProductBatchDetailPage() {
       : loading ? <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Đang tải chi tiết lô hàng...</p>
         : error ? <div role="alert" className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700"><span>{error}</span><button type="button" onClick={() => setReloadKey((value) => value + 1)} className="font-semibold underline">Thử lại</button></div>
           : batch && <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-5"><div><p className="text-xs text-slate-500">Mã lô hàng</p><p className="mt-1 font-mono text-lg font-bold text-emerald-700">{batch.batchCode}</p><h2 className="mt-2 text-xl font-bold">{batch.productName}</h2></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{batch.batchStatus.replaceAll('_', ' ')}</span></div>
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-5"><div><p className="text-xs text-slate-500">Mã lô hàng</p><p className="mt-1 font-mono text-lg font-bold text-emerald-700">{batch.batchCode}</p><h2 className="mt-2 text-xl font-bold">{batch.productName}</h2></div><ProductBatchStatusBadge status={batch.batchStatus} /></div>
             <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <Info label="Nhà cung cấp" value={batch.supplierName} />
               <Info label="Loại nông sản" value={`${batch.cropTypeName} · ${batch.categoryName}`} />
@@ -62,6 +63,10 @@ export default function ProductBatchDetailPage() {
               <Info label="Ngày hết hạn" value={dateOnly(batch.expiryDate)} />
               <Info label="Ngày tạo" value={dateTime(batch.createdAt)} />
               <Info label="Cập nhật lần cuối" value={batch.updatedAt ? dateTime(batch.updatedAt) : '—'} />
+            </div>
+            <div className="mt-5 border-t border-slate-100 pt-5">
+              <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Mô tả / Ghi chú bổ sung</h3>
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-800">{batch.note?.trim() || 'Không có mô tả hoặc ghi chú bổ sung.'}</p>
             </div>
           </section>}
   </div>
