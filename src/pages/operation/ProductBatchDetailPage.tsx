@@ -44,7 +44,7 @@ export default function ProductBatchDetailPage() {
 
   return <div className="mx-auto max-w-[1200px] space-y-5">
     <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-      <div><p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Vận hành · Quản lý lô hàng · Chi tiết</p><h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">Chi tiết lô hàng</h1></div>
+      <div><p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Vận hành · Quản lý lô hàng · Chi tiết</p><h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">CHI TIẾT LÔ HÀNG</h1></div>
       <Link to={ROUTES.OPERATION_PRODUCT_BATCHES} className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">← Quay lại danh sách</Link>
     </header>
 
@@ -56,13 +56,28 @@ export default function ProductBatchDetailPage() {
             <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <Info label="Nhà cung cấp" value={batch.supplierName} />
               <Info label="Loại nông sản" value={`${batch.cropTypeName} · ${batch.categoryName}`} />
-              <Info label="Số lượng khai báo" value={`${quantity(batch.quantity)} ${batch.unit}`} />
               <Info label="Vùng trồng" value={batch.growingAreaName} />
               <Info label="Ngày thu hoạch" value={dateOnly(batch.harvestDate)} />
               <Info label="Ngày giao dự kiến" value={dateOnly(batch.expectedDeliveryDate)} />
               <Info label="Ngày hết hạn" value={dateOnly(batch.expiryDate)} />
               <Info label="Ngày tạo" value={dateTime(batch.createdAt)} />
               <Info label="Cập nhật lần cuối" value={batch.updatedAt ? dateTime(batch.updatedAt) : '—'} />
+            </div>
+            <div className="mt-6 grid gap-4 border-t border-slate-100 pt-5 lg:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="text-sm font-bold text-slate-900">Nhà cung cấp khai báo</h3>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <Info label="Số lượng ban đầu" value={`${quantity(batch.quantity)} ${batch.unit}`} />
+                  <Info label="Khối lượng ban đầu" value={`${quantity(batch.weightInKg)} kg`} />
+                </div>
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+                <h3 className="text-sm font-bold text-slate-900">Staff kiểm nhận tại kho</h3>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <Info label="Số lượng sau kiểm nhận" value={batch.verifiedQuantity === null ? 'Chưa kiểm nhận' : `${quantity(batch.verifiedQuantity)} ${batch.unit}`} />
+                  <Info label="Khối lượng sau kiểm nhận" value={batch.verifiedWeightInKg === null ? 'Chưa kiểm nhận' : `${quantity(batch.verifiedWeightInKg)} kg`} />
+                </div>
+              </div>
             </div>
             <div className="mt-5 border-t border-slate-100 pt-5">
               <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Mô tả / Ghi chú bổ sung</h3>

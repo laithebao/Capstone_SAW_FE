@@ -26,6 +26,7 @@ export const ROUTES = {
   OPERATION: '/operation',
   OPERATION_PRODUCT_BATCHES: '/operation/product-batches',
   OPERATION_PRODUCT_BATCH_DETAIL: '/operation/product-batches/:id',
+  OPERATION_PRODUCT_BATCH_CREATE: '/operation/product-batches/create',
 
 
   SUPPLIER: '/supplier',

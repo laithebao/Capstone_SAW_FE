@@ -22,6 +22,9 @@ export interface ProductBatchListResponse {
 }
 
 export interface ProductBatchDetail extends ProductBatchListItem {
+  weightInKg: number
+  verifiedQuantity: number | null
+  verifiedWeightInKg: number | null
   harvestDate: string
   growingAreaName: string
   expectedDeliveryDate: string | null
@@ -50,4 +53,52 @@ export interface ProductBatchFilters {
   sortBy?: ProductBatchSort
   page: number
   pageSize: number
+}
+
+export interface SubmittedDeclarationOption {
+  id: number
+  batchCode: string
+  productName: string
+  declaredQuantity: number
+  unit: string
+}
+
+export interface SubmittedDeclarationDetail {
+  id: number
+  batchCode: string
+  supplierId: number
+  supplierName: string
+  cropTypeId: number
+  cropTypeName: string
+  productName: string
+  growingAreaId: number
+  growingAreaName: string
+  harvestDate: string
+  declaredQuantity: number
+  unit: string
+  weightInKg: number
+  packagingType: string | null
+  packageCount: number | null
+  packageUnitWeightKg: number | null
+  expectedMinTempC: number | null
+  expectedMaxTempC: number | null
+  expectedMinHumidityPct: number | null
+  expectedMaxHumidityPct: number | null
+  shelfLifeDaysSnapshot: number | null
+  expectedDeliveryDate: string | null
+  expiryDate: string | null
+  note: string | null
+}
+
+export interface VerifyProductBatchRequest {
+  verifiedQuantity: number
+  verifiedWeightInKg: number
+}
+
+export interface VerifyProductBatchResponse {
+  id: number
+  batchCode: string
+  verifiedQuantity: number
+  verifiedWeightInKg: number
+  batchStatus: string
 }
