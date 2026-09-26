@@ -24,6 +24,8 @@ export const ROUTES = {
   WAREHOUSE_MANAGER: '/warehouse-manager',
   QC: '/qc',
   OPERATION: '/operation',
+  OPERATION_PRODUCT_BATCHES: '/operation/product-batches',
+  OPERATION_PRODUCT_BATCH_DETAIL: '/operation/product-batches/:id',
 
 
   SUPPLIER: '/supplier',
