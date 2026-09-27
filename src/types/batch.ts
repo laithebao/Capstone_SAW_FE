@@ -30,6 +30,19 @@ export interface ProductBatchDetail extends ProductBatchListItem {
   expectedDeliveryDate: string | null
   expiryDate: string | null
   note: string | null
+  packagingType: string | null
+  packageCount: number | null
+  packageUnitWeightKg: number | null
+  verifiedPackagingType: string | null
+  verifiedPackageCount: number | null
+  verifiedPackageUnitWeightKg: number | null
+  receivingNote: string | null
+  rejectionReason: string | null
+  expectedMinTempC: number | null
+  expectedMaxTempC: number | null
+  expectedMinHumidityPct: number | null
+  expectedMaxHumidityPct: number | null
+  shelfLifeDaysSnapshot: number | null
 }
 
 export interface ProductBatchFilterOption {
@@ -93,6 +106,22 @@ export interface SubmittedDeclarationDetail {
 export interface VerifyProductBatchRequest {
   verifiedQuantity: number
   verifiedWeightInKg: number
+  verifiedPackagingType: string | null
+  verifiedPackageCount: number | null
+  verifiedPackageUnitWeightKg: number | null
+  receivingNote: string | null
+}
+
+export interface UpdateProductBatchRequest extends VerifyProductBatchRequest {
+  expectedUpdatedAt: string | null
+  expectedCreatedAt: string
+}
+
+export interface RejectProductBatchResponse {
+  id: number
+  batchCode: string
+  batchStatus: string
+  rejectionReason: string
 }
 
 export interface VerifyProductBatchResponse {

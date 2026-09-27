@@ -10,6 +10,8 @@ import type {
   SubmittedDeclarationDetail,
   VerifyProductBatchRequest,
   VerifyProductBatchResponse,
+  RejectProductBatchResponse,
+  UpdateProductBatchRequest,
 } from '@/types/batch'
 
 const base = '/operation/product-batches'
@@ -46,5 +48,15 @@ export async function getSubmittedDeclaration(id: number, supplierId: number, si
 
 export async function verifyProductBatch(id: number, supplierId: number, request: VerifyProductBatchRequest): Promise<VerifyProductBatchResponse> {
   const response = await apiClient.put<ApiResponse<VerifyProductBatchResponse>>(`${base}/${id}/verify`, request, { params: { supplierId } })
+  return response.data.data
+}
+
+export async function rejectProductBatch(id: number, supplierId: number, reason: string): Promise<RejectProductBatchResponse> {
+  const response = await apiClient.put<ApiResponse<RejectProductBatchResponse>>(`${base}/${id}/reject`, { reason }, { params: { supplierId } })
+  return response.data.data
+}
+
+export async function updateProductBatchReceivingDetails(id: number, request: UpdateProductBatchRequest): Promise<ProductBatchDetail> {
+  const response = await apiClient.put<ApiResponse<ProductBatchDetail>>(`${base}/${id}/receiving-details`, request)
   return response.data.data
 }
