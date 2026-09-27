@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { Eye, Plus, RotateCw } from 'lucide-react'
+import { CheckCircle2, Eye, RotateCw } from 'lucide-react'
 import ProductBatchStatusBadge from '@/features/operation/components/ProductBatchStatusBadge'
 import { getProductBatchStatusPresentation } from '@/features/operation/productBatchStatus'
 import { ROUTES } from '@/constants/routes'
@@ -106,7 +106,7 @@ export default function ProductBatchManagementPage() {
       <h1 className="mt-1 text-xl font-bold text-slate-950">QUẢN LÝ LÔ HÀNG</h1>
       <p className="mt-1 text-sm text-slate-500">Theo dõi lô hàng, nhà cung cấp và trạng thái hiện tại.</p>
       </div>
-      <Link to={ROUTES.OPERATION_PRODUCT_BATCH_CREATE} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800"><Plus className="size-4" />Tạo lô hàng</Link>
+      <Link to={ROUTES.OPERATION_PRODUCT_BATCH_CREATE} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800"><CheckCircle2 className="size-4" />Xác nhận lô hàng</Link>
     </header>
 
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
