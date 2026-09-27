@@ -26,6 +26,7 @@ import OperationDashboardPage from '@/pages/operation/OperationDashboardPage'
 import ProductBatchManagementPage from '@/pages/operation/ProductBatchManagementPage'
 import ProductBatchDetailPage from '@/pages/operation/ProductBatchDetailPage'
 import CreateProductBatchPage from '@/pages/operation/CreateProductBatchPage'
+import UpdateProductBatchPage from '@/pages/operation/UpdateProductBatchPage'
 import QCDashboardPage from '@/pages/qc/QCDashboardPage'
 import SupplierDashboardPage from '@/pages/supplier/SupplierDashboardPage'
 import SupplierProfilePage from '@/pages/supplier/SupplierProfilePage'
@@ -94,6 +95,7 @@ export default function AppRoutes() {
             <Route path={ROUTES.OPERATION_PRODUCT_BATCHES} element={<ProductBatchManagementPage />} />
             <Route path={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL} element={<ProductBatchDetailPage />} />
             <Route path={ROUTES.OPERATION_PRODUCT_BATCH_CREATE} element={<CreateProductBatchPage />} />
+            <Route path={ROUTES.OPERATION_PRODUCT_BATCH_UPDATE} element={<UpdateProductBatchPage />} />
           </Route>
           
           {/* PHÂN HỆ SUPPLIER */}
