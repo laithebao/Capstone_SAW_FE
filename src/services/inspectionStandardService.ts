@@ -1,7 +1,26 @@
 import { apiClient } from '@/services/apiClient'
 import type { ApiResponse } from '@/types/api'
 
-// ── Shared types ───────────────────────────────────────────────────────────────
+// ── Grade Rule types ───────────────────────────────────────────────────────────
+
+export interface GradeRuleRequest {
+  grade: 'A' | 'B' | 'C' | 'D' | 'E'
+  minValue?: number
+  maxValue?: number
+  requiredTextValue?: string
+  isFailRule: boolean
+}
+
+export interface GradeRuleDto {
+  id: number
+  grade: 'A' | 'B' | 'C' | 'D' | 'E'
+  minValue: number | null
+  maxValue: number | null
+  requiredTextValue: string | null
+  isFailRule: boolean
+}
+
+// ── Shared criterion type ──────────────────────────────────────────────────────
 
 export interface SaveCriterion {
   code: string
@@ -11,10 +30,7 @@ export interface SaveCriterion {
   unit?: string
   isRequired: boolean
   isCritical: boolean
-  minValue?: number
-  maxValue?: number
-  requiredTextValue?: string
-  isFailRule: boolean
+  gradeRules: GradeRuleRequest[]
 }
 
 // ── UC12 – Create Standard Set ─────────────────────────────────────────────────
@@ -58,10 +74,7 @@ export interface CriterionDto {
   unit: string | null
   isRequired: boolean
   isCritical: boolean
-  minValue: number | null
-  maxValue: number | null
-  requiredTextValue: string | null
-  isFailRule: boolean
+  gradeRules: GradeRuleDto[]
 }
 
 export interface InspectionStandardVersionDto {

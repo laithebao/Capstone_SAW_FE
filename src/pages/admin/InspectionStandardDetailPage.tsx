@@ -96,42 +96,46 @@ function VersionPanel({ version, isLatest }: { version: InspectionStandardVersio
                         </span>
                       </td>
 
-                      {/* ── Adaptive threshold cell ── */}
+
+                      {/* ── Grade rules cell ── */}
                       <td className="px-4 py-2.5">
-                        {c.dataType === 'NUMBER' && (
-                          <span className="tabular-nums text-slate-700">
-                            {c.minValue != null || c.maxValue != null ? (
-                              <>
-                                <span className="text-slate-400 text-[10px] mr-1">min</span>
-                                <b>{c.minValue ?? '—'}</b>
-                                <span className="mx-1.5 text-slate-300">~</span>
-                                <span className="text-slate-400 text-[10px] mr-1">max</span>
-                                <b>{c.maxValue ?? '—'}</b>
-                                {c.unit && <span className="ml-1.5 text-slate-400">{c.unit}</span>}
-                              </>
-                            ) : (
-                              <span className="text-slate-300">—</span>
-                            )}
-                          </span>
-                        )}
-                        {c.dataType === 'TEXT' && (
-                          c.requiredTextValue ? (
-                            <span className="inline-flex items-center gap-1">
-                              <span className="text-[10px] text-violet-400 font-medium">Yêu cầu:</span>
-                              <span className="rounded bg-violet-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-violet-700">
-                                {c.requiredTextValue}
-                              </span>
-                            </span>
-                          ) : (
-                            <span className="text-slate-300">—</span>
-                          )
-                        )}
-                        {c.dataType === 'BOOLEAN' && (
+                        {c.dataType === 'BOOLEAN' ? (
                           <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-600">
                             Đạt / Không đạt
                           </span>
+                        ) : c.gradeRules.length === 0 ? (
+                          <span className="text-slate-300 text-xs">—</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {c.gradeRules
+                              .slice()
+                              .sort((a, b) => a.grade.localeCompare(b.grade))
+                              .map(r => (
+                              <span key={r.grade}
+                                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
+                                  r.grade === 'A' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                  r.grade === 'B' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                                  r.grade === 'C' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                  r.grade === 'D' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                                   'bg-rose-50 text-rose-700 border-rose-200'
+                                } ${r.isFailRule ? 'ring-1 ring-rose-400' : ''}`}>
+                                <b>{r.grade}</b>
+                                {c.dataType === 'NUMBER' && (
+                                  <span className="text-[9px] font-normal tabular-nums">
+                                    {r.minValue != null ? r.minValue : '—'}–{r.maxValue != null ? r.maxValue : '—'}
+                                    {c.unit && <span className="ml-0.5 text-slate-400">{c.unit}</span>}
+                                  </span>
+                                )}
+                                {c.dataType === 'TEXT' && (
+                                  <span className="text-[9px] font-normal font-mono">{r.requiredTextValue}</span>
+                                )}
+                                {r.isFailRule && <span title="Điều kiện từ chối lô">🔴</span>}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </td>
+
 
                       <td className="px-4 py-2.5 text-center">
                         {c.isRequired ? <span className="text-emerald-600">✓</span> : <span className="text-slate-300">—</span>}
