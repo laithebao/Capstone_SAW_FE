@@ -25,10 +25,15 @@ export default function Sidebar({isOpen,onClose}:{isOpen:boolean;onClose:()=>voi
     'Hồ sơ doanh nghiệp': ROUTES.SUPPLIER_PROFILE,
   }
 
+  const operationRoutes: Record<string, string> = {
+    'Quản lý lô hàng': ROUTES.OPERATION_PRODUCT_BATCHES,
+  }
+
   const getRoute = (label: string, index: number): string | undefined => {
     if (index === 0) return ROLE_HOME_ROUTES[user!.role]
     if (user?.role === ROLES.ADMINISTRATOR) return adminRoutes[label]
     if (user?.role === ROLES.SUPPLIER) return supplierRoutes[label]
+    if (user?.role === ROLES.OPERATION_STAFF) return operationRoutes[label]
     return undefined
   }
 
