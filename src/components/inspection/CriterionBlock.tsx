@@ -545,13 +545,25 @@ export function CriterionBlock({
 
           {/* Continuity indicator (NUMBER only) */}
           {continuity && continuity.message && (
-            <div className={`px-3 py-2 text-[10px] border-t ${
-              continuity.status === 'gap' ? 'text-amber-700 bg-amber-50 border-amber-100' :
-              continuity.status === 'open-ended' ? 'text-sky-700 bg-sky-50 border-sky-100' :
-              'text-emerald-700 bg-emerald-50 border-emerald-100'
-            }`}>
-              {continuity.message}
-            </div>
+            <>
+              <div className={`px-3 py-2 text-[10px] border-t ${
+                continuity.status === 'gap' ? 'text-amber-700 bg-amber-50 border-amber-100' :
+                continuity.status === 'open-ended' ? 'text-sky-700 bg-sky-50 border-sky-100' :
+                'text-emerald-700 bg-emerald-50 border-emerald-100'
+              }`}>
+                {continuity.message}
+              </div>
+
+              {/* Gap fallback warning — giải thích rõ hành vi khi có khoảng trắng */}
+              {continuity.status === 'gap' && row.dataType === 'NUMBER' && (
+                <div className="px-3 py-2 text-[10px] border-t border-amber-200 bg-amber-100 text-amber-900 font-medium">
+                  ℹ️ <strong>Lưu ý:</strong> Khi QC nhập giá trị rơi vào khoảng trắng giữa 2 hạng,{' '}
+                  hệ thống sẽ <strong>tự động xếp vào hạng liền kề tệ hơn</strong>.{' '}
+                  Ví dụ: A là 7–8, B là 5–6, giá trị 6.5 sẽ bị xếp vào Hạng B.{' '}
+                  Nếu muốn tránh, hãy điền kín khoảng giữa các hạng.
+                </div>
+              )}
+            </>
           )}
 
           {/* Grade sequencing hint */}

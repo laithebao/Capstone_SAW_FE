@@ -29,11 +29,21 @@ export default function Sidebar({isOpen,onClose}:{isOpen:boolean;onClose:()=>voi
     'Quản lý lô hàng': ROUTES.OPERATION_PRODUCT_BATCHES,
   }
 
-  const getRoute = (label: string, index: number): string | undefined => {
+  const qcRoutes: Record<string, string> = {
+    'Phiếu kiểm định': ROUTES.QC_INSPECTIONS,
+    'Tạo phiếu mới':  ROUTES.QC_INSPECTION_NEW,
+  }
+
+  const getRoute = (item: { label: string; route?: string }, index: number): string | undefined => {
+    // 1. Use explicit route from config if available
+    if (item.route) return item.route
+    // 2. Index 0 is always the role's home
     if (index === 0) return ROLE_HOME_ROUTES[user!.role]
-    if (user?.role === ROLES.ADMINISTRATOR) return adminRoutes[label]
-    if (user?.role === ROLES.SUPPLIER) return supplierRoutes[label]
-    if (user?.role === ROLES.OPERATION_STAFF) return operationRoutes[label]
+    // 3. Fallback lookup maps for roles without route in config
+    if (user?.role === ROLES.ADMINISTRATOR)    return adminRoutes[item.label]
+    if (user?.role === ROLES.SUPPLIER)         return supplierRoutes[item.label]
+    if (user?.role === ROLES.OPERATION_STAFF)  return operationRoutes[item.label]
+    if (user?.role === ROLES.QC_STAFF)         return qcRoutes[item.label]
     return undefined
   }
 
@@ -50,10 +60,10 @@ export default function Sidebar({isOpen,onClose}:{isOpen:boolean;onClose:()=>voi
         </div>
         <nav className="flex-1 space-y-1 px-3 py-5" aria-label="Điều hướng chính">
           {user && items.map((item, i) => {
-            const route = getRoute(item.label, i)
+            const route = getRoute(item, i)
             return route
               ? <NavLink key={item.label} to={route} onClick={onClose} end={i === 0} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium ${isActive ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`}><AppIcon name={item.icon} className="size-[18px]" />{item.label}</NavLink>
-              : <button key={item.label} type="button" className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-400 hover:bg-white/10 hover:text-white"><AppIcon name={item.icon} className="size-[18px]" />{item.label}</button>
+              : <button key={item.label} type="button" className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50"><AppIcon name={item.icon} className="size-[18px]" />{item.label}</button>
           })}
         </nav>
         <div className="border-t border-white/10 p-3">
