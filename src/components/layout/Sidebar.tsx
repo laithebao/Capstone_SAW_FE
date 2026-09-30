@@ -62,7 +62,17 @@ export default function Sidebar({isOpen,onClose}:{isOpen:boolean;onClose:()=>voi
           {user && items.map((item, i) => {
             const route = getRoute(item, i)
             return route
-              ? <NavLink key={item.label} to={route} onClick={onClose} end={i === 0} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium ${isActive ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`}><AppIcon name={item.icon} className="size-[18px]" />{item.label}</NavLink>
+              ? <NavLink
+                  key={item.label}
+                  to={route}
+                  onClick={onClose}
+                  end={i === 0 || route === ROUTES.QC_INSPECTIONS}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium ${isActive ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`
+                  }
+                >
+                  <AppIcon name={item.icon} className="size-[18px]" />{item.label}
+                </NavLink>
               : <button key={item.label} type="button" className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50"><AppIcon name={item.icon} className="size-[18px]" />{item.label}</button>
           })}
         </nav>

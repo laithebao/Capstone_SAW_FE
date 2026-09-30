@@ -90,11 +90,15 @@ export default function AppRoutes() {
           <Route element={<RoleRoute allowedRoles={[ROLES.WAREHOUSE_MANAGER]} />}>
             <Route path={ROUTES.WAREHOUSE_MANAGER} element={<WarehouseManagerDashboardPage />} />
           </Route>
+          {/* QC – Đọc: danh sách + chi tiết (WAREHOUSE_MANAGER chỉ xem) */}
           <Route element={<RoleRoute allowedRoles={[ROLES.QC_STAFF, ROLES.WAREHOUSE_MANAGER, ROLES.ADMINISTRATOR]} />}>
-            <Route path={ROUTES.QC} element={<QCDashboardPage />} />
-            <Route path={ROUTES.QC_INSPECTIONS}       element={<QCInspectionListPage />} />
-            <Route path={ROUTES.QC_INSPECTION_NEW}    element={<QCInspectionCreatePage />} />
+            <Route path={ROUTES.QC}                  element={<QCDashboardPage />} />
+            <Route path={ROUTES.QC_INSPECTIONS}      element={<QCInspectionListPage />} />
             <Route path={ROUTES.QC_INSPECTION_DETAIL} element={<QCInspectionDetailPage />} />
+          </Route>
+          {/* QC – Ghi: tạo phiếu mới (WAREHOUSE_MANAGER bị chặn) */}
+          <Route element={<RoleRoute allowedRoles={[ROLES.QC_STAFF, ROLES.ADMINISTRATOR]} />}>
+            <Route path={ROUTES.QC_INSPECTION_NEW} element={<QCInspectionCreatePage />} />
           </Route>
           <Route element={<RoleRoute allowedRoles={[ROLES.OPERATION_STAFF]} />}>
             <Route path={ROUTES.OPERATION} element={<OperationDashboardPage />} />

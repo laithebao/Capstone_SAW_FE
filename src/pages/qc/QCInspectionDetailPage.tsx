@@ -34,7 +34,8 @@ export default function QCInspectionDetailPage() {
   const navigate  = useNavigate()
   const inspId    = Number(id)
   const { user }  = useAuth()
-  const isAdmin   = user?.role === 'ADMINISTRATOR'
+  const isAdmin     = user?.role === 'ADMINISTRATOR'
+  const isWarehouse = user?.role === 'WAREHOUSE_MANAGER'
 
   const [inspection, setInspection] = useState<QcInspectionDetailDto | null>(null)
   const [loading,    setLoading]    = useState(true)
@@ -49,11 +50,17 @@ export default function QCInspectionDetailPage() {
   const [rejecting,        setRejecting]        = useState(false)
   const [rejectReason,     setRejectReason]     = useState('')
   const [showRejectForm,   setShowRejectForm]   = useState(false)
-  const [actionMsg,        setActionMsg]        = useState('')
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false)
+  const [actionMsg,           setActionMsg]           = useState('')
 
-  const isCompleted = inspection?.inspectionStatus === 'COMPLETED'
+  const isCompleted  = inspection?.inspectionStatus === 'COMPLETED'
   const isInProgress = inspection?.inspectionStatus === 'IN_PROGRESS'
-  const isDraft = inspection?.inspectionStatus === 'DRAFT'
+  const isDraft      = inspection?.inspectionStatus === 'DRAFT'
+
+  // canEdit: QC_STAFF chỉ sửa phiếu của mình; ADMINISTRATOR sửa tất cả
+  const isOwner  = !!inspection && inspection.qcAccountId === user?.id
+  const canEdit  = isAdmin || (user?.role === 'QC_STAFF' && isOwner)
+  const canReject = isAdmin
 
   const reload = useCallback(async () => {
     try {
@@ -89,7 +96,8 @@ export default function QCInspectionDetailPage() {
   }
 
   async function handleFinalize() {
-    if (!confirm('Hoàn thành kiểm định và đánh giá chất lượng? Sau khi hoàn thành phiếu sẽ bị khóa.')) return
+    if (!showFinalizeConfirm) { setShowFinalizeConfirm(true); return }
+    setShowFinalizeConfirm(false)
     setFinalizing(true); setError(''); setActionMsg('')
     try {
       const res = await finalizeInspection(inspId)
@@ -166,12 +174,17 @@ export default function QCInspectionDetailPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-            Kiểm định ·{' '}
-            <button onClick={() => navigate(ROUTES.QC_INSPECTIONS)} className="hover:underline">
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+            Kiểm định
+            <span className="mx-1.5 text-slate-400">·</span>
+            <button
+              onClick={() => navigate(ROUTES.QC_INSPECTIONS)}
+              className="text-xs font-semibold uppercase tracking-wider hover:underline"
+            >
               Danh sách
-            </button>{' '}
-            · Chi tiết
+            </button>
+            <span className="mx-1.5 text-slate-400">·</span>
+            <span className="text-slate-500">Chi tiết</span>
           </p>
           <h1 className="mt-1 font-mono text-xl font-bold text-slate-950 sm:text-2xl">
             {inspection.inspectionCode}
@@ -183,11 +196,10 @@ export default function QCInspectionDetailPage() {
           </div>
         </div>
 
-        {/* Action buttons */}
-        {!isCompleted && (
+        {/* Action buttons — chỉ hiện với canEdit hoặc canReject */}
+        {!isCompleted && (canEdit || canReject) && (
           <div className="flex flex-wrap gap-2">
-            {/* Chỉ ADMINISTRATOR mới được từ chối thủ công — hệ thống tự động từ chối qua Finalize */}
-            {isAdmin && !showRejectForm && (
+            {canReject && !showRejectForm && (
               <button
                 onClick={() => setShowRejectForm(true)}
                 className="h-9 rounded-lg border border-rose-300 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-50"
@@ -196,7 +208,7 @@ export default function QCInspectionDetailPage() {
                 Từ chối thủ công
               </button>
             )}
-            {isInProgress && (
+            {canEdit && isInProgress && !showFinalizeConfirm && (
               <button
                 id="btn-finalize"
                 disabled={finalizing}
@@ -206,7 +218,30 @@ export default function QCInspectionDetailPage() {
                 {finalizing ? 'Đang đánh giá...' : '✓ Hoàn thành & Đánh giá'}
               </button>
             )}
+            {canEdit && isInProgress && showFinalizeConfirm && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+                <span className="text-sm text-amber-800">Hoàn thành và khóa phiếu?</span>
+                <button
+                  onClick={() => void handleFinalize()}
+                  className="h-7 rounded-md bg-emerald-700 px-3 text-xs font-bold text-white hover:bg-emerald-800"
+                >
+                  Xác nhận
+                </button>
+                <button
+                  onClick={() => setShowFinalizeConfirm(false)}
+                  className="h-7 rounded-md border border-slate-300 px-3 text-xs font-semibold hover:bg-white"
+                >
+                  Hủy
+                </button>
+              </div>
+            )}
           </div>
+        )}
+        {/* Read-only badge cho WAREHOUSE_MANAGER */}
+        {isWarehouse && (
+          <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+            👁️ Chế độ xem
+          </span>
         )}
       </div>
 
@@ -256,7 +291,7 @@ export default function QCInspectionDetailPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <InfoCard label="Lô hàng" value={inspection.batchCode} mono />
         <InfoCard label="Sản phẩm" value={`${inspection.productName} (${inspection.cropTypeName})`} />
-        <InfoCard label="KTV kiểm định" value={inspection.qcAccountName} />
+        <InfoCard label="Nhân viên kiểm định" value={inspection.qcAccountName} />
         <InfoCard label="Tiêu chuẩn" value={`[${inspection.standardCode}] ${inspection.standardName} v${inspection.versionNo}`} />
         <InfoCard label="Ngày bắt đầu" value={new Date(inspection.startedAt).toLocaleString('vi-VN')} />
         {inspection.completedAt && (
@@ -264,13 +299,11 @@ export default function QCInspectionDetailPage() {
         )}
       </div>
 
-      {/* UC21 — Sampling Ratio */}
-      {!isCompleted && (
+      {/* UC21 — Sampling Ratio: chỉ hiện nếu canEdit */}
+      {!isCompleted && canEdit && (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
-          <h2 className="text-sm font-bold text-slate-800">
-            🎯 UC21 — Tỷ lệ lấy mẫu (Sampling Ratio)
-          </h2>
-          <div className="flex items-end gap-3">
+          <h2 className="text-sm font-bold text-slate-800">Tỷ lệ lấy mẫu</h2>
+          <div className="flex items-end gap-4">
             <div className="space-y-1">
               <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                 Tỷ lệ (0 &lt; ratio ≤ 1) <span className="text-rose-500">*</span>
@@ -292,9 +325,9 @@ export default function QCInspectionDetailPage() {
               </div>
             </div>
             {inspection.sampleSize && (
-              <div className="text-sm text-slate-600">
-                → Cỡ mẫu: <b>{inspection.sampleSize.toFixed(2)} kg</b>
-              </div>
+              <span className="flex h-9 items-center text-sm text-slate-600">
+                → Cỡ mẫu: <b className="ml-1">{inspection.sampleSize.toFixed(2)} kg</b>
+              </span>
             )}
             <button
               disabled={savingSampling}
@@ -345,7 +378,7 @@ export default function QCInspectionDetailPage() {
           {activeTab === 'sensory' && (
             <QCSensoryTab
               inspection={inspection}
-              disabled={isCompleted}
+              disabled={isCompleted || !canEdit}
               onSaved={reload}
               buildCriteriaResults={() => buildCriteriaResults('SENSORY')}
               saveSensoryResult={saveSensoryResult}
@@ -355,7 +388,7 @@ export default function QCInspectionDetailPage() {
           {activeTab === 'lab' && (
             <QCLabTab
               inspection={inspection}
-              disabled={isCompleted}
+              disabled={isCompleted || !canEdit}
               onSaved={reload}
               buildCriteriaResults={() => buildCriteriaResults('LAB')}
               saveLabResult={saveLabResult}
@@ -365,7 +398,7 @@ export default function QCInspectionDetailPage() {
           {activeTab === 'images' && (
             <QCImagesTab
               inspection={inspection}
-              disabled={isCompleted}
+              disabled={isCompleted || !canEdit}
               onSaved={reload}
               addImage={addQualityImage}
               deleteImage={deleteQualityImage}
@@ -375,7 +408,7 @@ export default function QCInspectionDetailPage() {
           {activeTab === 'environment' && (
             <QCEnvironmentCriteriaTab
               inspection={inspection}
-              disabled={isCompleted}
+              disabled={isCompleted || !canEdit}
               onSaved={reload}
               saveEnvironmentCriteria={saveEnvironmentCriteria}
             />
@@ -385,7 +418,7 @@ export default function QCInspectionDetailPage() {
             <QCEnvironmentTab
               inspection={inspection}
               onSaved={reload}
-              createEnvironmentLog={createEnvironmentLog}
+              createEnvironmentLog={canEdit ? createEnvironmentLog : async () => { throw new Error('Read-only') }}
             />
           )}
         </div>
