@@ -35,7 +35,7 @@ export const roleDashboardConfigs: Record<Exclude<Role,'ADMINISTRATOR'>,RoleDash
    tasks:[
      {title:'Xem danh sách phiếu kiểm định', description:'Tra cứu, lọc và theo dõi tiến độ', status:'Thực hiện', route: ROUTES.QC_INSPECTIONS},
      {title:'Tạo phiếu kiểm định mới',       description:'Chọn lô hàng PENDING_QC',          status:'Thực hiện', route: ROUTES.QC_INSPECTION_NEW},
-     {title:'Nhật ký nhiệt độ bảo quản',      description:'Ghi nhận UC25 — Environment Log', status:'Thực hiện', route: ROUTES.QC_INSPECTIONS},
+
    ],
  },
  [ROLES.OPERATION_STAFF]:{roleLabel:'Nhân viên vận hành',eyebrow:'Vận hành kho',title:'Công việc vận hành',description:'Theo dõi nhập, xuất, chuyển vị trí và điều chỉnh tồn kho.',primaryAction:'Tạo phiếu nhập',menu:[commonDashboard,{label:'Quản lý lô hàng',icon:'package'},{label:'Nhập kho',icon:'package'},{label:'Xuất kho',icon:'logout'},{label:'Chuyển kho',icon:'pending'},{label:'Điều chỉnh tồn',icon:'clipboard'}],stats:[{label:'Phiếu nhập hôm nay',value:'12',note:'4 đang xử lý',icon:'package',tone:'green'},{label:'Phiếu xuất hôm nay',value:'09',note:'2 chờ lấy hàng',icon:'logout',tone:'orange'},{label:'Lệnh chuyển vị trí',value:'05',note:'Trong ca',icon:'pending',tone:'blue'},{label:'Sai lệch tồn kho',value:'01',note:'Cần đối soát',icon:'alert',tone:'red'}],tasks:[{title:'Nhập kho lô BATCH-DEMO-003',description:'Vị trí đề xuất C-R02-B01',status:'Chờ nhập'},{title:'Chuẩn bị đơn xuất ORD-2026-018',description:'5 mặt hàng · 420 kg',status:'Đang lấy'},{title:'Chuyển lô sang kho mát C',description:'Từ A-R01-B01',status:'Trong ca'}]},
