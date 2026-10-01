@@ -28,6 +28,9 @@ import ProductBatchDetailPage from '@/pages/operation/ProductBatchDetailPage'
 import CreateProductBatchPage from '@/pages/operation/CreateProductBatchPage'
 import UpdateProductBatchPage from '@/pages/operation/UpdateProductBatchPage'
 import QCDashboardPage from '@/pages/qc/QCDashboardPage'
+import QCInspectionListPage from '@/pages/qc/QCInspectionListPage'
+import QCInspectionCreatePage from '@/pages/qc/QCInspectionCreatePage'
+import QCInspectionDetailPage from '@/pages/qc/QCInspectionDetailPage'
 import SupplierDashboardPage from '@/pages/supplier/SupplierDashboardPage'
 import SupplierProfilePage from '@/pages/supplier/SupplierProfilePage'
 import { DeclareSupplierProfilePage } from '@/pages/supplier/DeclareSupplierProfilePage' // <-- IMPORT THÊM Ở ĐÂY
@@ -87,8 +90,15 @@ export default function AppRoutes() {
           <Route element={<RoleRoute allowedRoles={[ROLES.WAREHOUSE_MANAGER]} />}>
             <Route path={ROUTES.WAREHOUSE_MANAGER} element={<WarehouseManagerDashboardPage />} />
           </Route>
-          <Route element={<RoleRoute allowedRoles={[ROLES.QC_STAFF]} />}>
-            <Route path={ROUTES.QC} element={<QCDashboardPage />} />
+          {/* QC – Đọc: danh sách + chi tiết (WAREHOUSE_MANAGER chỉ xem) */}
+          <Route element={<RoleRoute allowedRoles={[ROLES.QC_STAFF, ROLES.WAREHOUSE_MANAGER, ROLES.ADMINISTRATOR]} />}>
+            <Route path={ROUTES.QC}                  element={<QCDashboardPage />} />
+            <Route path={ROUTES.QC_INSPECTIONS}      element={<QCInspectionListPage />} />
+            <Route path={ROUTES.QC_INSPECTION_DETAIL} element={<QCInspectionDetailPage />} />
+          </Route>
+          {/* QC – Ghi: tạo phiếu mới (WAREHOUSE_MANAGER bị chặn) */}
+          <Route element={<RoleRoute allowedRoles={[ROLES.QC_STAFF, ROLES.ADMINISTRATOR]} />}>
+            <Route path={ROUTES.QC_INSPECTION_NEW} element={<QCInspectionCreatePage />} />
           </Route>
           <Route element={<RoleRoute allowedRoles={[ROLES.OPERATION_STAFF]} />}>
             <Route path={ROUTES.OPERATION} element={<OperationDashboardPage />} />

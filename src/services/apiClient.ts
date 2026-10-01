@@ -45,6 +45,23 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+
+      // 401 – phiên hết hạn: chuyển về trang đăng nhập
+      if (status === 401) {
+        sessionStorage.removeItem(sessionKey)
+        window.location.href = '/login'
+        return Promise.reject(error)
+      }
+
+      // 403 – không đủ quyền: chuyển về trang Forbidden thay vì lỗi mơ hồ
+      if (status === 403) {
+        window.location.href = '/forbidden'
+        return Promise.reject(error)
+      }
+    }
+
     // Giữ nguyên AxiosError để service/page xử lý HTTP status và lỗi mạng.
     return Promise.reject(
       error instanceof Error ? error : new Error('Không thể thực hiện yêu cầu API.'),

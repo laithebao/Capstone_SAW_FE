@@ -5,48 +5,68 @@ import {
   getInspectionStandard,
   createInspectionStandardVersion,
   type InspectionStandardDetail,
-  type SaveCriterion,
+  type CriterionDto,
 } from '@/services/inspectionStandardService'
 import { getAuthErrorMessage } from '@/services/authService'
 import { ROUTES } from '@/constants/routes'
+import {
+  CriterionBlock,
+  type CriterionRow,
+  type GradeRuleRow,
+  ALL_GRADES,
+  makeEmptyCriterion,
+  makeEmptyGradeRule,
+  nextSequentialGrade,
+  resetGradeRulesForType,
+  buildChecks,
+  uid,
+} from '@/components/inspection/CriterionBlock'
 
-// ── Local types ────────────────────────────────────────────────────────────────
-interface CriterionRow extends SaveCriterion { _id: number }
-const DATA_TYPES = ['NUMBER', 'TEXT', 'BOOLEAN'] as const
-const GROUPS     = ['ENVIRONMENT', 'LAB', 'SENSORY'] as const
-const input = 'h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100'
-let _nextId = 1; const uid = () => _nextId++
+const inputCls = 'h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100'
 
-function makeEmpty(): CriterionRow {
-  return { _id: uid(), code: '', name: '', criterionGroup: 'ENVIRONMENT', dataType: 'NUMBER', unit: '', isRequired: true, isCritical: false, minValue: undefined, maxValue: undefined, requiredTextValue: '', isFailRule: false }
+/** Pre-fill a CriterionRow from an existing CriterionDto (previous version data) */
+function rowFromDto(c: CriterionDto): CriterionRow {
+  const gradeRules: GradeRuleRow[] = c.gradeRules
+    // Sort by grade order before mapping
+    .slice()
+    .sort((a, b) => ALL_GRADES.indexOf(a.grade as never) - ALL_GRADES.indexOf(b.grade as never))
+    .map(r => ({
+      _id:               uid(),
+      grade:             r.grade,
+      minValue:          r.minValue ?? undefined,
+      maxValue:          r.maxValue ?? undefined,
+      requiredTextValue: r.requiredTextValue ?? '',
+      isFailRule:        r.isFailRule,
+    }))
+
+  return {
+    _id:            uid(),
+    code:           c.code,
+    name:           c.name,
+    criterionGroup: c.criterionGroup,
+    dataType:       c.dataType,
+    unit:           c.unit ?? '',
+    isRequired:     c.isRequired,
+    isCritical:     c.isCritical,
+    gradeRules,
+    expanded: false,  // collapsed by default for pre-filled rows
+  }
 }
 
-function rowFromCriterion(c: SaveCriterion): CriterionRow {
-  return { ...c, _id: uid() }
-}
-
-/** Clear threshold fields that don't apply to the given dataType */
-function clearThresholdForType(row: CriterionRow, dataType: string): CriterionRow {
-  if (dataType === 'NUMBER') return { ...row, dataType, requiredTextValue: '', unit: row.unit }
-  if (dataType === 'TEXT')   return { ...row, dataType, minValue: undefined, maxValue: undefined, unit: '' }
-  return { ...row, dataType, minValue: undefined, maxValue: undefined, requiredTextValue: '', unit: '' }
-}
-
-// ── Component ──────────────────────────────────────────────────────────────────
 export default function InspectionStandardVersionFormPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id }   = useParams<{ id: string }>()
   const navigate  = useNavigate()
   const formId    = useId()
   const setId     = Number(id)
 
-  const [detail, setDetail]             = useState<InspectionStandardDetail | null>(null)
+  const [detail, setDetail]               = useState<InspectionStandardDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(true)
   const [effectiveFrom, setEffectiveFrom] = useState('')
-  const [criteria, setCriteria]         = useState<CriterionRow[]>([makeEmpty()])
-  const [saving, setSaving]             = useState(false)
-  const [error, setError]               = useState('')
+  const [criteria, setCriteria]           = useState<CriterionRow[]>([makeEmptyCriterion()])
+  const [saving, setSaving]               = useState(false)
+  const [error, setError]                 = useState('')
+  const [success, setSuccess]             = useState(false)
 
-  // Load set detail and pre-fill from latest version
   useEffect(() => {
     if (!setId) return
     setLoadingDetail(true)
@@ -54,46 +74,76 @@ export default function InspectionStandardVersionFormPage() {
       .then(d => {
         setDetail(d)
         const latest = d.versions[0]
-        if (latest && latest.criteria.length > 0) {
-          setCriteria(latest.criteria.map(c => rowFromCriterion({
-            code: c.code, name: c.name, criterionGroup: c.criterionGroup,
-            dataType: c.dataType, unit: c.unit ?? undefined,
-            isRequired: c.isRequired, isCritical: c.isCritical,
-            minValue: c.minValue ?? undefined, maxValue: c.maxValue ?? undefined,
-            requiredTextValue: c.requiredTextValue ?? undefined, isFailRule: c.isFailRule,
-          })))
+        if (latest?.criteria.length) {
+          setCriteria(latest.criteria.map(rowFromDto))
         }
       })
       .catch(e => setError(getAuthErrorMessage(e, 'Không thể tải bộ tiêu chuẩn.')))
       .finally(() => setLoadingDetail(false))
   }, [setId])
 
+  // ── Criterion row helpers ───────────────────────────────────────────────────
   const updateRow = <K extends keyof CriterionRow>(id: number, key: K, value: CriterionRow[K]) =>
     setCriteria(rows => rows.map(r => r._id === id ? { ...r, [key]: value } : r))
 
-  const changeDataType = (id: number, dt: string) =>
-    setCriteria(rows => rows.map(r => r._id === id ? clearThresholdForType(r, dt) : r))
+  const toggleExpand = (id: number) =>
+    setCriteria(rows => rows.map(r => r._id === id ? { ...r, expanded: !r.expanded } : r))
 
-  const addRow    = () => setCriteria(r => [...r, makeEmpty()])
+  const changeDataType = (id: number, dt: string) =>
+    setCriteria(rows => rows.map(r => r._id === id
+      ? {
+          ...r,
+          dataType: dt,
+          unit: dt !== 'NUMBER' ? '' : r.unit,
+          gradeRules: resetGradeRulesForType(dt),
+          // BOOLEAN luôn là Nghiêm trọng theo Tiêu chuẩn Nhà nước/Quốc tế
+          isCritical: dt === 'BOOLEAN' ? true : r.isCritical,
+        }
+      : r))
+
+  const addRow    = () => setCriteria(r => [...r, makeEmptyCriterion()])
   const removeRow = (id: number) => setCriteria(r => r.filter(x => x._id !== id))
 
+  // ── Grade rule helpers ──────────────────────────────────────────────────────
+  const updateGradeRule = <K extends keyof GradeRuleRow>(
+    criterionId: number, ruleId: number, key: K, value: GradeRuleRow[K]
+  ) => setCriteria(rows => rows.map(r => r._id !== criterionId ? r : {
+    ...r, gradeRules: r.gradeRules.map(g => g._id === ruleId ? { ...g, [key]: value } : g)
+  }))
+
+  const addGradeRule = (criterionId: number) =>
+    setCriteria(rows => rows.map(r => {
+      if (r._id !== criterionId) return r
+      const next = nextSequentialGrade(r.gradeRules)
+      if (!next) return r
+      return { ...r, gradeRules: [...r.gradeRules, makeEmptyGradeRule(next)] }
+    }))
+
+  const removeLastGradeRule = (criterionId: number) =>
+    setCriteria(rows => rows.map(r => {
+      if (r._id !== criterionId || r.gradeRules.length <= 1) return r
+      const sorted = [...r.gradeRules].sort(
+        (a, b) => ALL_GRADES.indexOf(a.grade as never) - ALL_GRADES.indexOf(b.grade as never)
+      )
+      const lastId = sorted[sorted.length - 1]._id
+      return { ...r, gradeRules: r.gradeRules.filter(g => g._id !== lastId) }
+    }))
+
+  // ── Derived values ──────────────────────────────────────────────────────────
   const latestVersionNo = detail?.versions[0]?.versionNo ?? 0
   const nextVersionNo   = latestVersionNo + 1
   const criticalCount   = criteria.filter(r => r.isCritical).length
+  const today           = new Date().toISOString().split('T')[0]
 
   const checks = [
-    { label: 'Ngày hiệu lực (từ hôm nay trở đi)',    ok: effectiveFrom.length > 0 && effectiveFrom >= new Date().toISOString().split('T')[0] },
-    { label: 'Có ít nhất 1 tiêu chí',                ok: criteria.length > 0 },
-    { label: 'Tất cả tiêu chí có mã & tên',        ok: criteria.every(r => r.code.trim() && r.name.trim()) },
-    { label: 'Tiêu chí số: có ít nhất Min hoặc Max', ok: criteria.every(r => r.dataType !== 'NUMBER' || r.minValue != null || r.maxValue != null) },
-    { label: 'Tiêu chí số: điền đơn vị đo lường',     ok: criteria.every(r => r.dataType !== 'NUMBER' || (r.unit ?? '').trim().length > 0) },
-    { label: 'Tiêu chí cảm quan: điền yêu cầu',       ok: criteria.every(r => r.dataType !== 'TEXT' || (r.requiredTextValue ?? '').trim().length > 0) },
-    { label: 'Min ≤ Max ở tiêu chí số',             ok: criteria.every(r => !(r.dataType === 'NUMBER' && r.minValue != null && r.maxValue != null && r.minValue > r.maxValue)) },
+    { label: 'Ngày hiệu lực (từ hôm nay trở đi)', ok: effectiveFrom.length > 0 && effectiveFrom >= today },
+    ...buildChecks(criteria, effectiveFrom, false),
   ]
   const canSave = checks.every(c => c.ok)
 
-  const [success, setSuccess] = useState(false)
+  const detailRoute = ROUTES.ADMIN_INSPECTION_STANDARD_DETAIL.replace(':id', String(setId))
 
+  // ── Save ────────────────────────────────────────────────────────────────────
   async function save() {
     if (!canSave) { setError('Vui lòng kiểm tra lại các trường bắt buộc.'); return }
     setSaving(true); setError('')
@@ -101,21 +151,24 @@ export default function InspectionStandardVersionFormPage() {
       await createInspectionStandardVersion(setId, {
         effectiveFrom: effectiveFrom || undefined,
         criteria: criteria.map(r => ({
-          code:              r.code.trim().toUpperCase(),
-          name:              r.name.trim(),
-          criterionGroup:    r.criterionGroup,
-          dataType:          r.dataType,
-          unit:              r.dataType === 'NUMBER' ? (r.unit?.trim() || undefined) : undefined,
-          isRequired:        r.isRequired,
-          isCritical:        r.isCritical,
-          minValue:          r.dataType === 'NUMBER' ? r.minValue : undefined,
-          maxValue:          r.dataType === 'NUMBER' ? r.maxValue : undefined,
-          requiredTextValue: r.dataType === 'TEXT' ? (r.requiredTextValue?.trim() || undefined) : undefined,
-          isFailRule:        r.isFailRule,
+          code:           r.code.trim().toUpperCase(),
+          name:           r.name.trim(),
+          criterionGroup: r.criterionGroup,
+          dataType:       r.dataType,
+          unit:           r.dataType === 'NUMBER' ? (r.unit?.trim() || undefined) : undefined,
+          isRequired:     r.isRequired,
+          isCritical:     r.isCritical,
+          gradeRules: r.gradeRules.map(g => ({
+            grade:             g.grade,
+            minValue:          r.dataType === 'NUMBER' ? g.minValue : undefined,
+            maxValue:          r.dataType === 'NUMBER' ? g.maxValue : undefined,
+            requiredTextValue: r.dataType === 'TEXT' ? (g.requiredTextValue?.trim() || undefined) : undefined,
+            isFailRule:        g.isFailRule,
+          })),
         })),
       })
       setSuccess(true)
-      setTimeout(() => navigate(ROUTES.ADMIN_INSPECTION_STANDARD_DETAIL.replace(':id', String(setId))), 1200)
+      setTimeout(() => navigate(detailRoute), 1200)
     } catch (e) {
       setError(getAuthErrorMessage(e, 'Không thể tạo phiên bản mới.'))
     } finally {
@@ -123,26 +176,30 @@ export default function InspectionStandardVersionFormPage() {
     }
   }
 
-  const detailRoute = ROUTES.ADMIN_INSPECTION_STANDARD_DETAIL.replace(':id', String(setId))
-
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 pb-24">
       {/* Header */}
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-            Quản trị · <button onClick={() => navigate(ROUTES.ADMIN_INSPECTION_STANDARDS)} className="hover:underline">Tiêu chuẩn</button>
-            {detail && <> · <button onClick={() => navigate(detailRoute)} className="hover:underline">{detail.code}</button></>} · Phiên bản mới
+            Quản trị ·{' '}
+            <button onClick={() => navigate(ROUTES.ADMIN_INSPECTION_STANDARDS)} className="hover:underline">Tiêu chuẩn</button>
+            {detail && (
+              <> · <button onClick={() => navigate(detailRoute)} className="hover:underline">{detail.code}</button></>
+            )}
+            {' '}· Phiên bản mới
           </p>
           {loadingDetail ? (
             <div className="mt-2 h-8 w-64 animate-pulse rounded bg-slate-100" />
           ) : (
             <>
               <h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">
-                Tạo phiên bản {nextVersionNo} – {detail?.name}
+                Tạo phiên bản {nextVersionNo} — {detail?.name}
               </h1>
               <p className="mt-1 text-sm text-slate-500">
-                Phiên bản mới sẽ được tạo với trạng thái <span className="font-semibold text-emerald-700">Đang áp dụng</span> và số thứ tự <b>v{nextVersionNo}</b>.
+                Phiên bản mới trạng thái{' '}
+                <span className="font-semibold text-emerald-700">Đang áp dụng</span>, số{' '}
+                <b>v{nextVersionNo}</b>. Phiên bản cũ tự động chuyển sang Retired.
               </p>
             </>
           )}
@@ -153,18 +210,18 @@ export default function InspectionStandardVersionFormPage() {
         </button>
       </div>
 
-      {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
+      {error   && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
       {success && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">✓ Tạo phiên bản thành công! Đang chuyển trang...</p>}
 
       {detail?.versions[0] && (
         <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-          💡 Các tiêu chí đã được <b>sao chép từ phiên bản {detail.versions[0].versionNo}</b> để tiện chỉnh sửa.
-          Bạn có thể thêm, xóa hoặc sửa bất kỳ tiêu chí nào.
+          💡 Các tiêu chí đã được <b>sao chép từ phiên bản {detail.versions[0].versionNo}</b> bao gồm đầy đủ grade rules.
+          Bấm <b>▶</b> vào từng tiêu chí để chỉnh sửa. Hạng thêm/xóa luôn theo thứ tự A→B→C→D→E.
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_260px]">
-        {/* Left */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
+        {/* ── Left column ─────────────────────────────────────────────────── */}
         <div className="space-y-5">
           {/* Version info */}
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -176,16 +233,35 @@ export default function InspectionStandardVersionFormPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Số phiên bản</span>
-                <div className={`${input} flex cursor-not-allowed items-center bg-slate-50 text-slate-500`}>v{nextVersionNo}</div>
+                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Số phiên bản (tự động)</span>
+                <div className={`${inputCls} flex cursor-not-allowed items-center bg-slate-50 text-slate-500`}>
+                  v{nextVersionNo}
+                </div>
               </label>
               <label className="block space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Ngày hiệu lực <span className="text-rose-500">*</span></span>
-                <input id={`${formId}-eff`} type="date" value={effectiveFrom} min={new Date().toISOString().split('T')[0]}
-                  onChange={e => setEffectiveFrom(e.target.value)} className={input} required />
+                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                  Ngày hiệu lực <span className="text-rose-500">*</span>
+                </span>
+                <input id={`${formId}-eff`} type="date" value={effectiveFrom} min={today}
+                  onChange={e => setEffectiveFrom(e.target.value)} className={inputCls} />
               </label>
             </div>
           </section>
+
+          {/* Grade legend */}
+          <div className="flex flex-wrap gap-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-[11px]">
+            <span className="font-bold text-slate-500 mr-1">Hạng:</span>
+            {ALL_GRADES.map(g => (
+              <span key={g} className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                g==='A' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                g==='B' ? 'bg-sky-100 text-sky-800 border-sky-200' :
+                g==='C' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                g==='D' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                          'bg-rose-100 text-rose-800 border-rose-200'
+              }`}>{g}{g==='A'?' (Tốt nhất)':g==='E'?' (Kém nhất)':''}</span>
+            ))}
+            <span className="ml-2 text-rose-500">🔴 Nghiêm trọng + Ngưỡng từ chối = từ chối lô hàng khi vi phạm</span>
+          </div>
 
           {/* Criteria */}
           <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -202,127 +278,31 @@ export default function InspectionStandardVersionFormPage() {
               </button>
             </div>
 
-            {/* Legend */}
             <div className="flex flex-wrap gap-4 border-b border-slate-100 bg-slate-50/60 px-5 py-2 text-[10px] text-slate-500">
-              <span><b className="text-blue-600">NUMBER</b> – Nhập Min/Max + Đơn vị đo lường</span>
-              <span><b className="text-violet-600">TEXT</b> – Nhập giá trị chấp nhận được (VD: XANH_TUOI)</span>
-              <span><b className="text-amber-600">BOOLEAN</b> – Chỉ kiểm tra Đạt/Không đạt</span>
+              <span><b className="text-blue-600">NUMBER</b> – Min/Max theo từng hạng</span>
+              <span><b className="text-violet-600">TEXT</b> – Giá trị chấp nhận theo từng hạng</span>
+              <span><b className="text-amber-600">BOOLEAN</b> – Đạt/Không đạt</span>
+              <span className="text-slate-400">Bấm <b>▶</b> để mở/đóng · Hạng luôn theo thứ tự A→B→C→D→E</span>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-xs">
-                <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="w-8 px-3 py-3 text-center">#</th>
-                    <th className="px-3 py-3">Mã *</th>
-                    <th className="px-3 py-3">Tên tiêu chí *</th>
-                    <th className="px-3 py-3">Nhóm</th>
-                    <th className="px-3 py-3">Loại dữ liệu</th>
-                    <th className="px-3 py-3">Ngưỡng / Giá trị đánh giá</th>
-                    <th className="px-3 py-3 text-center">Bắt buộc</th>
-                    <th className="px-3 py-3 text-center">Quan trọng</th>
-                    <th className="w-10 px-3 py-3 text-center">Xóa</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {criteria.map((row, idx) => (
-                    <tr key={row._id} className="group hover:bg-slate-50/60">
-                      <td className="px-3 py-2 text-center text-slate-400">{idx + 1}</td>
-
-                      {/* Code */}
-                      <td className="px-2 py-1.5">
-                        <input value={row.code} onChange={e => updateRow(row._id, 'code', e.target.value)}
-                          placeholder="MC"
-                          className="h-8 w-24 rounded border border-transparent bg-transparent px-2 text-xs font-mono uppercase focus:border-emerald-300 focus:bg-white focus:outline-none" />
-                      </td>
-
-                      {/* Name */}
-                      <td className="px-2 py-1.5">
-                        <input value={row.name} onChange={e => updateRow(row._id, 'name', e.target.value)}
-                          placeholder="Tên tiêu chí"
-                          className="h-8 w-full min-w-[140px] rounded border border-transparent bg-transparent px-2 text-xs focus:border-emerald-300 focus:bg-white focus:outline-none" />
-                      </td>
-
-                      {/* Group */}
-                      <td className="px-2 py-1.5">
-                        <select value={row.criterionGroup} onChange={e => updateRow(row._id, 'criterionGroup', e.target.value)}
-                          className="h-8 rounded border-0 bg-transparent text-xs">
-                          {GROUPS.map(g => <option key={g}>{g}</option>)}
-                        </select>
-                      </td>
-
-                      {/* DataType */}
-                      <td className="px-2 py-1.5">
-                        <select value={row.dataType}
-                          onChange={e => changeDataType(row._id, e.target.value)}
-                          className={`h-8 rounded border-0 bg-transparent text-xs font-semibold ${
-                            row.dataType === 'NUMBER' ? 'text-blue-600' :
-                            row.dataType === 'TEXT'   ? 'text-violet-600' : 'text-amber-600'
-                          }`}>
-                          {DATA_TYPES.map(t => <option key={t}>{t}</option>)}
-                        </select>
-                      </td>
-
-                      {/* Adaptive threshold */}
-                      <td className="px-2 py-1.5">
-                        {row.dataType === 'NUMBER' && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                            <span>Min</span>
-                            <input type="number" value={row.minValue ?? ''}
-                              onChange={e => updateRow(row._id, 'minValue', e.target.value ? Number(e.target.value) : undefined)}
-                              className="h-7 w-16 rounded border border-slate-200 bg-white px-1.5 text-xs text-slate-900 focus:border-emerald-400 focus:outline-none" />
-                            <span>Max</span>
-                            <input type="number" value={row.maxValue ?? ''}
-                              onChange={e => updateRow(row._id, 'maxValue', e.target.value ? Number(e.target.value) : undefined)}
-                              className="h-7 w-16 rounded border border-slate-200 bg-white px-1.5 text-xs text-slate-900 focus:border-emerald-400 focus:outline-none" />
-                            <input value={row.unit ?? ''} onChange={e => updateRow(row._id, 'unit', e.target.value)}
-                              placeholder="Đơn vị"
-                              className="h-7 w-16 rounded border border-slate-200 bg-white px-1.5 text-xs text-slate-600 focus:border-emerald-400 focus:outline-none" />
-                          </div>
-                        )}
-                        {row.dataType === 'TEXT' && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                            <span className="text-violet-500 font-medium">Yêu cầu:</span>
-                            <input value={row.requiredTextValue ?? ''}
-                              onChange={e => updateRow(row._id, 'requiredTextValue', e.target.value)}
-                              placeholder="VD: XANH_TUOI, THOM"
-                              className="h-7 w-48 rounded border border-slate-200 bg-white px-1.5 text-xs text-slate-900 focus:border-violet-400 focus:outline-none" />
-                          </div>
-                        )}
-                        {row.dataType === 'BOOLEAN' && (
-                          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-600">
-                            Đạt / Không đạt
-                          </span>
-                        )}
-                      </td>
-
-                      {/* IsRequired */}
-                      <td className="px-2 py-1.5 text-center">
-                        <input type="checkbox" checked={row.isRequired}
-                          onChange={e => updateRow(row._id, 'isRequired', e.target.checked)}
-                          className="size-4 accent-emerald-600" />
-                      </td>
-
-                      {/* IsCritical */}
-                      <td className="px-2 py-1.5 text-center">
-                        <input type="checkbox" checked={row.isCritical}
-                          onChange={e => updateRow(row._id, 'isCritical', e.target.checked)}
-                          className="size-4 accent-rose-600" />
-                      </td>
-
-                      {/* Delete */}
-                      <td className="px-2 py-1.5 text-center">
-                        <button onClick={() => removeRow(row._id)} title="Xóa tiêu chí"
-                          className="h-7 w-14 rounded-md bg-rose-500 text-[11px] font-bold text-white hover:bg-rose-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-                          disabled={criteria.length === 1}>
-                          Xóa
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="divide-y divide-slate-100">
+              {criteria.map((row, idx) => (
+                <CriterionBlock
+                  key={row._id}
+                  row={row}
+                  idx={idx}
+                  isLast={criteria.length === 1}
+                  onToggleExpand={() => toggleExpand(row._id)}
+                  onUpdateRow={(key, val) => updateRow(row._id, key, val)}
+                  onChangeDataType={dt => changeDataType(row._id, dt)}
+                  onRemoveRow={() => removeRow(row._id)}
+                  onUpdateGradeRule={(ruleId, key, val) => updateGradeRule(row._id, ruleId, key, val)}
+                  onAddGradeRule={() => addGradeRule(row._id)}
+                  onRemoveLastGradeRule={() => removeLastGradeRule(row._id)}
+                />
+              ))}
             </div>
+
             <button onClick={addRow}
               className="flex w-full items-center justify-center gap-2 border-t border-slate-100 py-3.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">
               <AppIcon name="plus" className="size-4" /> Thêm tiêu chí kiểm định
@@ -330,15 +310,15 @@ export default function InspectionStandardVersionFormPage() {
           </section>
         </div>
 
-        {/* Sidebar */}
+        {/* ── Right sidebar ────────────────────────────────────────────────── */}
         <aside className="space-y-4">
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="font-bold text-slate-800">Tóm tắt phiên bản</h2>
             <div className="mt-4 space-y-3">
               {[
                 { label: 'Phiên bản sẽ tạo', value: `v${nextVersionNo}` },
-                { label: 'Tổng tiêu chí',    value: criteria.length.toString().padStart(2, '0') },
-                { label: 'Quan trọng',        value: criticalCount.toString().padStart(2, '0'), red: true },
+                { label: 'Tổng tiêu chí',    value: String(criteria.length).padStart(2,'0') },
+                { label: 'Quan trọng',        value: String(criticalCount).padStart(2,'0'), red: true },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between border-b border-slate-100 pb-3 text-sm">
                   <span className="text-slate-500">{item.label}</span>
@@ -357,13 +337,14 @@ export default function InspectionStandardVersionFormPage() {
               </ul>
             </div>
           </section>
+
           <section className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-            <p className="text-xs font-bold text-emerald-800">💡 Hướng dẫn loại dữ liệu</p>
+            <p className="text-xs font-bold text-emerald-800">💡 Lưu ý phiên bản mới</p>
             <ul className="mt-2 space-y-1.5 text-xs leading-5 text-emerald-800">
-              <li><b className="text-blue-600">NUMBER</b>: Đo lường → nhập Min, Max, Đơn vị</li>
-              <li><b className="text-violet-600">TEXT</b>: Cảm quan → nhập giá trị chấp nhận</li>
-              <li><b className="text-amber-600">BOOLEAN</b>: Kiểm tra có/không</li>
-              <li className="pt-1 border-t border-emerald-200">Không chỉnh sửa trực tiếp version đã dùng trong kiểm định</li>
+              <li>Phiên bản cũ tự động → <b>RETIRED</b></li>
+              <li>Grade rules sao chép từ phiên bản trước để tiện chỉnh sửa</li>
+              <li>Có thể thêm hạng mới (nút <b>+ Thêm hạng X</b>) hoặc xóa hạng cuối</li>
+              <li className="pt-1 border-t border-emerald-200">Hạng A <b>không được</b> là ngưỡng từ chối</li>
             </ul>
           </section>
         </aside>
@@ -373,7 +354,8 @@ export default function InspectionStandardVersionFormPage() {
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 px-5 py-3 backdrop-blur lg:left-64">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3">
           <p className="text-sm text-slate-500">
-            Sẽ tạo phiên bản <b>v{nextVersionNo}</b> trạng thái <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">Đang áp dụng</span>
+            Tạo phiên bản <b>v{nextVersionNo}</b> trạng thái{' '}
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">Đang áp dụng</span>
           </p>
           <div className="flex gap-3">
             <button onClick={() => navigate(detailRoute)}
