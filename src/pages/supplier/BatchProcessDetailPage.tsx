@@ -148,7 +148,7 @@ export const BatchProcessDetailPage: React.FC = () => {
         {/* Action button bên phải */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(`/supplier/batches/${id}/status`)}
+            onClick={() => navigate(`/supplier/batches/${id}/edit`)}
             disabled={canceling || isCanceled}
             className="px-4 py-1.5 border border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-100/80 disabled:opacity-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
           >

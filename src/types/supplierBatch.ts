@@ -89,6 +89,15 @@ export interface SupplierBatchStatusResponse {
 
   declaredQuantity: number;
   unit: string;
+  packagingType?: string | null;
+  packageCount?: number | null;
+  packageUnitWeightKg?: number | null;
+  expectedMinTempC?: number | null;
+  expectedMaxTempC?: number | null;
+  expectedMinHumidityPct?: number | null;
+  expectedMaxHumidityPct?: number | null;
+  expiryDate?: string | null;
+
   receivedQuantity: number;
   weightInKg: number;
 

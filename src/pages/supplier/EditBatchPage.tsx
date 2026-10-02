@@ -11,6 +11,10 @@ import {
   MapPin,
   Loader2,
   AlertCircle,
+  Thermometer,
+  Droplets,
+  Package,
+  Calendar,
 } from 'lucide-react';
 import {
   updateBatchSchema,
@@ -28,6 +32,8 @@ export const EditBatchPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [batchCode, setBatchCode] = useState<string>('');
+  const [batchCreatedAt, setBatchCreatedAt] = useState<string>('');
+  const [batchUpdatedAt, setBatchUpdatedAt] = useState<string>('');
 
   // States danh sách Cây trồng & Vùng trồng
   const [cropTypeOptions, setCropTypeOptions] = useState<SupplierCropTypeDto[]>([]);
@@ -48,7 +54,28 @@ export const EditBatchPage: React.FC = () => {
     resolver: zodResolver(updateBatchSchema) as Resolver<UpdateBatchFormValues>,
   });
 
+  // Watch các field cần theo dõi realtime
+  const currentUnit = watch('unit');
   const currentCropTypeId = watch('cropTypeId');
+  const currentPackageCount = watch('packageCount');
+  const currentPackageUnitWeightKg = watch('packageUnitWeightKg');
+
+  // Tính tổng trọng lượng ước tính khi đóng gói theo kiện
+  const estimatedWeightKg = useMemo(() => {
+    if (
+      (currentUnit === 'Bao' || currentUnit === 'Thùng') &&
+      currentPackageCount &&
+      currentPackageUnitWeightKg &&
+      currentPackageCount > 0 &&
+      currentPackageUnitWeightKg > 0
+    ) {
+      return currentPackageCount * currentPackageUnitWeightKg;
+    }
+    return null;
+  }, [currentUnit, currentPackageCount, currentPackageUnitWeightKg]);
+
+  // Hiển thị nhóm đóng gói kiện khi unit là Bao/Thùng
+  const isPackageUnit = currentUnit === 'Bao' || currentUnit === 'Thùng';
 
   useEffect(() => {
     if (!id) return;
@@ -65,6 +92,7 @@ export const EditBatchPage: React.FC = () => {
 
         const data = statusResponse.data;
         setBatchCode(data.batchCode);
+        setBatchCreatedAt(data.createdAt);
 
         // 1. Tải danh sách cây trồng
         let crops: SupplierCropTypeDto[] = [];
@@ -107,15 +135,37 @@ export const EditBatchPage: React.FC = () => {
         );
         const selectedAreaId = matchedArea ? matchedArea.growingAreaId : userAreas[0]?.growingAreaId || 1;
 
-        // 3. Fill data vào Form
+        // 3. Xác định unit hợp lệ (map về enum: Tấn | Kg | Bao | Thùng)
+        const rawUnit = data.unit || 'Kg';
+        const validUnits = ['Tấn', 'Kg', 'Bao', 'Thùng'] as const;
+        type ValidUnit = typeof validUnits[number];
+        const mappedUnit: ValidUnit = (validUnits as readonly string[]).includes(rawUnit)
+          ? (rawUnit as ValidUnit)
+          : 'Kg';
+
+        // 4. Định dạng Date cho <input type="date" /> (YYYY-MM-DD)
+        const formatForDateInput = (dateStr?: string | null) => {
+          if (!dateStr) return '';
+          return dateStr.substring(0, 10);
+        };
+
+        // 5. Fill toàn bộ dữ liệu vào Form
         reset({
           cropTypeId: initialCropId,
           productName: data.productName,
           growingAreaId: selectedAreaId,
           declaredQuantity: data.declaredQuantity,
-          unit: data.unit || 'Kg',
-          harvestDate: data.harvestDate,
-          expectedDeliveryDate: data.expectedDeliveryDate || '',
+          unit: mappedUnit,
+          harvestDate: formatForDateInput(data.harvestDate),
+          expectedDeliveryDate: formatForDateInput(data.expectedDeliveryDate),
+          expiryDate: formatForDateInput(data.expiryDate),
+          packagingType: data.packagingType || '',
+          packageCount: data.packageCount ?? undefined,
+          packageUnitWeightKg: data.packageUnitWeightKg ?? undefined,
+          expectedMinTempC: data.expectedMinTempC ?? undefined,
+          expectedMaxTempC: data.expectedMaxTempC ?? undefined,
+          expectedMinHumidityPct: data.expectedMinHumidityPct ?? undefined,
+          expectedMaxHumidityPct: data.expectedMaxHumidityPct ?? undefined,
           note: data.warehouseNote || '',
         });
       } catch (err: any) {
@@ -358,40 +408,141 @@ export const EditBatchPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Card 2: Khối lượng & Vận chuyển */}
+            {/* Card 2: Khối lượng & Quy cách đóng gói */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
               <div className="flex items-center gap-2 text-xs font-bold text-gray-800 border-b pb-3 mb-4">
                 <Truck className="w-4 h-4 text-gray-500" />
-                <span>2. Khối lượng & Vận chuyển</span>
+                <span>2. Khối lượng & Quy cách đóng gói</span>
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2">
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      KHỐI LƯỢNG KHAI BÁO <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      {...register('declaredQuantity', { valueAsNumber: true })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
+                {/* ĐƠN VỊ (Radio group) */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-2">
+                    ĐƠN VỊ / HÌNH THỨC ĐÓNG GÓI <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {(['Tấn', 'Kg', 'Bao', 'Thùng'] as const).map((unitOption) => (
+                      <label
+                        key={unitOption}
+                        className={`flex items-center justify-center gap-2 border rounded-lg px-3 py-2.5 text-xs font-semibold cursor-pointer transition-all ${
+                          currentUnit === unitOption
+                            ? 'bg-emerald-50 border-emerald-400 text-emerald-700 ring-1 ring-emerald-400'
+                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          value={unitOption}
+                          {...register('unit')}
+                          className="sr-only"
+                        />
+                        {(unitOption === 'Bao' || unitOption === 'Thùng') && (
+                          <Package className="w-3.5 h-3.5" />
+                        )}
+                        {unitOption === 'Bao' ? 'Bao (kiện)' : unitOption === 'Thùng' ? 'Thùng (kiện)' : unitOption}
+                      </label>
+                    ))}
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      ĐƠN VỊ
-                    </label>
-                    <select
-                      {...register('unit')}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="kg">kg</option>
-                      <option value="Tấn">Tấn</option>
-                    </select>
-                  </div>
+                  {errors.unit && (
+                    <p className="text-[11px] text-red-500 mt-1">{errors.unit.message}</p>
+                  )}
+                  {isPackageUnit && (
+                    <p className="text-[11px] text-blue-500 mt-1.5 flex items-center gap-1">
+                      <Info className="w-3 h-3" />
+                      Tổng trọng lượng = Số kiện × Trọng lượng mỗi kiện (Kg)
+                    </p>
+                  )}
                 </div>
 
+                {/* SỐ LƯỢNG KHAI BÁO */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                    {isPackageUnit ? `SỐ LƯỢNG KIỆN (${currentUnit})` : 'KHỐI LƯỢNG KHAI BÁO'}{' '}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step={isPackageUnit ? '1' : '0.01'}
+                    {...register('declaredQuantity', { valueAsNumber: true })}
+                    placeholder={isPackageUnit ? 'Nhập số kiện...' : '0.00'}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  {errors.declaredQuantity && (
+                    <p className="text-[11px] text-red-500 mt-1">
+                      {errors.declaredQuantity.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* NHÓM: QUY CÁCH ĐÓNG GÓI KIỆN — chỉ hiện khi unit là Bao/Thùng */}
+                {isPackageUnit && (
+                  <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-xl space-y-3">
+                    <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wide flex items-center gap-1.5">
+                      <Package className="w-3.5 h-3.5" />
+                      Chi tiết quy cách đóng gói
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* SỐ KIỆN (packageCount) */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                          SỐ LƯỢNG KIỆN <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="1"
+                          min="1"
+                          {...register('packageCount', { valueAsNumber: true })}
+                          placeholder="Nhập số kiện..."
+                          className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                        {errors.packageCount && (
+                          <p className="text-[11px] text-red-500 mt-1">
+                            {errors.packageCount.message}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* TRỌNG LƯỢNG MỖI KIỆN (packageUnitWeightKg) */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                          TRỌNG LƯỢNG MỖI KIỆN (KG) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          {...register('packageUnitWeightKg', { valueAsNumber: true })}
+                          placeholder={currentUnit === 'Bao' ? 'Gợi ý: 25 kg' : 'Gợi ý: 10 kg'}
+                          className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                        {errors.packageUnitWeightKg && (
+                          <p className="text-[11px] text-red-500 mt-1">
+                            {errors.packageUnitWeightKg.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* TỔNG TRỌNG LƯỢNG ƯỚC TÍNH (readonly, realtime) */}
+                    {estimatedWeightKg !== null && (
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide">
+                          Tổng trọng lượng ước tính
+                        </span>
+                        <span className="text-sm font-bold text-emerald-800">
+                          {estimatedWeightKg.toLocaleString('vi-VN')} kg
+                          <span className="ml-2 font-normal text-emerald-600 text-[11px]">
+                            ({(estimatedWeightKg / 1000).toFixed(3)} tấn)
+                          </span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* NGÀY THU HOẠCH & NGÀY GIAO HÀNG DỰ KIẾN */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
@@ -402,26 +553,143 @@ export const EditBatchPage: React.FC = () => {
                       {...register('harvestDate')}
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
+                    {errors.harvestDate && (
+                      <p className="text-[11px] text-red-500 mt-1">{errors.harvestDate.message}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      NGÀY GIAO HÀNG DỰ KIẾN <span className="text-red-500">*</span>
+                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                      <span>NGÀY GIAO HÀNG DỰ KIẾN <span className="text-red-500">*</span></span>
                     </label>
                     <input
                       type="date"
                       {...register('expectedDeliveryDate')}
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
+                    {errors.expectedDeliveryDate && (
+                      <p className="text-[11px] text-red-500 mt-1">{errors.expectedDeliveryDate.message}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* NGÀY HẾT HẠN */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                    NGÀY HẾT HẠN SẢN PHẨM
+                  </label>
+                  <input
+                    type="date"
+                    {...register('expiryDate')}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  {errors.expiryDate && (
+                    <p className="text-[11px] text-red-500 mt-1">{errors.expiryDate.message}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Điều kiện bảo quản */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <div className="flex items-center gap-2 text-xs font-bold text-gray-800 border-b pb-3 mb-4">
+                <Thermometer className="w-4 h-4 text-gray-500" />
+                <span>3. Điều kiện bảo quản yêu cầu</span>
+                <span className="text-[10px] font-normal text-gray-400 ml-1">(Không bắt buộc)</span>
+              </div>
+
+              <div className="space-y-4">
+                {/* NHIỆT ĐỘ */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-2 flex items-center gap-1.5">
+                    <Thermometer className="w-3.5 h-3.5 text-orange-400" />
+                    <span>NHIỆT ĐỘ BẢO QUẢN (°C)</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Tối thiểu (°C)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        {...register('expectedMinTempC', { valueAsNumber: true })}
+                        placeholder="Ví dụ: 2"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      />
+                      {errors.expectedMinTempC && (
+                        <p className="text-[11px] text-red-500 mt-1">
+                          {errors.expectedMinTempC.message}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Tối đa (°C)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        {...register('expectedMaxTempC', { valueAsNumber: true })}
+                        placeholder="Ví dụ: 10"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      />
+                      {errors.expectedMaxTempC && (
+                        <p className="text-[11px] text-red-500 mt-1">
+                          {errors.expectedMaxTempC.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ĐỘ ẨM */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-2 flex items-center gap-1.5">
+                    <Droplets className="w-3.5 h-3.5 text-blue-400" />
+                    <span>ĐỘ ẨM BẢO QUẢN (%)</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Tối thiểu (%)</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="100"
+                        {...register('expectedMinHumidityPct', { valueAsNumber: true })}
+                        placeholder="Ví dụ: 60"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                      {errors.expectedMinHumidityPct && (
+                        <p className="text-[11px] text-red-500 mt-1">
+                          {errors.expectedMinHumidityPct.message}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Tối đa (%)</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="100"
+                        {...register('expectedMaxHumidityPct', { valueAsNumber: true })}
+                        placeholder="Ví dụ: 85"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                      {errors.expectedMaxHumidityPct && (
+                        <p className="text-[11px] text-red-500 mt-1">
+                          {errors.expectedMaxHumidityPct.message}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Card 3: Ghi chú */}
+            {/* Card 4: Ghi chú */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
               <div className="flex items-center gap-2 text-xs font-bold text-gray-800 border-b pb-3 mb-4">
                 <FileText className="w-4 h-4 text-gray-500" />
-                <span>3. Ghi chú & Tài liệu đính kèm</span>
+                <span>4. Ghi chú & Tài liệu đính kèm</span>
               </div>
               <textarea
                 rows={3}
@@ -440,14 +708,30 @@ export const EditBatchPage: React.FC = () => {
                 <span className="text-gray-500">Mã lô:</span>
                 <span className="font-mono font-semibold">{batchCode}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Tạo ngày:</span>
-                <span>24/10/2023 08:30</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Cập nhật cuối:</span>
-                <span>25/10/2023 14:15</span>
-              </div>
+              {batchCreatedAt && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Tạo ngày:</span>
+                  <span>
+                    {new Date(batchCreatedAt).toLocaleString('vi-VN', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              )}
+
+              {/* Preview trọng lượng trong sidebar */}
+              {isPackageUnit && estimatedWeightKg !== null && (
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-gray-500">Trọng lượng ước tính:</span>
+                  <span className="font-semibold text-emerald-700">
+                    {estimatedWeightKg.toLocaleString('vi-VN')} kg
+                  </span>
+                </div>
+              )}
 
               <div className="p-3 bg-emerald-50/60 border border-emerald-100 rounded-lg text-emerald-800 text-[11px] flex gap-2 mt-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
