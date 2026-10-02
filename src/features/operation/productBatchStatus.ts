@@ -6,6 +6,8 @@ const statuses: Record<string, { label: string; tone: ProductBatchStatusTone }> 
   PENDING_APPROVAL: { label: 'Chờ duyệt', tone: 'amber' },
   PENDING_QC: { label: 'Chờ kiểm định QC', tone: 'blue' },
   APPROVED: { label: 'Đã duyệt', tone: 'green' },
+  APPROVED_FOR_STORAGE: { label: 'Đã duyệt nhập kho', tone: 'green' },
+  QUARANTINE: { label: 'Cách ly chờ xử lý', tone: 'amber' },
   COMMITTED: { label: 'Đã nhập kho', tone: 'green' },
   REJECTED: { label: 'Bị từ chối', tone: 'red' },
   RECEIVING: { label: 'Đang nhận hàng', tone: 'blue' },
