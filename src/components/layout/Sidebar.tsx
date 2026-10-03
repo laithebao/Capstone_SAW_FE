@@ -26,6 +26,7 @@ export default function Sidebar({isOpen,onClose}:{isOpen:boolean;onClose:()=>voi
   }
 
   const operationRoutes: Record<string, string> = {
+    'Nhập kho': ROUTES.OPERATION_GOODS_RECEIPTS,
     'Quản lý lô hàng': ROUTES.OPERATION_PRODUCT_BATCHES,
   }
 

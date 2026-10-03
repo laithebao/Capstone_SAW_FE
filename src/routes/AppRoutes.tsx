@@ -23,6 +23,9 @@ import VerifyEmailPage from '@/pages/auth/VerifyEmailPage'
 import ChangePasswordPage from '@/pages/auth/ChangePasswordPage'
 import DistributorDashboardPage from '@/pages/distributor/DistributorDashboardPage'
 import OperationDashboardPage from '@/pages/operation/OperationDashboardPage'
+import GoodsReceiptManagementPage from '@/pages/operation/GoodsReceiptManagementPage'
+import CreateGoodsReceiptPage from '@/pages/operation/CreateGoodsReceiptPage'
+import GoodsReceiptDetailPage from '@/pages/operation/GoodsReceiptDetailPage'
 import ProductBatchManagementPage from '@/pages/operation/ProductBatchManagementPage'
 import ProductBatchDetailPage from '@/pages/operation/ProductBatchDetailPage'
 import CreateProductBatchPage from '@/pages/operation/CreateProductBatchPage'
@@ -102,6 +105,9 @@ export default function AppRoutes() {
           </Route>
           <Route element={<RoleRoute allowedRoles={[ROLES.OPERATION_STAFF]} />}>
             <Route path={ROUTES.OPERATION} element={<OperationDashboardPage />} />
+            <Route path={ROUTES.OPERATION_GOODS_RECEIPTS} element={<GoodsReceiptManagementPage />} />
+            <Route path={ROUTES.OPERATION_GOODS_RECEIPT_CREATE} element={<CreateGoodsReceiptPage />} />
+            <Route path={ROUTES.OPERATION_GOODS_RECEIPT_DETAIL} element={<GoodsReceiptDetailPage />} />
             <Route path={ROUTES.OPERATION_PRODUCT_BATCHES} element={<ProductBatchManagementPage />} />
             <Route path={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL} element={<ProductBatchDetailPage />} />
             <Route path={ROUTES.OPERATION_PRODUCT_BATCH_CREATE} element={<CreateProductBatchPage />} />

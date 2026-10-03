@@ -519,7 +519,7 @@ function OverviewTab({ inspection }: { inspection: QcInspectionDetailDto }) {
           </h3>
           <div className="space-y-2">
             {gradedCriteria.map(c => {
-              const causesRejection = !c.isPassed && c.isCritical
+              const causesRejection = isFilled(c) && ((!c.isPassed && c.isCritical) || c.evaluatedGrade === 'E')
               return (
                 <div key={c.criterionId} className={`flex items-center justify-between rounded-lg border px-4 py-2.5 text-sm ${
                   causesRejection ? 'border-rose-300 bg-rose-50' : 'border-slate-100'
