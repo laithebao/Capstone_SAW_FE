@@ -33,7 +33,6 @@ export const EditBatchPage: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [batchCode, setBatchCode] = useState<string>('');
   const [batchCreatedAt, setBatchCreatedAt] = useState<string>('');
-  const [batchUpdatedAt, setBatchUpdatedAt] = useState<string>('');
 
   // States danh sách Cây trồng & Vùng trồng
   const [cropTypeOptions, setCropTypeOptions] = useState<SupplierCropTypeDto[]>([]);
@@ -59,6 +58,7 @@ export const EditBatchPage: React.FC = () => {
   const currentCropTypeId = watch('cropTypeId');
   const currentPackageCount = watch('packageCount');
   const currentPackageUnitWeightKg = watch('packageUnitWeightKg');
+  const currentDeclaredQuantity = watch('declaredQuantity');
 
   // Tính tổng trọng lượng ước tính khi đóng gói theo kiện
   const estimatedWeightKg = useMemo(() => {
@@ -77,6 +77,17 @@ export const EditBatchPage: React.FC = () => {
   // Hiển thị nhóm đóng gói kiện khi unit là Bao/Thùng
   const isPackageUnit = currentUnit === 'Bao' || currentUnit === 'Thùng';
 
+  // Đồng bộ declaredQuantity sang packageCount khi người dùng nhập số lượng khai báo và đơn vị là kiện
+  useEffect(() => {
+    if (isPackageUnit) {
+      if (currentDeclaredQuantity && !Number.isNaN(currentDeclaredQuantity)) {
+        setValue('packageCount', currentDeclaredQuantity, { shouldValidate: true });
+      } else {
+        setValue('packageCount', undefined);
+      }
+    }
+  }, [currentDeclaredQuantity, isPackageUnit, setValue]);
+
   useEffect(() => {
     if (!id) return;
     const fetchDetailAndProfile = async () => {
@@ -91,6 +102,18 @@ export const EditBatchPage: React.FC = () => {
         ]);
 
         const data = statusResponse.data;
+
+        // BẮT ĐẦU CHẶN Ở ĐÂY (Phiên bản linh hoạt hơn)
+        // Bao gồm các trạng thái có thể được hiểu là "Chờ duyệt" / "Mới tạo"
+        const EDITABLE_STATUSES = ['SUBMITTED', 'PENDING_APPROVAL', 'PENDING'];
+        const currentStatusStr = data.currentStatus ? String(data.currentStatus).toUpperCase() : '';
+
+        if (!EDITABLE_STATUSES.includes(currentStatusStr)) {
+          console.warn('Hệ thống chặn vì trạng thái thực tế từ Backend là:', data.currentStatus);
+          navigate(`/supplier/batches/${id}`, { replace: true });
+          return;
+        }
+
         setBatchCode(data.batchCode);
         setBatchCreatedAt(data.createdAt);
 
@@ -177,7 +200,7 @@ export const EditBatchPage: React.FC = () => {
     };
 
     fetchDetailAndProfile();
-  }, [id, reset]);
+  }, [id, reset, navigate]);
 
   // Unique Categories cho Dropdown 1
   const categories = useMemo(() => {
@@ -234,7 +257,7 @@ export const EditBatchPage: React.FC = () => {
 
     try {
       await supplierBatchService.updateBatch(Number(id), values);
-      navigate(`/supplier/batches/${id}/status`);
+      navigate(`/supplier/batches/${id}`);
     } catch (err: any) {
       setSubmitError(
         err.response?.data?.message || 'Chỉnh sửa thất bại. Vui lòng kiểm tra lại.'
@@ -280,11 +303,11 @@ export const EditBatchPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => navigate(`/supplier/batches/${id}/status`)}
+              onClick={() => navigate(`/supplier/batches/${id}`)}
               className="bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg border border-gray-300 text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
               <History className="w-3.5 h-3.5" />
-              <span>Lịch sử</span>
+              <span>Hủy & Quay lại</span>
             </button>
             <button
               type="submit"
@@ -484,7 +507,7 @@ export const EditBatchPage: React.FC = () => {
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {/* SỐ KIỆN (packageCount) */}
+                      {/* SỐ KIỆN (packageCount) - Tự động điền theo KHỐI LƯỢNG KHAI BÁO */}
                       <div>
                         <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
                           SỐ LƯỢNG KIỆN <span className="text-red-500">*</span>
@@ -493,9 +516,10 @@ export const EditBatchPage: React.FC = () => {
                           type="number"
                           step="1"
                           min="1"
+                          readOnly
                           {...register('packageCount', { valueAsNumber: true })}
-                          placeholder="Nhập số kiện..."
-                          className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          placeholder="Được tự động điền..."
+                          className="w-full bg-gray-100 border border-blue-200 rounded-lg px-3 py-2 text-xs text-gray-500 cursor-not-allowed focus:outline-none"
                         />
                         {errors.packageCount && (
                           <p className="text-[11px] text-red-500 mt-1">

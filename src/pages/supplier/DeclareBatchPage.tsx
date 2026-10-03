@@ -69,11 +69,15 @@ export const DeclareBatchPage: React.FC = () => {
   const currentCropTypeId = watch('cropTypeId');
   const currentPackageCount = watch('packageCount');
   const currentPackageUnitWeightKg = watch('packageUnitWeightKg');
+  const currentDeclaredQuantity = watch('declaredQuantity');
+
+  // Biến kiểm tra xem đơn vị hiện tại có phải là Bao hoặc Thùng không
+  const isPackageUnit = currentUnit === 'Bao' || currentUnit === 'Thùng';
 
   // Tính tổng trọng lượng ước tính khi đóng gói theo kiện
   const estimatedWeightKg = useMemo(() => {
     if (
-      (currentUnit === 'Bao' || currentUnit === 'Thùng') &&
+      isPackageUnit &&
       currentPackageCount &&
       currentPackageUnitWeightKg &&
       currentPackageCount > 0 &&
@@ -82,7 +86,7 @@ export const DeclareBatchPage: React.FC = () => {
       return currentPackageCount * currentPackageUnitWeightKg;
     }
     return null;
-  }, [currentUnit, currentPackageCount, currentPackageUnitWeightKg]);
+  }, [isPackageUnit, currentPackageCount, currentPackageUnitWeightKg]);
 
   // Khi unit thay đổi: tự động gợi ý PackageUnitWeightKg và đặt PackagingType
   useEffect(() => {
@@ -99,6 +103,19 @@ export const DeclareBatchPage: React.FC = () => {
       setValue('packageUnitWeightKg', undefined);
     }
   }, [currentUnit, setValue]);
+
+  // Đồng bộ declaredQuantity sang packageCount khi người dùng nhập số lượng khai báo và đơn vị là kiện (Bao/Thùng)
+  useEffect(() => {
+    if (isPackageUnit) {
+      // Nếu người dùng đã nhập số (khác undefined/rỗng/NaN) thì copy và bật validate
+      if (currentDeclaredQuantity && !Number.isNaN(currentDeclaredQuantity)) {
+        setValue('packageCount', currentDeclaredQuantity, { shouldValidate: true });
+      } else {
+        // Nếu rỗng (vừa vào trang, hoặc xoá trắng input) thì chỉ set undefined mà không báo lỗi đỏ
+        setValue('packageCount', undefined);
+      }
+    }
+  }, [currentDeclaredQuantity, isPackageUnit, setValue]);
 
   // Fetch danh sách vùng trồng & cây trồng từ hệ thống
   useEffect(() => {
@@ -227,9 +244,6 @@ export const DeclareBatchPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
-
-  // Hiển thị nhóm thông tin đóng gói kiện khi unit là Bao hoặc Thùng
-  const isPackageUnit = currentUnit === 'Bao' || currentUnit === 'Thùng';
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 max-w-5xl mx-auto">
@@ -451,7 +465,7 @@ export const DeclareBatchPage: React.FC = () => {
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* SỐ KIỆN (packageCount) — alias của declaredQuantity khi unit là Bao/Thùng */}
+                    {/* SỐ KIỆN (packageCount) — Tự động điền theo SỐ LƯỢNG KHAI BÁO */}
                     <div>
                       <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
                         SỐ LƯỢNG KIỆN <span className="text-red-500">*</span>
@@ -460,9 +474,10 @@ export const DeclareBatchPage: React.FC = () => {
                         type="number"
                         step="1"
                         min="1"
+                        readOnly
                         {...register('packageCount', { valueAsNumber: true })}
-                        placeholder="Nhập số kiện..."
-                        className="w-full bg-white border border-blue-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        placeholder="Được tự động điền..."
+                        className="w-full bg-gray-100 border border-blue-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-500 cursor-not-allowed focus:outline-none"
                       />
                       {errors.packageCount && (
                         <p className="text-[11px] text-red-500 mt-1">

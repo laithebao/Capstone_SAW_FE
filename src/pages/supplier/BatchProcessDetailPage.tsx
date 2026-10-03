@@ -12,6 +12,7 @@ import {
   Info,
   Pencil,
   MapPin,
+  Boxes,
 } from 'lucide-react';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
 import type { SupplierBatchStatusResponse } from '@/types/supplierBatch';
@@ -21,11 +22,10 @@ export const BatchProcessDetailPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState<boolean>(true);
-  const [canceling, setCanceling] = useState<boolean>(false); // 1. Thêm state loading khi hủy
+  const [canceling, setCanceling] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<SupplierBatchStatusResponse | null>(null);
 
-  // Hàm tải dữ liệu chi tiết
   const fetchDetail = async () => {
     if (!id) return;
     try {
@@ -43,24 +43,18 @@ export const BatchProcessDetailPage: React.FC = () => {
     fetchDetail();
   }, [id]);
 
-  // 2. Xử lý logic khi bấm Hủy đơn
   const handleCancelOrder = async () => {
     if (!id) return;
 
-    // Xác nhận từ người dùng
     const confirmCancel = window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?');
     if (!confirmCancel) return;
 
     try {
       setCanceling(true);
-      // Gọi API hủy đơn
       await supplierBatchService.cancelBatch(Number(id));
       alert('Hủy đơn hàng thành công!');
       
-      // Tải lại thông tin mới nhất sau khi hủy
       await fetchDetail(); 
-      // Hoặc nếu muốn chuyển về trang danh sách:
-      // navigate('/supplier/batches');
     } catch (err: any) {
       alert(err.response?.data?.message || 'Có lỗi xảy ra khi hủy đơn hàng.');
     } finally {
@@ -119,8 +113,12 @@ export const BatchProcessDetailPage: React.FC = () => {
     },
   ];
 
-  // Kiểm tra xem đơn hàng đã hủy chưa để disable nút bấm (tùy chọn)
   const isCanceled = data.currentStatus === 'CANCELLED' || data.currentStatus === 'CANCELED';
+  
+  // Đồng bộ logic kiểm tra trạng thái với trang Edit
+  const EDITABLE_STATUSES = ['SUBMITTED', 'PENDING_APPROVAL', 'PENDING'];
+  const currentStatusStr = data.currentStatus ? String(data.currentStatus).toUpperCase() : '';
+  const canEdit = EDITABLE_STATUSES.includes(currentStatusStr);
 
   return (
     <div className="min-h-screen bg-gray-50/60 p-6 max-w-7xl mx-auto space-y-6">
@@ -128,7 +126,7 @@ export const BatchProcessDetailPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/supplier/batches')} // FIX Ở ĐÂY: Về thẳng danh sách
             className="p-1.5 hover:bg-gray-200/70 rounded-lg text-gray-600 transition"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -145,18 +143,16 @@ export const BatchProcessDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Action button bên phải */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(`/supplier/batches/${id}/edit`)}
-            disabled={canceling || isCanceled}
-            className="px-4 py-1.5 border border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-100/80 disabled:opacity-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+            disabled={canceling || !canEdit} // FIX Ở ĐÂY: Ẩn nút theo danh sách trạng thái
+            className="px-4 py-1.5 border border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-100/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
           >
             <Pencil className="w-4 h-4 text-blue-500" />
             <span>Chỉnh sửa</span>
           </button>
 
-          {/* 3. Gắn hàm handleCancelOrder vào nút Hủy đơn */}
           <button
             onClick={handleCancelOrder}
             disabled={canceling || isCanceled}
@@ -172,7 +168,6 @@ export const BatchProcessDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid Bố cục 2 Cột chuẩn Figma */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* CỘT TRÁI (2/3) */}
         <div className="lg:col-span-2 space-y-6">
@@ -183,7 +178,6 @@ export const BatchProcessDetailPage: React.FC = () => {
               <span>Tóm tắt đơn hàng</span>
             </div>
 
-            {/* Status Badge ở góc trên phải */}
             <div className="absolute top-6 right-6">
               <span
                 className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -224,16 +218,18 @@ export const BatchProcessDetailPage: React.FC = () => {
                   NGÀY GIAO DỰ KIẾN
                 </p>
                 <p className="text-emerald-600 font-bold mt-1">
-                  {data.expectedDeliveryDate || '28/10/2023'}
+                  {data.expectedDeliveryDate
+                    ? new Date(data.expectedDeliveryDate).toLocaleDateString('vi-VN')
+                    : 'Chưa cập nhật'}
                 </p>
               </div>
 
               <div>
                 <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  TỔNG SỐ LƯỢNG
+                  TỔNG SỐ LƯỢNG KHAI BÁO
                 </p>
                 <p className="font-bold text-gray-900 text-sm mt-1">
-                  {data.declaredQuantity.toLocaleString()} {data.unit || 'BAO'}
+                  {data.declaredQuantity?.toLocaleString()} {data.unit}
                 </p>
               </div>
 
@@ -267,7 +263,7 @@ export const BatchProcessDetailPage: React.FC = () => {
                   <tr className="text-[10px] text-gray-400 uppercase border-b border-gray-100">
                     <th className="pb-3 font-semibold w-12">STT</th>
                     <th className="pb-3 font-semibold">SẢN PHẨM</th>
-                    <th className="pb-3 font-semibold">SKU</th>
+                    <th className="pb-3 font-semibold">SKU / PHÂN LOẠI</th>
                     <th className="pb-3 font-semibold text-right">SỐ LƯỢNG</th>
                     <th className="pb-3 font-semibold text-right pr-2">ĐƠN VỊ</th>
                   </tr>
@@ -277,22 +273,108 @@ export const BatchProcessDetailPage: React.FC = () => {
                     <td className="py-3.5 font-medium text-gray-500">01</td>
                     <td className="py-3.5 font-bold text-gray-800">{data.productName}</td>
                     <td className="py-3.5 text-gray-500 font-mono text-[11px]">
-                      {data.cropTypeName || 'RICE-ST25-50'}
+                      {data.cropTypeName || 'Chưa cập nhật'}
                     </td>
                     <td className="py-3.5 font-bold text-gray-900 text-right">
-                      {data.declaredQuantity.toLocaleString()}
+                      {data.declaredQuantity?.toLocaleString()}
                     </td>
-                    <td className="py-3.5 text-gray-600 text-right pr-2">{data.unit || 'Bao'}</td>
+                    <td className="py-3.5 text-gray-600 text-right pr-2">{data.unit}</td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Card 3: Thông tin chi tiết lô hàng */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+            <div className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-6">
+              <Boxes className="w-4 h-4 text-gray-500" />
+              <span>Thông tin chi tiết lô hàng</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-6 text-xs">
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                  SỐ LÔ (LOT NUMBER)
+                </p>
+                <p className="font-bold text-gray-800 text-sm mt-1">
+                  {(data as any).lotNumber || 'Chưa khởi tạo'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                  CHỨNG NHẬN / TIÊU CHUẨN
+                </p>
+                <p className="text-gray-800 font-bold mt-1">
+                  {(data as any).certifications || 'Chưa cập nhật'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                  NGÀY THU HOẠCH / SẢN XUẤT
+                </p>
+                <p className="text-gray-800 font-bold mt-1">
+                  {data.harvestDate
+                    ? new Date(data.harvestDate).toLocaleDateString('vi-VN')
+                    : 'Chưa cập nhật'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                  HẠN SỬ DỤNG
+                </p>
+                <p className="text-gray-800 font-medium mt-1">
+                  {data.expiryDate
+                    ? new Date(data.expiryDate).toLocaleDateString('vi-VN')
+                    : 'Không có ghi nhận'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                  NHIỆT ĐỘ BẢO QUẢN CẦN THIẾT
+                </p>
+                <p className="text-gray-800 font-medium mt-1">
+                  {data.expectedMinTempC !== null || data.expectedMaxTempC !== null
+                    ? `${data.expectedMinTempC ?? '?'}°C - ${data.expectedMaxTempC ?? '?'}°C`
+                    : 'Tiêu chuẩn thường'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
+                  ĐỘ ẨM BẢO QUẢN CẦN THIẾT
+                </p>
+                <p className="text-gray-800 font-medium mt-1">
+                  {data.expectedMinHumidityPct !== null || data.expectedMaxHumidityPct !== null
+                    ? `${data.expectedMinHumidityPct ?? '?'}% - ${data.expectedMaxHumidityPct ?? '?'}%`
+                    : 'Tiêu chuẩn thường'}
+                </p>
+              </div>
+
+              {(data.packagingType || data.packageCount || data.packageUnitWeightKg) && (
+                <div className="md:col-span-2 mt-1 pt-5 border-t border-gray-100">
+                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-2">
+                    CHI TIẾT ĐÓNG GÓI
+                  </p>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 inline-block">
+                    <p className="text-gray-800 font-medium">
+                      {data.packageCount?.toLocaleString() || '?'} {data.packagingType || 'Kiện'}
+                      {data.packageUnitWeightKg ? ` × ${data.packageUnitWeightKg} kg/kiện` : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* CỘT PHẢI (1/3) */}
         <div className="space-y-6">
-          {/* Card 1: Tiến trình xử lý (Vertical Stepper) */}
+          {/* Card: Tiến trình xử lý (Vertical Stepper) */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
             <div className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-6">
               <Clock className="w-4 h-4 text-gray-500" />
@@ -309,7 +391,6 @@ export const BatchProcessDetailPage: React.FC = () => {
 
                 return (
                   <div key={step.statusKey} className="relative text-xs">
-                    {/* Stepper Dot/Check */}
                     <div
                       className={`absolute -left-6 top-0.5 w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
                         isCurrent
@@ -349,23 +430,23 @@ export const BatchProcessDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 2: Thông tin xử lý */}
+          {/* Card: Thông tin xử lý & Ghi chú */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
             <div className="flex items-center gap-2 text-sm font-bold text-gray-800 border-b pb-3">
               <Info className="w-4 h-4 text-gray-500" />
               <span>Thông tin xử lý</span>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-4 text-xs">
               <div>
                 <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  KẾT QUẢ DUYỆT
+                  KẾT QUẢ DUYỆT (QC)
                 </p>
-                <p className="text-gray-500 italic mt-1">
+                <p className="text-gray-500 mt-1">
                   {data.qcResult ? (
-                    <span className="font-semibold text-gray-800 not-italic">{data.qcResult}</span>
+                    <span className="font-semibold text-gray-800">{data.qcResult}</span>
                   ) : (
-                    'Chưa có kết quả'
+                    <span className="italic">Chưa có kết quả</span>
                   )}
                 </p>
               </div>
