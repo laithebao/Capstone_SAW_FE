@@ -1,5 +1,10 @@
+import { SupplierDocumentEditor } from '@/features/supplier/components/SupplierDocuments';
+import { optionalNumericInput } from '@/features/supplier/schemas/supplierBatchSchema';
+import { supplierAssetUrl, validateSupplierFile } from '@/features/supplier/supplierFiles';
+import type { SupplierDocumentDto } from '@/types/supplier';
+import { getAuthErrorMessage } from '@/services/authService';
 import React, { useEffect, useState, useMemo } from 'react';
-import { useForm, useFieldArray, type SubmitHandler } from 'react-hook-form';
+import { useForm, useWatch, useFieldArray, type SubmitHandler } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import { supplierService } from '../../services/suppliers/supplierService';
 import type {
@@ -21,7 +26,7 @@ export const EditSupplierProfilePage: React.FC = () => {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>('');
   
-  const [existingDocumentUrls, setExistingDocumentUrls] = useState<string[]>([]);
+  const [existingDocuments, setExistingDocuments] = useState<SupplierDocumentDto[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
   // System Metadata Info
@@ -36,7 +41,6 @@ export const EditSupplierProfilePage: React.FC = () => {
     register,
     handleSubmit,
     reset,
-    watch,
     setValue,
     control,
   } = useForm<DeclareSupplierProfileRequest>({
@@ -62,8 +66,8 @@ export const EditSupplierProfilePage: React.FC = () => {
     name: 'growingAreas',
   });
 
-  const selectedCrops = watch('cropTypeIds') || [];
-  const selectedCerts = watch('certifications') || [];
+  const selectedCrops = useWatch({ control, name: 'cropTypeIds' }) || [];
+  const selectedCerts = useWatch({ control, name: 'certifications' }) || [];
 
   // Gom nhóm danh sách cây trồng theo CategoryName
   const groupedCropTypes = useMemo(() => {
@@ -98,8 +102,8 @@ export const EditSupplierProfilePage: React.FC = () => {
           const certificationsList = profile.certifications ? profile.certifications.map((c) => c.certificationName) : [];
           const docs = profile.documents ? profile.documents.map((d) => d.fileUrl) : [];
 
-          setExistingDocumentUrls(docs);
-          if (profile.logoUrl) setAvatarPreview(profile.logoUrl);
+          setExistingDocuments(profile.documents ?? []);
+          if (profile.logoUrl) setAvatarPreview(supplierAssetUrl(profile.logoUrl));
           if (profile.supplierCode) setMetaInfo((prev) => ({ ...prev, code: profile.supplierCode }));
 
           const formattedAreas = (profile.growingAreas || []).map((ga) => ({
@@ -147,15 +151,10 @@ export const EditSupplierProfilePage: React.FC = () => {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      const invalid = validateSupplierFile(file, true);
+      if (invalid) { alert(invalid); return; }
       setAvatarFile(file);
       setAvatarPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setUploadedFiles((prev) => [...prev, ...newFiles]);
     }
   };
 
@@ -197,7 +196,7 @@ export const EditSupplierProfilePage: React.FC = () => {
     try {
       let finalLogoUrl = values.logoUrl || '';
       if (avatarFile) {
-        finalLogoUrl = await supplierService.uploadFile(avatarFile);
+        finalLogoUrl = await supplierService.uploadFile(avatarFile, true);
       }
 
       let newUploadedUrls: string[] = [];
@@ -208,7 +207,7 @@ export const EditSupplierProfilePage: React.FC = () => {
       }
 
       const finalEvidenceUrls = [
-        ...existingDocumentUrls,
+        ...existingDocuments.map(doc => doc.fileUrl),
         ...newUploadedUrls.filter(Boolean),
       ];
 
@@ -232,9 +231,9 @@ export const EditSupplierProfilePage: React.FC = () => {
       await supplierService.updateProfile(payload);
       alert('Cập nhật thông tin thành công!');
       navigate('/supplier/profile');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Submit Error:', err);
-      alert('Cập nhật thất bại: ' + (err?.response?.data?.message || err.message));
+      alert(getAuthErrorMessage(err, 'Cập nhật thất bại.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -275,7 +274,7 @@ export const EditSupplierProfilePage: React.FC = () => {
                     />
                     <label style={{ position: 'absolute', bottom: '4px', right: '4px', backgroundColor: '#333', color: '#fff', borderRadius: '50%', padding: '6px', cursor: 'pointer', display: 'flex' }}>
                       📷
-                      <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+                      <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarChange} style={{ display: 'none' }} />
                     </label>
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#374151', marginTop: '8px', letterSpacing: '0.5px' }}>
@@ -400,7 +399,7 @@ export const EditSupplierProfilePage: React.FC = () => {
                           <input
                             type="number"
                             step="0.1"
-                            {...register(`growingAreas.${index}.areaInHectares` as const, { valueAsNumber: true })}
+                            {...register(`growingAreas.${index}.areaInHectares` as const, { setValueAs: optionalNumericInput })}
                             placeholder="VD: 5.5"
                             style={{ ...inputStyle, backgroundColor: '#ffffff' }}
                           />
@@ -578,51 +577,9 @@ export const EditSupplierProfilePage: React.FC = () => {
               </div>
               <div style={{ padding: '16px' }}>
                 
-                {/* DRAG DROP AREA */}
-                <label style={{
-                  border: '2px dashed #d1d5db',
-                  borderRadius: '8px',
-                  padding: '20px 12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: '#fafafa',
-                  cursor: 'pointer',
-                }}>
-                  <div style={{ fontSize: '28px', color: '#9ca3af', marginBottom: '8px' }}>☁️</div>
-                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151', textAlign: 'center' }}>
-                    Kéo thả hoặc nhấn để tải lên
-                  </span>
-                  <span style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
-                    Hỗ trợ: PDF, JPG, PNG (Tối đa 10MB/file)
-                  </span>
-                  <input type="file" multiple onChange={handleDocumentChange} style={{ display: 'none' }} />
-                </label>
+                <SupplierDocumentEditor existing={existingDocuments} pending={uploadedFiles}
+                  onExistingChange={setExistingDocuments} onPendingChange={setUploadedFiles} disabled={isSubmitting} />
 
-                {/* DANH SÁCH TỆP */}
-                <div style={{ marginTop: '16px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '8px' }}>
-                    DANH SÁCH TÀI LIỆU ĐÃ CHỌN
-                  </div>
-                  
-                  {existingDocumentUrls.length === 0 && uploadedFiles.length === 0 ? (
-                    <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>Chưa có tệp nào được chọn</span>
-                  ) : (
-                    <ul style={{ paddingLeft: '16px', margin: 0, fontSize: '12px', color: '#374151' }}>
-                      {existingDocumentUrls.map((url, i) => (
-                        <li key={`exist-${i}`} style={{ marginBottom: '4px' }}>
-                          <a href={url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>Tài liệu {i + 1}</a>
-                        </li>
-                      ))}
-                      {uploadedFiles.map((file, i) => (
-                        <li key={`new-${i}`} style={{ color: '#059669', marginBottom: '4px' }}>
-                          {file.name} (mới)
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
 
               </div>
             </div>

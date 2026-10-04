@@ -1,6 +1,10 @@
+import axios from 'axios';
+import { getAuthErrorMessage } from '@/services/authService';
+import { validateSupplierFile } from '@/features/supplier/supplierFiles';
+import { optionalNumericInput } from '@/features/supplier/schemas/supplierBatchSchema';
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { useForm, useFieldArray, type SubmitHandler, type Resolver } from 'react-hook-form';
+import { useForm, useWatch, useFieldArray, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Upload,
@@ -45,6 +49,8 @@ const CERTIFICATION_OPTIONS = [
 ];
 
 export const DeclareSupplierProfilePage: React.FC = () => {
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -58,11 +64,10 @@ export const DeclareSupplierProfilePage: React.FC = () => {
     register,
     handleSubmit,
     setValue,
-    watch,
     control,
     formState: { errors },
   } = useForm<DeclareSupplierProfileFormValues>({
-    resolver: zodResolver(declareSupplierProfileSchema) as Resolver<DeclareSupplierProfileFormValues>,
+    resolver: zodResolver(declareSupplierProfileSchema),
     defaultValues: {
       supplierName: '',
       taxCode: '',
@@ -84,8 +89,8 @@ export const DeclareSupplierProfilePage: React.FC = () => {
     name: 'growingAreas',
   });
 
-  const selectedCropTypes = watch('cropTypeIds') || [];
-  const selectedCertifications = watch('certifications') || [];
+  const selectedCropTypes = useWatch({ control, name: 'cropTypeIds' }) || [];
+  const selectedCertifications = useWatch({ control, name: 'certifications' }) || [];
 
   // Gom nhóm danh sách cây trồng theo CategoryName
   const groupedCropTypes = useMemo(() => {
@@ -183,6 +188,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
     setSubmitSuccess(null);
 
     try {
+      const logoUrl = avatarFile ? await supplierService.uploadFile(avatarFile, true) : values.logoUrl;
       let uploadedDocUrls: string[] = [];
       if (uploadedFiles.length > 0) {
         uploadedDocUrls = await Promise.all(
@@ -199,6 +205,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
 
       const payload = {
         ...values,
+        logoUrl,
         cropTypeIds: (values.cropTypeIds || []).map(Number),
         growingAreas: validGrowingAreas,
         evidenceDocumentUrls: uploadedDocUrls.filter(Boolean),
@@ -208,10 +215,10 @@ export const DeclareSupplierProfilePage: React.FC = () => {
         // Cố gắng gọi API Khai báo mới trước
         await supplierService.declareProfile(payload);
         setSubmitSuccess('Khai báo hồ sơ Nhà cung cấp thành công!');
-      } catch (declareErr: any) {
+      } catch (declareErr) {
         // Nếu Server báo lỗi 409 (Hồ sơ đã tồn tại do hệ thống tự sinh bản ghi lúc login)
         // -> Tự động chuyển sang gọi API Cập nhật (PUT) để lưu thông tin đè lên
-        if (declareErr.response?.status === 409 || declareErr.response?.data?.message?.includes('đã tồn tại')) {
+        if (axios.isAxiosError(declareErr) && (declareErr.response?.status === 409 || declareErr.response?.data?.message?.includes('đã tồn tại'))) {
           await supplierService.updateProfile(payload);
           setSubmitSuccess('Cập nhật hồ sơ Nhà cung cấp thành công!');
         } else {
@@ -225,28 +232,8 @@ export const DeclareSupplierProfilePage: React.FC = () => {
         navigate('/supplier/batches');
       }, 1500);
 
-    } catch (err: any) {
-      console.error('Lỗi khi submit:', err.response?.data); 
-      if (err.response?.status === 400) {
-        const serverErrors = err.response.data.errors;
-        if (serverErrors) {
-          const errorMessages = Object.entries(serverErrors)
-            .map(([field, messages]) => {
-              const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
-              return `${field}: ${msgs}`;
-            })
-            .join(' | ');
-          setSubmitError(`Dữ liệu không hợp lệ: ${errorMessages}`);
-        } else {
-          setSubmitError(err.response?.data?.title || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.');
-        }
-      } else if (err.response?.status === 409) {
-        setSubmitError('Mã số thuế này đã được đăng ký trên hệ thống.');
-      } else {
-        setSubmitError(
-          err.response?.data?.message || 'Có lỗi xảy ra khi khai báo thông tin.'
-        );
-      }
+    } catch (err) {
+      setSubmitError(getAuthErrorMessage(err, 'Không thể lưu hồ sơ. Vui lòng kiểm tra dữ liệu và thử lại.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -292,15 +279,20 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                   LOGO DOANH NGHIỆP / HỢP TÁC XÃ
                 </label>
-                <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50/50 w-36 h-36 mx-auto relative group hover:border-gray-400 transition">
-                  <Camera className="w-8 h-8 text-gray-400 mb-1" />
-                  <div className="absolute bottom-2 right-2 bg-gray-800 text-white p-1.5 rounded-full shadow-md">
-                    <Camera className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-                <p className="text-center text-xs text-gray-400 mt-2 font-medium">
-                  Định dạng: JPG, PNG. Tối đa 2MB.
-                </p>
+                <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-4 w-36 h-36 mx-auto cursor-pointer">
+                  {avatarPreview ? <img src={avatarPreview} alt="Ảnh đại diện đã chọn" className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-400" />}
+                  <input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp" disabled={isSubmitting}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const invalid = validateSupplierFile(file, true);
+                      if (invalid) { setSubmitError(invalid); return; }
+                      setAvatarFile(file);
+                      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+                      setAvatarPreview(URL.createObjectURL(file));
+                    }} />
+                </label>
+                <p className="text-center text-xs text-gray-400 mt-2">JPG/PNG/WEBP, tối đa 10 MB.</p>
               </div>
 
               <div className="space-y-4">
@@ -517,7 +509,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                             type="number"
                             step="0.1"
                             {...register(`growingAreas.${index}.areaInHectares` as const, {
-                              valueAsNumber: true,
+                              setValueAs: optionalNumericInput,
                             })}
                             placeholder="VD: 5.5"
                             className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"

@@ -5,7 +5,6 @@ export const supplierGrowingAreaInputSchema = z.object({
     .number({ message: 'Vui lòng chọn vùng trồng' })
     .min(1, 'Vui lòng chọn vùng trồng'),
   areaInHectares: z
-    .coerce
     .number({ message: 'Diện tích phải là một số.' })
     .positive('Diện tích phải lớn hơn 0.')
     .optional()

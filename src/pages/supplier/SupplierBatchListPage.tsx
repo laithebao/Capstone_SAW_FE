@@ -1,3 +1,4 @@
+import { supplierBatchStatuses } from '@/features/supplier/batchStatus';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import {
@@ -138,7 +139,7 @@ export const SupplierBatchListPage: React.FC = () => {
   }, [debouncedKeyword, selectedStatus, selectedOrigin, selectedConsumptionStatus, pageIndex]);
 
   useEffect(() => {
-    fetchBatches();
+    void Promise.resolve().then(fetchBatches);
   }, [fetchBatches]);
 
   // Helper render Badge Trạng thái
@@ -146,7 +147,7 @@ export const SupplierBatchListPage: React.FC = () => {
     const normalizedStatus = (status || '').toUpperCase();
     switch (normalizedStatus) {
       case 'SUBMITTED':
-      case 'PENDING_APPROVAL':
+      case 'PENDING_PREDECLARATION':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
@@ -160,7 +161,7 @@ export const SupplierBatchListPage: React.FC = () => {
             {displayName || 'Chờ kiểm định QC'}
           </span>
         );
-      case 'APPROVED':
+      case 'APPROVED_FOR_STORAGE':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -185,8 +186,8 @@ export const SupplierBatchListPage: React.FC = () => {
 
   // Helper render Badge Trạng thái Tiêu thụ
   const renderConsumptionStatusBadge = (
-    status?: string,
-    displayName?: string
+    status?: string | null,
+    displayName?: string | null
   ) => {
     if (!status) return <span className="text-gray-400 text-xs">-</span>;
 
@@ -499,10 +500,7 @@ export const SupplierBatchListPage: React.FC = () => {
               className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="">Tất cả trạng thái</option>
-              <option value="SUBMITTED">Chờ duyệt</option>
-              <option value="PENDING_QC">Chờ kiểm định QC</option>
-              <option value="APPROVED">Đã duyệt</option>
-              <option value="REJECTED">Bị từ chối</option>
+              {supplierBatchStatuses.map(([status, label]) => <option key={status} value={status}>{label}</option>)}
             </select>
           </div>
         </div>

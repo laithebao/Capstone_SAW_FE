@@ -1,470 +1,109 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router';
-import {
-  ArrowLeft,
-  XCircle,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  Package,
-  FileText,
-  Info,
-  Pencil,
-  MapPin,
-  Boxes,
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router';
+import { Loader2 } from 'lucide-react';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
+import { getAuthErrorMessage } from '@/services/authService';
 import type { SupplierBatchStatusResponse } from '@/types/supplierBatch';
+import { SupplierBatchBreadcrumb } from '@/features/supplier/components/SupplierBatchBreadcrumb';
+import { SupplierDocuments } from '@/features/supplier/components/SupplierDocuments';
+import { canEditSupplierBatch, supplierBatchStatusLabel } from '@/features/supplier/batchStatus';
 
-export const BatchProcessDetailPage: React.FC = () => {
+const date = (value?: string | null) => value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString('vi-VN') : 'Chưa khai báo';
+const time = (value: string) => new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}Z`).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+const quantity = (value: number | null | undefined, unit: string) => value == null ? 'Chưa kiểm nhận' : `${value.toLocaleString('vi-VN', { maximumFractionDigits: 3 })} ${unit}`;
+const range = (min: number | null | undefined, max: number | null | undefined, unit: string) =>
+  min == null && max == null ? 'Chưa khai báo' : `${min ?? '?'} – ${max ?? '?'} ${unit}`;
+
+function Field({ label, value }: { label: string; value: string }) {
+  return <div><dt className="text-xs text-gray-500 mb-1">{label}</dt><dd className="text-sm font-medium text-gray-900 whitespace-pre-wrap break-words">{value}</dd></div>;
+}
+
+export function BatchProcessDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-
-  const [loading, setLoading] = useState<boolean>(true);
-  const [canceling, setCanceling] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<SupplierBatchStatusResponse | null>(null);
-
-  const fetchDetail = async () => {
-    if (!id) return;
-    try {
-      setLoading(true);
-      const response = await supplierBatchService.getBatchStatus(Number(id));
-      setData(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể tải thông tin tiến trình đơn hàng.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const [loading, setLoading] = useState(true);
+  const [canceling, setCanceling] = useState(false);
+  const [error, setError] = useState('');
   useEffect(() => {
-    fetchDetail();
+    let active = true;
+    if (!id || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+      void Promise.resolve().then(() => { if (active) { setError('Mã lô hàng không hợp lệ.'); setLoading(false); } });
+      return () => { active = false; };
+    }
+    void supplierBatchService.getBatchStatus(Number(id)).then(response => {
+      if (active) { setData(response.data); setError(''); }
+    }).catch(e => { if (active) setError(getAuthErrorMessage(e, 'Không thể tải lô hàng.')); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [id]);
 
-  const handleCancelOrder = async () => {
-    if (!id) return;
-
-    const confirmCancel = window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?');
-    if (!confirmCancel) return;
-
+  async function cancel() {
+    if (!data || !canEditSupplierBatch(data.currentStatus) || canceling) return;
+    if (!window.confirm('Bạn có chắc chắn muốn hủy lô hàng này không?')) return;
+    setCanceling(true); setError('');
     try {
-      setCanceling(true);
-      await supplierBatchService.cancelBatch(Number(id));
-      alert('Hủy đơn hàng thành công!');
-      
-      await fetchDetail(); 
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi hủy đơn hàng.');
-    } finally {
-      setCanceling(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-      </div>
-    );
+      await supplierBatchService.cancelBatch(data.batchId, { expectedCreatedAt: data.createdAt, expectedUpdatedAt: data.updatedAt });
+      const response = await supplierBatchService.getBatchStatus(data.batchId);
+      setData(response.data);
+    } catch (e) { setError(getAuthErrorMessage(e, 'Không thể hủy lô hàng.')); }
+    finally { setCanceling(false); }
   }
-
-  if (error || !data) {
-    return (
-      <div className="min-h-screen p-6 bg-gray-50 flex flex-col items-center justify-center">
-        <AlertCircle className="w-12 h-12 text-red-500 mb-2" />
-        <p className="text-sm font-semibold text-gray-800">{error || 'Không tìm thấy dữ liệu'}</p>
-        <button
-          onClick={() => navigate('/supplier/batches')}
-          className="mt-4 px-4 py-2 bg-zinc-800 text-white rounded-lg text-xs font-medium"
-        >
-          Quay lại danh sách
-        </button>
+  if (loading) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>;
+  if (!data) return <div className="p-6"><p role="alert" className="text-red-600">{error}</p><Link to="/supplier/batches">Quay lại danh sách lô hàng</Link></div>;
+  const editable = canEditSupplierBatch(data.currentStatus);
+  return <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="flex flex-wrap justify-between gap-4">
+      <div><SupplierBatchBreadcrumb batchId={data.batchId} batchCode={data.batchCode} />
+        <h1 className="text-2xl font-bold">Chi tiết lô hàng #{data.batchCode}</h1>
+        <p className="text-sm text-emerald-700 mt-2">{data.statusDisplayName || supplierBatchStatusLabel(data.currentStatus)}</p>
       </div>
-    );
-  }
-
-  const processSteps = [
-    {
-      statusKey: 'SUBMITTED',
-      title: 'Đã tạo đơn',
-      description: 'Hệ thống tự động ghi nhận đơn hàng từ NPP.',
-    },
-    {
-      statusKey: 'PENDING_APPROVAL',
-      title: 'Chờ duyệt',
-      description: 'Đang chờ Quản lý khu vực phê duyệt.',
-    },
-    {
-      statusKey: 'APPROVED',
-      title: 'Đã duyệt / Bị từ chối',
-      description: 'Kết quả phê duyệt từ cấp quản lý.',
-    },
-    {
-      statusKey: 'PREPARING',
-      title: 'Đang chuẩn bị',
-      description: 'Sản phẩm đang được đóng gói và chuẩn bị giao.',
-    },
-    {
-      statusKey: 'DELIVERED',
-      title: 'Đã giao',
-      description: 'Đơn hàng đã giao thành công đến điểm nhận.',
-    },
-  ];
-
-  const isCanceled = data.currentStatus === 'CANCELLED' || data.currentStatus === 'CANCELED';
-  
-  // Đồng bộ logic kiểm tra trạng thái với trang Edit
-  const EDITABLE_STATUSES = ['SUBMITTED', 'PENDING_APPROVAL', 'PENDING'];
-  const currentStatusStr = data.currentStatus ? String(data.currentStatus).toUpperCase() : '';
-  const canEdit = EDITABLE_STATUSES.includes(currentStatusStr);
-
-  return (
-    <div className="min-h-screen bg-gray-50/60 p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/supplier/batches')} // FIX Ở ĐÂY: Về thẳng danh sách
-            className="p-1.5 hover:bg-gray-200/70 rounded-lg text-gray-600 transition"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <div className="flex items-center gap-2 text-xs text-gray-500 mb-0.5">
-              <span>Quản lý đơn đặt hàng</span>
-              <span>&gt;</span>
-              <span className="text-gray-700">Chi tiết đơn đặt hàng</span>
-            </div>
-            <h1 className="text-xl font-bold text-gray-900">
-              Đơn hàng #{data.batchCode}
-            </h1>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(`/supplier/batches/${id}/edit`)}
-            disabled={canceling || !canEdit} // FIX Ở ĐÂY: Ẩn nút theo danh sách trạng thái
-            className="px-4 py-1.5 border border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-100/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
-          >
-            <Pencil className="w-4 h-4 text-blue-500" />
-            <span>Chỉnh sửa</span>
-          </button>
-
-          <button
-            onClick={handleCancelOrder}
-            disabled={canceling || isCanceled}
-            className="px-4 py-1.5 border border-red-200 text-red-600 bg-red-50/50 hover:bg-red-100/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
-          >
-            {canceling ? (
-              <Loader2 className="w-4 h-4 animate-spin text-red-500" />
-            ) : (
-              <XCircle className="w-4 h-4 text-red-500" />
-            )}
-            <span>{canceling ? 'Đang hủy...' : isCanceled ? 'Đã hủy' : 'Hủy đơn'}</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* CỘT TRÁI (2/3) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Card 1: Tóm tắt đơn hàng */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 relative">
-            <div className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-6">
-              <FileText className="w-4 h-4 text-gray-500" />
-              <span>Tóm tắt đơn hàng</span>
-            </div>
-
-            <div className="absolute top-6 right-6">
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  isCanceled
-                    ? 'bg-red-100 text-red-700'
-                    : 'bg-emerald-100 text-emerald-700'
-                }`}
-              >
-                {data.statusDisplayName || data.currentStatus}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-y-4 gap-x-6 text-xs">
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  MÃ ĐƠN HÀNG
-                </p>
-                <p className="font-bold text-gray-800 text-sm mt-1">{data.batchCode}</p>
-              </div>
-
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  NGÀY TẠO
-                </p>
-                <p className="text-gray-700 font-medium mt-1">
-                  {new Date(data.createdAt).toLocaleString('vi-VN', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  NGÀY GIAO DỰ KIẾN
-                </p>
-                <p className="text-emerald-600 font-bold mt-1">
-                  {data.expectedDeliveryDate
-                    ? new Date(data.expectedDeliveryDate).toLocaleDateString('vi-VN')
-                    : 'Chưa cập nhật'}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  TỔNG SỐ LƯỢNG KHAI BÁO
-                </p>
-                <p className="font-bold text-gray-900 text-sm mt-1">
-                  {data.declaredQuantity?.toLocaleString()} {data.unit}
-                </p>
-              </div>
-
-              <div className="md:col-span-2">
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  VÙNG TRỒNG KHAI THÁC
-                </p>
-                <p className="text-gray-800 font-bold mt-1">
-                  {data.areaName || 'Chưa cập nhật'}
-                </p>
-                {(data.province || data.district || data.ward) && (
-                  <p className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>{[data.ward, data.district, data.province].filter(Boolean).join(', ')}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Card 2: Thông tin sản phẩm */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <div className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-4">
-              <Package className="w-4 h-4 text-gray-500" />
-              <span>Thông tin sản phẩm</span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="text-[10px] text-gray-400 uppercase border-b border-gray-100">
-                    <th className="pb-3 font-semibold w-12">STT</th>
-                    <th className="pb-3 font-semibold">SẢN PHẨM</th>
-                    <th className="pb-3 font-semibold">SKU / PHÂN LOẠI</th>
-                    <th className="pb-3 font-semibold text-right">SỐ LƯỢNG</th>
-                    <th className="pb-3 font-semibold text-right pr-2">ĐƠN VỊ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  <tr className="hover:bg-gray-50/50">
-                    <td className="py-3.5 font-medium text-gray-500">01</td>
-                    <td className="py-3.5 font-bold text-gray-800">{data.productName}</td>
-                    <td className="py-3.5 text-gray-500 font-mono text-[11px]">
-                      {data.cropTypeName || 'Chưa cập nhật'}
-                    </td>
-                    <td className="py-3.5 font-bold text-gray-900 text-right">
-                      {data.declaredQuantity?.toLocaleString()}
-                    </td>
-                    <td className="py-3.5 text-gray-600 text-right pr-2">{data.unit}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Card 3: Thông tin chi tiết lô hàng */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <div className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-6">
-              <Boxes className="w-4 h-4 text-gray-500" />
-              <span>Thông tin chi tiết lô hàng</span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-6 text-xs">
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  SỐ LÔ (LOT NUMBER)
-                </p>
-                <p className="font-bold text-gray-800 text-sm mt-1">
-                  {(data as any).lotNumber || 'Chưa khởi tạo'}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  CHỨNG NHẬN / TIÊU CHUẨN
-                </p>
-                <p className="text-gray-800 font-bold mt-1">
-                  {(data as any).certifications || 'Chưa cập nhật'}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  NGÀY THU HOẠCH / SẢN XUẤT
-                </p>
-                <p className="text-gray-800 font-bold mt-1">
-                  {data.harvestDate
-                    ? new Date(data.harvestDate).toLocaleDateString('vi-VN')
-                    : 'Chưa cập nhật'}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  HẠN SỬ DỤNG
-                </p>
-                <p className="text-gray-800 font-medium mt-1">
-                  {data.expiryDate
-                    ? new Date(data.expiryDate).toLocaleDateString('vi-VN')
-                    : 'Không có ghi nhận'}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  NHIỆT ĐỘ BẢO QUẢN CẦN THIẾT
-                </p>
-                <p className="text-gray-800 font-medium mt-1">
-                  {data.expectedMinTempC !== null || data.expectedMaxTempC !== null
-                    ? `${data.expectedMinTempC ?? '?'}°C - ${data.expectedMaxTempC ?? '?'}°C`
-                    : 'Tiêu chuẩn thường'}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  ĐỘ ẨM BẢO QUẢN CẦN THIẾT
-                </p>
-                <p className="text-gray-800 font-medium mt-1">
-                  {data.expectedMinHumidityPct !== null || data.expectedMaxHumidityPct !== null
-                    ? `${data.expectedMinHumidityPct ?? '?'}% - ${data.expectedMaxHumidityPct ?? '?'}%`
-                    : 'Tiêu chuẩn thường'}
-                </p>
-              </div>
-
-              {(data.packagingType || data.packageCount || data.packageUnitWeightKg) && (
-                <div className="md:col-span-2 mt-1 pt-5 border-t border-gray-100">
-                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-2">
-                    CHI TIẾT ĐÓNG GÓI
-                  </p>
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 inline-block">
-                    <p className="text-gray-800 font-medium">
-                      {data.packageCount?.toLocaleString() || '?'} {data.packagingType || 'Kiện'}
-                      {data.packageUnitWeightKg ? ` × ${data.packageUnitWeightKg} kg/kiện` : ''}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* CỘT PHẢI (1/3) */}
-        <div className="space-y-6">
-          {/* Card: Tiến trình xử lý (Vertical Stepper) */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <div className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-6">
-              <Clock className="w-4 h-4 text-gray-500" />
-              <span>Tiến trình xử lý</span>
-            </div>
-
-            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-              {processSteps.map((step) => {
-                const historyMatch = data.statusHistory?.find(
-                  (h) => h.newStatus === step.statusKey
-                );
-                const isCurrent = data.currentStatus === step.statusKey;
-                const isPassed = !!historyMatch || isCurrent;
-
-                return (
-                  <div key={step.statusKey} className="relative text-xs">
-                    <div
-                      className={`absolute -left-6 top-0.5 w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
-                        isCurrent
-                          ? 'bg-zinc-800 border-zinc-900 text-white ring-4 ring-gray-100'
-                          : isPassed
-                          ? 'bg-emerald-500 border-emerald-500 text-white'
-                          : 'bg-white border-gray-300 text-gray-300'
-                      }`}
-                    >
-                      <CheckCircle2 className="w-3 h-3" />
-                    </div>
-
-                    <div>
-                      <p className={`font-bold ${isPassed ? 'text-gray-900' : 'text-gray-400'}`}>
-                        {step.title}
-                      </p>
-
-                      {historyMatch && (
-                        <p className="text-[10px] text-gray-400 mt-0.5">
-                          {new Date(historyMatch.changedAt).toLocaleString('vi-VN', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </p>
-                      )}
-
-                      <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
-                        {step.description}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Card: Thông tin xử lý & Ghi chú */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-center gap-2 text-sm font-bold text-gray-800 border-b pb-3">
-              <Info className="w-4 h-4 text-gray-500" />
-              <span>Thông tin xử lý</span>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                  KẾT QUẢ DUYỆT (QC)
-                </p>
-                <p className="text-gray-500 mt-1">
-                  {data.qcResult ? (
-                    <span className="font-semibold text-gray-800">{data.qcResult}</span>
-                  ) : (
-                    <span className="italic">Chưa có kết quả</span>
-                  )}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">
-                  GHI CHÚ TỪ KHO
-                </p>
-                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-xs">
-                  {data.warehouseNote || 'Không có ghi chú.'}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="flex items-center gap-3">
+        <Link to="/supplier/batches" className="text-sm border rounded-lg p-2">Quay lại danh sách</Link>
+        {editable && <>
+          {!canceling && <Link to={`/supplier/batches/${data.batchId}/edit`} className="text-sm text-blue-700 border rounded-lg p-2">Chỉnh sửa lô hàng</Link>}
+          <button type="button" onClick={() => void cancel()} disabled={canceling} className="text-sm text-red-700 border rounded-lg p-2 disabled:opacity-50">{canceling ? 'Đang hủy...' : 'Hủy lô hàng'}</button>
+        </>}
       </div>
     </div>
-  );
-};
-
+    {error && <p role="alert" className="p-3 bg-red-50 text-red-700 rounded-lg">{error}</p>}
+    {!editable && <p className="text-sm text-gray-500">Supplier chỉ có thể sửa hoặc hủy khi lô hàng đang chờ tiếp nhận.</p>}
+    <div className="grid lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-6">
+        <section className="bg-white border rounded-xl p-6"><h2 className="font-semibold mb-4">Thông tin khai báo</h2>
+          <dl className="grid sm:grid-cols-2 gap-5">
+            <Field label="Sản phẩm" value={data.productName} /><Field label="Nông sản" value={data.cropTypeName} />
+            <Field label="Vùng trồng" value={data.areaName} /><Field label="Địa chỉ vùng trồng" value={[data.ward, data.district, data.province].filter(Boolean).join(', ') || 'Chưa cập nhật'} />
+            <Field label="Số lượng khai báo" value={quantity(data.declaredQuantity, data.unit)} />
+            <Field label="Tổng khối lượng khai báo" value={`${quantity(data.weightInKg, 'kg')} (${quantity(data.weightInKg / 1000, 'tấn')})`} />
+            <Field label="Quy cách đóng gói" value={data.packageCount != null && data.packageUnitWeightKg != null ? `${data.packageCount} ${data.packagingType || 'kiện'} × ${data.packageUnitWeightKg} kg/kiện` : data.packagingType || 'Chưa khai báo'} />
+            <Field label="Ngày thu hoạch" value={date(data.harvestDate)} /><Field label="Ngày giao dự kiến" value={date(data.expectedDeliveryDate)} /><Field label="Ngày hết hạn" value={date(data.expiryDate)} />
+            <Field label="Nhiệt độ bảo quản" value={range(data.expectedMinTempC, data.expectedMaxTempC, '°C')} />
+            <Field label="Độ ẩm bảo quản" value={range(data.expectedMinHumidityPct, data.expectedMaxHumidityPct, '%')} />
+            <Field label="Ghi chú Supplier" value={data.supplierNote || 'Không có ghi chú.'} />
+          </dl>
+        </section>
+        <section className="bg-white border rounded-xl p-6"><h2 className="font-semibold mb-4">Kiểm nhận và nhập kho</h2>
+          <dl className="grid sm:grid-cols-2 gap-5">
+            <Field label="Số lượng staff kiểm nhận" value={quantity(data.verifiedQuantity, data.unit)} />
+            <Field label="Khối lượng staff kiểm nhận" value={quantity(data.verifiedWeightInKg, 'kg')} />
+            <Field label="Số lượng đã nhập kho (phiếu đã hoàn tất)" value={data.receivedQuantity > 0 ? quantity(data.receivedQuantity, data.unit) : 'Chưa nhập kho'} />
+            <Field label="Ghi chú tiếp nhận" value={data.warehouseNote || 'Không có ghi chú.'} />
+            <Field label="Kết quả QC" value={data.qcResult || 'Chưa có kết quả'} /><Field label="Hạng chất lượng" value={data.qualityGrade || 'Chưa phân hạng'} />
+            {data.rejectionReason && <Field label="Lý do từ chối" value={data.rejectionReason} />}
+          </dl>
+        </section>
+        <section className="bg-white border rounded-xl p-6"><h2 className="font-semibold mb-4">Tài liệu đính kèm</h2><SupplierDocuments documents={data.documents ?? []} /></section>
+      </div>
+      <section className="bg-white border rounded-xl p-6 h-fit"><h2 className="font-semibold mb-4">Lịch sử xử lý lô hàng</h2>
+        <ol className="space-y-5">{[...data.statusHistory].reverse().map((item, index) => <li key={`${index}-${item.changedAt}`} className="border-l-2 border-emerald-300 pl-3">
+          <p className="text-sm font-semibold">{supplierBatchStatusLabel(item.newStatus)}</p>
+          <p className="text-xs text-gray-500 mt-1">{time(item.changedAt)}</p>
+          {item.changedBy && <p className="text-xs text-gray-600 mt-1">{item.changedBy}</p>}
+          {item.changeReason && <p className="text-sm text-gray-600 mt-1">{item.changeReason}</p>}
+        </li>)}</ol>
+        {data.statusHistory.length === 0 && <p className="text-sm text-gray-500">Chưa có lịch sử xử lý.</p>}
+      </section>
+    </div>
+  </div>;
+}
 export default BatchProcessDetailPage;

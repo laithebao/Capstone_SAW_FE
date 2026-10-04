@@ -1,3 +1,5 @@
+import axios from 'axios';
+import { getAuthErrorMessage } from '@/services/authService';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { supplierService } from '../../services/suppliers/supplierService';
@@ -27,12 +29,12 @@ export const SupplierProfilePage: React.FC = () => {
         }
 
         setProfile(data);
-      } catch (err: any) {
-        if (err.response?.status === 404) {
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 404) {
           // Chưa có thông tin hồ sơ -> Chuyển hướng sang trang Khai báo profile
           navigate(ROUTES.SUPPLIER_PROFILE_DECLARE);
         } else {
-          setError(err.response?.data?.message || 'Không thể tải thông tin hồ sơ.');
+          setError(getAuthErrorMessage(err, 'Không thể tải thông tin hồ sơ.'));
         }
       } finally {
         setLoading(false);

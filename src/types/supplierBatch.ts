@@ -13,7 +13,7 @@ export interface GetSupplierBatchesQueryRequest {
   keyword?: string;
   status?: string;
   province?: string; // Đã sửa: Đổi origin thành province
-  consumptionStatus?: string;
+  consumptionStatus?: string | null;
   fromDate?: string;
   toDate?: string;
   pageIndex?: number;
@@ -38,8 +38,8 @@ export interface SupplierBatchItemResponse {
   completedDate?: string | null;
   status: string;
   statusDisplayName: string;
-  consumptionStatus?: string;
-  consumptionStatusDisplayName?: string;
+  consumptionStatus?: string | null;
+  consumptionStatusDisplayName?: string | null;
 }
 
 // Tổng quan thống kê danh sách lô hàng
@@ -74,6 +74,13 @@ export interface BatchStatusHistoryDto {
 
 // Response chi tiết trạng thái lô hàng
 export interface SupplierBatchStatusResponse {
+  cropTypeId: number;
+  growingAreaId: number;
+  updatedAt: string | null;
+  verifiedQuantity: number | null;
+  verifiedWeightInKg: number | null;
+  supplierNote: string | null;
+  documents: import('./supplier').SupplierDocumentDto[];
   batchId: number;
   batchCode: string;
   productName: string;

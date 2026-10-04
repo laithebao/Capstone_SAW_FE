@@ -21,7 +21,7 @@ export const supplierBatchService = {
 
   // UC 3.2.45: Khai báo lô hàng mới
   declareBatch: async (
-    data: DeclareBatchFormValues
+    data: DeclareBatchFormValues & { evidenceDocumentUrls?: string[] }
   ): Promise<{ message: string; data: SupplierBatchItemResponse }> => {
     const response = await apiClient.post('/SupplierBatches', data);
     return response.data;
@@ -30,7 +30,7 @@ export const supplierBatchService = {
   // UC 3.2.46: Chỉnh sửa thông tin lô hàng
   updateBatch: async (
     id: number,
-    data: UpdateBatchFormValues
+    data: UpdateBatchFormValues & { expectedCreatedAt: string; expectedUpdatedAt: string | null; evidenceDocumentUrls?: string[] }
   ): Promise<{ message: string; data: SupplierBatchItemResponse }> => {
     const response = await apiClient.put(`/SupplierBatches/${id}`, data);
     return response.data;
@@ -43,9 +43,9 @@ export const supplierBatchService = {
     return response.data;
   },
 
-  cancelBatch: async (batchId: number): Promise<{ message: string }> => {
+  cancelBatch: async (batchId: number, version: { expectedCreatedAt: string; expectedUpdatedAt: string | null }): Promise<{ message: string }> => {
     const response = await apiClient.post<{ message: string }>(
-      `/SupplierBatches/${batchId}/cancel`
+      `/SupplierBatches/${batchId}/cancel`, version
     );
     return response.data;
   },

@@ -1,6 +1,9 @@
+import { optionalNumericInput, type DeclareBatchFormInput } from '@/features/supplier/schemas/supplierBatchSchema';
+import { getAuthErrorMessage } from '@/services/authService';
+import { uploadSupplierFile } from '@/features/supplier/supplierFiles';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { useForm, type SubmitHandler, type Resolver } from 'react-hook-form';
+import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Info,
@@ -41,12 +44,12 @@ export const DeclareBatchPage: React.FC = () => {
 
   const {
     register,
+    control,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
-  } = useForm<DeclareBatchFormValues>({
-    resolver: zodResolver(declareBatchSchema) as Resolver<DeclareBatchFormValues>,
+  } = useForm<DeclareBatchFormInput, unknown, DeclareBatchFormValues>({
+    resolver: zodResolver(declareBatchSchema),
     defaultValues: {
       unit: 'Tấn',
       cropTypeId: 0,
@@ -65,11 +68,11 @@ export const DeclareBatchPage: React.FC = () => {
   });
 
   // Watch các field cần theo dõi realtime
-  const currentUnit = watch('unit');
-  const currentCropTypeId = watch('cropTypeId');
-  const currentPackageCount = watch('packageCount');
-  const currentPackageUnitWeightKg = watch('packageUnitWeightKg');
-  const currentDeclaredQuantity = watch('declaredQuantity');
+  const currentUnit = useWatch({ control, name: 'unit' });
+  const currentCropTypeId = useWatch({ control, name: 'cropTypeId' });
+  const currentPackageCount = useWatch({ control, name: 'packageCount' });
+  const currentPackageUnitWeightKg = useWatch({ control, name: 'packageUnitWeightKg' });
+  const currentDeclaredQuantity = useWatch({ control, name: 'declaredQuantity' });
 
   // Biến kiểm tra xem đơn vị hiện tại có phải là Bao hoặc Thùng không
   const isPackageUnit = currentUnit === 'Bao' || currentUnit === 'Thùng';
@@ -122,9 +125,8 @@ export const DeclareBatchPage: React.FC = () => {
     const fetchInitialData = async () => {
       try {
         setIsLoadingAreas(true);
-        const [profile, allCrops] = await Promise.all([
+        const [profile] = await Promise.all([
           supplierService.getMyProfile().catch(() => null),
-          supplierService.getCropTypes().catch(() => []),
         ]);
 
         // 1. Lấy danh sách cây trồng
@@ -132,7 +134,7 @@ export const DeclareBatchPage: React.FC = () => {
         if (profile && Array.isArray(profile.cropTypes) && profile.cropTypes.length > 0) {
           crops = profile.cropTypes;
         } else {
-          crops = allCrops;
+          crops = [];
         }
         setCropTypeOptions(crops);
 
@@ -154,11 +156,7 @@ export const DeclareBatchPage: React.FC = () => {
           setGrowingAreas(profile.growingAreas);
           setValue('growingAreaId', profile.growingAreas[0].growingAreaId);
         } else {
-          const fallbackAreas = await supplierService.getGrowingAreas();
-          setGrowingAreas(fallbackAreas);
-          if (fallbackAreas.length > 0) {
-            setValue('growingAreaId', fallbackAreas[0].growingAreaId);
-          }
+          setGrowingAreas([]);
         }
       } catch (error) {
         console.error('Lỗi khi tải dữ liệu khởi tạo:', error);
@@ -234,11 +232,12 @@ export const DeclareBatchPage: React.FC = () => {
     setSubmitError(null);
 
     try {
-      await supplierBatchService.declareBatch(values);
+      const evidenceDocumentUrls = await Promise.all(uploadedFiles.map(file => uploadSupplierFile(file)));
+      await supplierBatchService.declareBatch({ ...values, evidenceDocumentUrls });
       navigate('/supplier/batches');
-    } catch (err: any) {
+    } catch (err) {
       setSubmitError(
-        err.response?.data?.message || 'Không thể khai báo lô hàng. Vui lòng thử lại.'
+        getAuthErrorMessage(err, 'Không thể khai báo lô hàng. Vui lòng thử lại.')
       );
     } finally {
       setIsSubmitting(false);
@@ -475,7 +474,7 @@ export const DeclareBatchPage: React.FC = () => {
                         step="1"
                         min="1"
                         readOnly
-                        {...register('packageCount', { valueAsNumber: true })}
+                        {...register('packageCount', { setValueAs: optionalNumericInput })}
                         placeholder="Được tự động điền..."
                         className="w-full bg-gray-100 border border-blue-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-500 cursor-not-allowed focus:outline-none"
                       />
@@ -495,7 +494,7 @@ export const DeclareBatchPage: React.FC = () => {
                         type="number"
                         step="0.1"
                         min="0.1"
-                        {...register('packageUnitWeightKg', { valueAsNumber: true })}
+                        {...register('packageUnitWeightKg', { setValueAs: optionalNumericInput })}
                         placeholder={currentUnit === 'Bao' ? 'Gợi ý: 25 kg' : 'Gợi ý: 10 kg'}
                         className="w-full bg-white border border-blue-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                       />
@@ -552,6 +551,9 @@ export const DeclareBatchPage: React.FC = () => {
                     {...register('expectedDeliveryDate')}
                     className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
+                  {errors.expectedDeliveryDate && (
+                    <p className="text-[11px] text-red-500 mt-1">{errors.expectedDeliveryDate.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -595,7 +597,7 @@ export const DeclareBatchPage: React.FC = () => {
                     <input
                       type="number"
                       step="0.5"
-                      {...register('expectedMinTempC', { valueAsNumber: true })}
+                      {...register('expectedMinTempC', { setValueAs: optionalNumericInput })}
                       placeholder="Ví dụ: 2"
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
                     />
@@ -610,7 +612,7 @@ export const DeclareBatchPage: React.FC = () => {
                     <input
                       type="number"
                       step="0.5"
-                      {...register('expectedMaxTempC', { valueAsNumber: true })}
+                      {...register('expectedMaxTempC', { setValueAs: optionalNumericInput })}
                       placeholder="Ví dụ: 10"
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
                     />
@@ -637,7 +639,7 @@ export const DeclareBatchPage: React.FC = () => {
                       step="1"
                       min="0"
                       max="100"
-                      {...register('expectedMinHumidityPct', { valueAsNumber: true })}
+                      {...register('expectedMinHumidityPct', { setValueAs: optionalNumericInput })}
                       placeholder="Ví dụ: 60"
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
@@ -654,7 +656,7 @@ export const DeclareBatchPage: React.FC = () => {
                       step="1"
                       min="0"
                       max="100"
-                      {...register('expectedMaxHumidityPct', { valueAsNumber: true })}
+                      {...register('expectedMaxHumidityPct', { setValueAs: optionalNumericInput })}
                       placeholder="Ví dụ: 85"
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />

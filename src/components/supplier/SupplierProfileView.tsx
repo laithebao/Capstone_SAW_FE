@@ -1,9 +1,9 @@
+import { SupplierDocuments } from '@/features/supplier/components/SupplierDocuments';
+import { supplierAssetUrl } from '@/features/supplier/supplierFiles';
 import React from 'react';
 import { 
   Building2, 
   MapPin, 
-  FileText, 
-  Download, 
   Pencil,
   Sprout
 } from 'lucide-react';
@@ -38,7 +38,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
         <div className="flex items-start gap-4 pb-6 border-b border-gray-100">
           <div className="w-20 h-20 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xl overflow-hidden shrink-0">
             {profile.logoUrl ? (
-              <img src={profile.logoUrl} alt={profile.supplierName} className="w-full h-full object-cover" />
+              <img src={supplierAssetUrl(profile.logoUrl)} alt={profile.supplierName} className="w-full h-full object-cover" />
             ) : (
               <Building2 className="w-10 h-10 text-emerald-500" />
             )}
@@ -217,38 +217,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-4">
         <h2 className="text-lg font-semibold text-gray-800">File đính kèm</h2>
         
-        {profile.documents && profile.documents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {profile.documents.map((doc, idx) => (
-              <div 
-                key={idx} 
-                className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors bg-white"
-              >
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="p-2 rounded-lg bg-gray-50 text-gray-500 shrink-0">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div className="truncate">
-                    <p className="text-sm font-medium text-gray-800 truncate">{doc.fileName}</p>
-                    {doc.fileSizeMb && (
-                      <p className="text-xs text-gray-400">{doc.fileSizeMb} MB</p>
-                    )}
-                  </div>
-                </div>
-                <a 
-                  href={doc.fileUrl} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                </a>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-400 italic">Không có tài liệu đính kèm.</p>
-        )}
+        <SupplierDocuments documents={profile.documents ?? []} />
       </div>
     </div>
   );

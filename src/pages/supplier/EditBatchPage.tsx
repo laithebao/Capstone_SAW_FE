@@ -1,6 +1,12 @@
+import { SupplierBatchBreadcrumb } from '@/features/supplier/components/SupplierBatchBreadcrumb';
+import { SupplierDocumentEditor } from '@/features/supplier/components/SupplierDocuments';
+import type { SupplierDocumentDto } from '@/types/supplier';
+import { optionalNumericInput, type DeclareBatchFormInput } from '@/features/supplier/schemas/supplierBatchSchema';
+import { getAuthErrorMessage } from '@/services/authService';
+import { uploadSupplierFile } from '@/features/supplier/supplierFiles';
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { useForm, type SubmitHandler, type Resolver } from 'react-hook-form';
+import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Info,
@@ -27,6 +33,9 @@ import type { SupplierGrowingAreaDto, SupplierCropTypeDto } from '@/types/suppli
 export const EditBatchPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [version, setVersion] = useState<{ expectedCreatedAt: string; expectedUpdatedAt: string | null } | null>(null);
+  const [documents, setDocuments] = useState<SupplierDocumentDto[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -44,21 +53,21 @@ export const EditBatchPage: React.FC = () => {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setValue,
-    watch,
     formState: { errors },
-  } = useForm<UpdateBatchFormValues>({
-    resolver: zodResolver(updateBatchSchema) as Resolver<UpdateBatchFormValues>,
+  } = useForm<DeclareBatchFormInput, unknown, UpdateBatchFormValues>({
+    resolver: zodResolver(updateBatchSchema),
   });
 
   // Watch các field cần theo dõi realtime
-  const currentUnit = watch('unit');
-  const currentCropTypeId = watch('cropTypeId');
-  const currentPackageCount = watch('packageCount');
-  const currentPackageUnitWeightKg = watch('packageUnitWeightKg');
-  const currentDeclaredQuantity = watch('declaredQuantity');
+  const currentUnit = useWatch({ control, name: 'unit' });
+  const currentCropTypeId = useWatch({ control, name: 'cropTypeId' });
+  const currentPackageCount = useWatch({ control, name: 'packageCount' });
+  const currentPackageUnitWeightKg = useWatch({ control, name: 'packageUnitWeightKg' });
+  const currentDeclaredQuantity = useWatch({ control, name: 'declaredQuantity' });
 
   // Tính tổng trọng lượng ước tính khi đóng gói theo kiện
   const estimatedWeightKg = useMemo(() => {
@@ -95,17 +104,15 @@ export const EditBatchPage: React.FC = () => {
         setLoading(true);
         setIsLoadingAreas(true);
 
-        const [statusResponse, profile, allCrops] = await Promise.all([
+        const [statusResponse, profile] = await Promise.all([
           supplierBatchService.getBatchStatus(Number(id)),
           supplierService.getMyProfile().catch(() => null),
-          supplierService.getCropTypes().catch(() => []),
         ]);
 
         const data = statusResponse.data;
 
-        // BẮT ĐẦU CHẶN Ở ĐÂY (Phiên bản linh hoạt hơn)
-        // Bao gồm các trạng thái có thể được hiểu là "Chờ duyệt" / "Mới tạo"
-        const EDITABLE_STATUSES = ['SUBMITTED', 'PENDING_APPROVAL', 'PENDING'];
+        // ĐÃ SỬA S04: CHỈ CHO PHÉP SUBMITTED MỚI ĐƯỢC CHỈNH SỬA
+        const EDITABLE_STATUSES = ['SUBMITTED'];
         const currentStatusStr = data.currentStatus ? String(data.currentStatus).toUpperCase() : '';
 
         if (!EDITABLE_STATUSES.includes(currentStatusStr)) {
@@ -115,6 +122,8 @@ export const EditBatchPage: React.FC = () => {
         }
 
         setBatchCode(data.batchCode);
+        setVersion({ expectedCreatedAt: data.createdAt, expectedUpdatedAt: data.updatedAt });
+        setDocuments(data.documents ?? []);
         setBatchCreatedAt(data.createdAt);
 
         // 1. Tải danh sách cây trồng
@@ -122,13 +131,13 @@ export const EditBatchPage: React.FC = () => {
         if (profile && Array.isArray(profile.cropTypes) && profile.cropTypes.length > 0) {
           crops = profile.cropTypes;
         } else {
-          crops = allCrops;
+          crops = [];
         }
         setCropTypeOptions(crops);
 
         // Tìm CropType khớp với dữ liệu lô hàng hiện tại
         const matchedCrop = crops.find(
-          (c) => c.cropName === data.cropTypeName || Number(c.cropTypeId) === Number((data as any).cropTypeId)
+          (c) => Number(c.cropTypeId) === data.cropTypeId
         );
 
         let initialCat = '';
@@ -137,9 +146,8 @@ export const EditBatchPage: React.FC = () => {
         if (matchedCrop) {
           initialCat = matchedCrop.categoryName || 'Nông sản khác';
           initialCropId = Number(matchedCrop.cropTypeId);
-        } else if (crops.length > 0) {
-          initialCat = crops[0].categoryName || 'Nông sản khác';
-          initialCropId = Number(crops[0].cropTypeId);
+        } else {
+          setSubmitError('Nông sản không còn được đăng ký. Vui lòng chọn lại nông sản hợp lệ.');
         }
 
         setSelectedCategory(initialCat);
@@ -149,22 +157,24 @@ export const EditBatchPage: React.FC = () => {
         if (profile && profile.growingAreas && profile.growingAreas.length > 0) {
           userAreas = profile.growingAreas;
         } else {
-          userAreas = await supplierService.getGrowingAreas();
+          userAreas = [];
         }
         setGrowingAreas(userAreas);
 
+        // ĐÃ SỬA S06: Bind bằng đúng ID vùng thay vì bằng Tên/Tỉnh để tránh chọn nhầm vùng
         const matchedArea = userAreas.find(
-          (a) => a.areaName === data.areaName || (a.province === data.province && a.district === data.district)
+          (a) => a.growingAreaId === data.growingAreaId
         );
-        const selectedAreaId = matchedArea ? matchedArea.growingAreaId : userAreas[0]?.growingAreaId || 1;
+        if (!matchedArea) setSubmitError('Vùng trồng của lô không còn trong hồ sơ. Vui lòng chọn lại vùng hợp lệ.');
+        const selectedAreaId = matchedArea ? matchedArea.growingAreaId : 0;
 
         // 3. Xác định unit hợp lệ (map về enum: Tấn | Kg | Bao | Thùng)
-        const rawUnit = data.unit || 'Kg';
+        const rawUnit = ({ kg: 'Kg', kilogram: 'Kg', ton: 'Tấn', tan: 'Tấn', 'tấn': 'Tấn', bao: 'Bao', 'thùng': 'Thùng' } as Record<string, string>)[data.unit.trim().toLowerCase()] ?? data.unit;
         const validUnits = ['Tấn', 'Kg', 'Bao', 'Thùng'] as const;
         type ValidUnit = typeof validUnits[number];
         const mappedUnit: ValidUnit = (validUnits as readonly string[]).includes(rawUnit)
           ? (rawUnit as ValidUnit)
-          : 'Kg';
+          : (() => { throw new Error('Đơn vị của lô không được hỗ trợ. Vui lòng kiểm tra dữ liệu lô.'); })();
 
         // 4. Định dạng Date cho <input type="date" /> (YYYY-MM-DD)
         const formatForDateInput = (dateStr?: string | null) => {
@@ -189,10 +199,10 @@ export const EditBatchPage: React.FC = () => {
           expectedMaxTempC: data.expectedMaxTempC ?? undefined,
           expectedMinHumidityPct: data.expectedMinHumidityPct ?? undefined,
           expectedMaxHumidityPct: data.expectedMaxHumidityPct ?? undefined,
-          note: data.warehouseNote || '',
+          note: data.supplierNote || '',
         });
-      } catch (err: any) {
-        setSubmitError('Không thể tải thông tin lô hàng.');
+      } catch (err) {
+        setSubmitError(getAuthErrorMessage(err, 'Không thể tải thông tin lô hàng.'));
       } finally {
         setLoading(false);
         setIsLoadingAreas(false);
@@ -251,16 +261,17 @@ export const EditBatchPage: React.FC = () => {
   };
 
   const onSubmit: SubmitHandler<UpdateBatchFormValues> = async (values) => {
-    if (!id) return;
+    if (!id || !version) return;
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      await supplierBatchService.updateBatch(Number(id), values);
+      const uploaded = await Promise.all(pendingFiles.map(file => uploadSupplierFile(file)));
+      await supplierBatchService.updateBatch(Number(id), { ...values, ...version, evidenceDocumentUrls: [...documents.map(doc => doc.fileUrl), ...uploaded] });
       navigate(`/supplier/batches/${id}`);
-    } catch (err: any) {
+    } catch (err) {
       setSubmitError(
-        err.response?.data?.message || 'Chỉnh sửa thất bại. Vui lòng kiểm tra lại.'
+        getAuthErrorMessage(err, 'Chỉnh sửa thất bại. Vui lòng kiểm tra lại.')
       );
     } finally {
       setIsSubmitting(false);
@@ -281,13 +292,7 @@ export const EditBatchPage: React.FC = () => {
         {/* Header Bar */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-              <span>SAW System</span>
-              <span>&gt;</span>
-              <span>Quản lý lô sản phẩm</span>
-              <span>&gt;</span>
-              <span className="font-semibold text-gray-700">Chỉnh sửa thông tin lô hàng</span>
-            </div>
+            <SupplierBatchBreadcrumb batchId={Number(id)} batchCode={batchCode} editing />
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">Chỉnh sửa thông tin lô hàng</h1>
               <span className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded font-mono font-semibold">
@@ -517,7 +522,7 @@ export const EditBatchPage: React.FC = () => {
                           step="1"
                           min="1"
                           readOnly
-                          {...register('packageCount', { valueAsNumber: true })}
+                          {...register('packageCount', { setValueAs: optionalNumericInput })}
                           placeholder="Được tự động điền..."
                           className="w-full bg-gray-100 border border-blue-200 rounded-lg px-3 py-2 text-xs text-gray-500 cursor-not-allowed focus:outline-none"
                         />
@@ -537,7 +542,7 @@ export const EditBatchPage: React.FC = () => {
                           type="number"
                           step="0.1"
                           min="0.1"
-                          {...register('packageUnitWeightKg', { valueAsNumber: true })}
+                          {...register('packageUnitWeightKg', { setValueAs: optionalNumericInput })}
                           placeholder={currentUnit === 'Bao' ? 'Gợi ý: 25 kg' : 'Gợi ý: 10 kg'}
                           className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                         />
@@ -584,7 +589,7 @@ export const EditBatchPage: React.FC = () => {
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1 flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                      <span>NGÀY GIAO HÀNG DỰ KIẾN <span className="text-red-500">*</span></span>
+                      <span>NGÀY GIAO HÀNG DỰ KIẾN</span>
                     </label>
                     <input
                       type="date"
@@ -635,7 +640,7 @@ export const EditBatchPage: React.FC = () => {
                       <input
                         type="number"
                         step="0.5"
-                        {...register('expectedMinTempC', { valueAsNumber: true })}
+                        {...register('expectedMinTempC', { setValueAs: optionalNumericInput })}
                         placeholder="Ví dụ: 2"
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
                       />
@@ -650,7 +655,7 @@ export const EditBatchPage: React.FC = () => {
                       <input
                         type="number"
                         step="0.5"
-                        {...register('expectedMaxTempC', { valueAsNumber: true })}
+                        {...register('expectedMaxTempC', { setValueAs: optionalNumericInput })}
                         placeholder="Ví dụ: 10"
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
                       />
@@ -677,7 +682,7 @@ export const EditBatchPage: React.FC = () => {
                         step="1"
                         min="0"
                         max="100"
-                        {...register('expectedMinHumidityPct', { valueAsNumber: true })}
+                        {...register('expectedMinHumidityPct', { setValueAs: optionalNumericInput })}
                         placeholder="Ví dụ: 60"
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                       />
@@ -694,7 +699,7 @@ export const EditBatchPage: React.FC = () => {
                         step="1"
                         min="0"
                         max="100"
-                        {...register('expectedMaxHumidityPct', { valueAsNumber: true })}
+                        {...register('expectedMaxHumidityPct', { setValueAs: optionalNumericInput })}
                         placeholder="Ví dụ: 85"
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                       />
@@ -721,6 +726,7 @@ export const EditBatchPage: React.FC = () => {
                 placeholder="Ghi chú cho kho nhận..."
                 className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
+              <div className="mt-4"><SupplierDocumentEditor existing={documents} pending={pendingFiles} onExistingChange={setDocuments} onPendingChange={setPendingFiles} disabled={isSubmitting} /></div>
             </div>
           </div>
 
