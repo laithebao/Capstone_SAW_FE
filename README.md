@@ -2,7 +2,7 @@
 
 Frontend cho **Smart Agri-Warehouse (SAW)**, dự án capstone SEP490 của nhóm 5 sinh viên FPT University. Hệ thống hỗ trợ quản lý kho nông sản, lô hàng, kiểm định chất lượng, tồn kho, đơn hàng và truy xuất nguồn gốc QR.
 
-Đây là **bộ khung ban đầu**: routing, phân quyền phía frontend, layout, page placeholder và cấu hình API. Các màn hình nghiệp vụ, giao diện Stitch, dữ liệu và backend chưa được triển khai. Backend dự kiến dùng ASP.NET Core Web API và Microsoft SQL Server.
+Ứng dụng có routing, layout và phân quyền theo role, kết nối ASP.NET Core Web API. UC09 đã có trang truy xuất công khai tích hợp QR của UC55; xem [hướng dẫn UC09](src/pages/traceability/README.md).
 
 ## Công nghệ và yêu cầu
 
@@ -23,25 +23,20 @@ node --version
 npm install
 ```
 
-Tạo cấu hình môi trường bằng PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Trên macOS/Linux dùng `cp .env.example .env`. Nội dung mẫu:
+Tạo file `.env` tại thư mục repository. Để test trên máy và điện thoại cùng Wi-Fi, dùng:
 
 ```dotenv
-VITE_API_BASE_URL=http://localhost:5000/api
+VITE_API_BASE_URL=/api
+API_PROXY_TARGET=http://localhost:5252
 ```
 
-Đây chỉ là địa chỉ cấu hình cho backend trong tương lai; ứng dụng hiện không gọi API. `.env` được Git bỏ qua; `.env.example` được theo dõi. Mọi biến `VITE_*` có thể xuất hiện trong mã frontend nên không chứa mật khẩu hoặc khóa bí mật.
+Vite proxy `/api` sang backend; điện thoại không gọi localhost của chính nó. `.env` được Git bỏ qua. Giữ các biến Google Client ID/Cloudinary unsigned upload của nhóm khi cần dùng các chức năng đó. Mọi biến `VITE_*` là dữ liệu công khai: không đặt Cloudinary ApiSecret hoặc mật khẩu vào đây.
 
 ```bash
 npm run dev
 ```
 
-Mở địa chỉ Vite hiển thị trong terminal (thường là `http://localhost:5173`). `/` chuyển tới `/login` khi chưa đăng nhập. Chưa có form đăng nhập hoặc tài khoản mẫu.
+Mở `http://localhost:5173` trên máy, hoặc địa chỉ Network Vite hiển thị trên điện thoại cùng Wi-Fi. `/` chuyển tới `/login` khi chưa đăng nhập; `/trace/{PublicToken}` truy cập trực tiếp không cần đăng nhập. Vite dev dùng cổng 5173 và nhận kết nối LAN; backend chạy cổng 5252.
 
 ```bash
 npm run lint
