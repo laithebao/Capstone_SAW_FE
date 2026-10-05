@@ -22,6 +22,8 @@ export interface ProductBatchListResponse {
 }
 
 export interface ProductBatchDetail extends ProductBatchListItem {
+  canUpdateReceivingInformation: boolean
+  receivingUpdateLockReason: string | null
   weightInKg: number
   verifiedQuantity: number | null
   verifiedWeightInKg: number | null

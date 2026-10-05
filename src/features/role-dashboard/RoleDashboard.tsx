@@ -12,9 +12,11 @@ const tone = {
 export default function RoleDashboard({
   config,
   primaryActionRoute,
+  showPrimaryAction = true,
 }: {
   config: RoleDashboardConfig
   primaryActionRoute?: string
+  showPrimaryAction?: boolean
 }) {
   const navigate = useNavigate()
 
@@ -30,7 +32,7 @@ export default function RoleDashboard({
           <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{config.title}</h1>
           <p className="mt-1 text-sm text-slate-500">{config.description}</p>
         </div>
-        <button
+        {showPrimaryAction && <button
           type="button"
           id="btn-primary-action"
           onClick={resolvedPrimaryRoute ? () => navigate(resolvedPrimaryRoute) : undefined}
@@ -38,7 +40,7 @@ export default function RoleDashboard({
         >
           <AppIcon name="plus" className="size-4" />
           {config.primaryAction}
-        </button>
+        </button>}
       </div>
 
       {/* Quick-access menu (clickable if route provided) */}
