@@ -261,14 +261,14 @@ export const EditBatchPage: React.FC = () => {
   };
 
   const onSubmit: SubmitHandler<UpdateBatchFormValues> = async (values) => {
-    if (!id || !version) return;
+    if (!id || !version || isSubmitting) return;
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
       const uploaded = await Promise.all(pendingFiles.map(file => uploadSupplierFile(file)));
       await supplierBatchService.updateBatch(Number(id), { ...values, ...version, evidenceDocumentUrls: [...documents.map(doc => doc.fileUrl), ...uploaded] });
-      navigate(`/supplier/batches/${id}`);
+      navigate(`/supplier/batches/${id}`, { state: { batchUpdated: true } });
     } catch (err) {
       setSubmitError(
         getAuthErrorMessage(err, 'Chỉnh sửa thất bại. Vui lòng kiểm tra lại.')

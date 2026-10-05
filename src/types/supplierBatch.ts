@@ -13,6 +13,7 @@ export interface GetSupplierBatchesQueryRequest {
   keyword?: string;
   status?: string;
   province?: string; // Đã sửa: Đổi origin thành province
+  growingAreaId?: number;
   consumptionStatus?: string | null;
   fromDate?: string;
   toDate?: string;
