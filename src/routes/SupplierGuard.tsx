@@ -1,32 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router';
-import { supplierService } from '@/services/suppliers/supplierService';
-import type { SupplierProfileResponse } from '@/types/supplier';
+import { isSupplierProfileDeclared } from '@/features/supplier/profileStatus';
+import { useSupplierProfile } from '@/features/supplier/useSupplierProfile';
 import { ROUTES } from '@/constants/routes';
 
 export const SupplierGuard: React.FC = () => {
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<SupplierProfileResponse | null>(null);
   const location = useLocation();
-
-  useEffect(() => {
-    let isMounted = true;
-    const checkProfileStatus = async () => {
-      try {
-        const data = await supplierService.getMyProfile();
-        if (isMounted) setProfile(data);
-      } catch (error) {
-        console.error('Không thể lấy thông tin profile Supplier:', error);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    checkProfileStatus();
-    return () => {
-      isMounted = false;
-    };
-  }, [location.pathname]);
+  const { loading, profile, error, retry } = useSupplierProfile(location.pathname);
 
   if (loading) {
     return (
@@ -36,8 +16,19 @@ export const SupplierGuard: React.FC = () => {
     );
   }
 
-  // Kiểm tra nếu phoneNumber trống -> Chưa khai báo hồ sơ
-  const isDeclared = Boolean(profile?.phoneNumber && profile.phoneNumber.trim() !== '');
+  if (error) {
+    return (
+      <div role="alert" className="max-w-xl mx-auto my-12 p-6 bg-red-50 border border-red-200 rounded-xl text-red-700">
+        <h3 className="font-semibold">Không thể kiểm tra hồ sơ nhà cung cấp</h3>
+        <p className="text-sm mt-1">{error}</p>
+        <button type="button" onClick={retry} className="mt-4 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white">
+          Thử lại
+        </button>
+      </div>
+    );
+  }
+
+  const isDeclared = isSupplierProfileDeclared(profile);
   const isDeclarePage = location.pathname === ROUTES.SUPPLIER_PROFILE_DECLARE;
 
   // 1. Chưa khai báo mà cố truy cập các trang khác -> Redirect về trang Declare

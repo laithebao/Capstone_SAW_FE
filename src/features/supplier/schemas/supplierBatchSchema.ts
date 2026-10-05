@@ -45,5 +45,11 @@ export type DeclareBatchFormInput = z.input<typeof declareBatchSchema>;
 export type DeclareBatchFormValues = z.output<typeof declareBatchSchema>;
 export type UpdateBatchFormValues = DeclareBatchFormValues;
 export type UpdateBatchFormInput = DeclareBatchFormInput;
-// Called on optional inputs before validation: invalid numbers remain invalid.
-export const optionalNumericInput = (value: string) => value.trim() === '' ? undefined : Number(value);
+// Form reset can supply API numbers or empty defaults as well as input strings.
+// Keep invalid values invalid so validation can reject them.
+export const optionalNumericInput = (value: unknown): number | undefined => {
+  if (value == null) return undefined;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') return value.trim() === '' ? undefined : Number(value);
+  return NaN;
+};

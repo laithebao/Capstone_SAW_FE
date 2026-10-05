@@ -6,7 +6,9 @@ import { getAuthErrorMessage } from '@/services/authService';
 import type { SupplierBatchStatusResponse } from '@/types/supplierBatch';
 import { SupplierBatchBreadcrumb } from '@/features/supplier/components/SupplierBatchBreadcrumb';
 import { SupplierDocuments } from '@/features/supplier/components/SupplierDocuments';
-import { canEditSupplierBatch, supplierBatchStatusLabel } from '@/features/supplier/batchStatus';
+import { canEditSupplierBatch } from '@/features/supplier/batchStatus';
+import { getSupplierBatchProgress } from '@/features/supplier/batchProgress';
+import { SupplierBatchProgress } from '@/features/supplier/components/SupplierBatchProgress';
 
 const date = (value?: string | null) => value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString('vi-VN') : 'Chưa khai báo';
 const time = (value: string) => new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}Z`).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
@@ -51,11 +53,12 @@ export function BatchProcessDetailPage() {
   if (loading) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>;
   if (!data) return <div className="p-6"><p role="alert" className="text-red-600">{error}</p><Link to="/supplier/batches">Quay lại danh sách lô hàng</Link></div>;
   const editable = canEditSupplierBatch(data.currentStatus);
+  const progress = getSupplierBatchProgress(data);
   return <div className="p-6 max-w-7xl mx-auto space-y-6">
     <div className="flex flex-wrap justify-between gap-4">
       <div><SupplierBatchBreadcrumb batchId={data.batchId} batchCode={data.batchCode} />
         <h1 className="text-2xl font-bold">Chi tiết lô hàng #{data.batchCode}</h1>
-        <p className="text-sm text-emerald-700 mt-2">{data.statusDisplayName || supplierBatchStatusLabel(data.currentStatus)}</p>
+        <p className="text-sm text-emerald-700 mt-2">{progress.statusLabel}</p>
       </div>
       <div className="flex items-center gap-3">
         <Link to="/supplier/batches" className="text-sm border rounded-lg p-2">Quay lại danh sách</Link>
@@ -89,20 +92,12 @@ export function BatchProcessDetailPage() {
             <Field label="Số lượng đã nhập kho (phiếu đã hoàn tất)" value={data.receivedQuantity > 0 ? quantity(data.receivedQuantity, data.unit) : 'Chưa nhập kho'} />
             <Field label="Ghi chú tiếp nhận" value={data.warehouseNote || 'Không có ghi chú.'} />
             <Field label="Kết quả QC" value={data.qcResult || 'Chưa có kết quả'} /><Field label="Hạng chất lượng" value={data.qualityGrade || 'Chưa phân hạng'} />
-            {data.rejectionReason && <Field label="Lý do từ chối" value={data.rejectionReason} />}
+            {!progress.isStored && data.rejectionReason && <Field label="Lý do từ chối" value={data.rejectionReason} />}
           </dl>
         </section>
         <section className="bg-white border rounded-xl p-6"><h2 className="font-semibold mb-4">Tài liệu đính kèm</h2><SupplierDocuments documents={data.documents ?? []} /></section>
       </div>
-      <section className="bg-white border rounded-xl p-6 h-fit"><h2 className="font-semibold mb-4">Lịch sử xử lý lô hàng</h2>
-        <ol className="space-y-5">{[...data.statusHistory].reverse().map((item, index) => <li key={`${index}-${item.changedAt}`} className="border-l-2 border-emerald-300 pl-3">
-          <p className="text-sm font-semibold">{supplierBatchStatusLabel(item.newStatus)}</p>
-          <p className="text-xs text-gray-500 mt-1">{time(item.changedAt)}</p>
-          {item.changedBy && <p className="text-xs text-gray-600 mt-1">{item.changedBy}</p>}
-          {item.changeReason && <p className="text-sm text-gray-600 mt-1">{item.changeReason}</p>}
-        </li>)}</ol>
-        {data.statusHistory.length === 0 && <p className="text-sm text-gray-500">Chưa có lịch sử xử lý.</p>}
-      </section>
+      <SupplierBatchProgress progress={progress} formatTime={time} />
     </div>
   </div>;
 }

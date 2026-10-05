@@ -111,6 +111,9 @@ export interface SupplierBatchStatusResponse {
   currentStatus: string;
   statusDisplayName: string;
   qcResult?: string | null;
+  qcInspectionStatus?: string | null;
+  qcCompletedAt?: string | null;
+  warehousedAt?: string | null;
   qualityGrade?: string | null;
   rejectionReason?: string | null;
   warehouseNote?: string | null;

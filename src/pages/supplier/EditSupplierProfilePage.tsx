@@ -578,7 +578,7 @@ export const EditSupplierProfilePage: React.FC = () => {
               <div style={{ padding: '16px' }}>
                 
                 <SupplierDocumentEditor existing={existingDocuments} pending={uploadedFiles}
-                  onExistingChange={setExistingDocuments} onPendingChange={setUploadedFiles} disabled={isSubmitting} />
+                  onExistingChange={setExistingDocuments} onPendingChange={setUploadedFiles} disabled={isSubmitting} variant="profile" />
 
 
               </div>

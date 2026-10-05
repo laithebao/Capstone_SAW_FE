@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint . --max-warnings 0",
-    "test:supplier": "node --experimental-strip-types --test tests/supplierBatch.test.mjs",
+    "test:supplier": "node --experimental-strip-types --test tests/supplierBatch.test.mjs tests/supplierProfile.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

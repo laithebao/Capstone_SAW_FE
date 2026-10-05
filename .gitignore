@@ -62,3 +62,4 @@ Desktop.ini
 
 # Local Supplier regression tests
 /tests/supplierBatch.test.mjs
+/tests/supplierProfile.test.mjs

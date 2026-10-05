@@ -726,7 +726,7 @@ export const EditBatchPage: React.FC = () => {
                 placeholder="Ghi chú cho kho nhận..."
                 className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
-              <div className="mt-4"><SupplierDocumentEditor existing={documents} pending={pendingFiles} onExistingChange={setDocuments} onPendingChange={setPendingFiles} disabled={isSubmitting} /></div>
+              <div className="mt-4"><SupplierDocumentEditor existing={documents} pending={pendingFiles} onExistingChange={setDocuments} onPendingChange={setPendingFiles} disabled={isSubmitting} variant="profile" /></div>
             </div>
           </div>
 
