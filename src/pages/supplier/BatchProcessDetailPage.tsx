@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { Loader2 } from 'lucide-react';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
 import { getAuthErrorMessage } from '@/services/authService';
@@ -9,6 +9,8 @@ import { SupplierDocuments } from '@/features/supplier/components/SupplierDocume
 import { canEditSupplierBatch } from '@/features/supplier/batchStatus';
 import { getSupplierBatchProgress } from '@/features/supplier/batchProgress';
 import { SupplierBatchProgress } from '@/features/supplier/components/SupplierBatchProgress';
+import { SupplierBatchFeedbackDialog } from '@/features/supplier/components/SupplierBatchFeedbackDialog';
+import { useSupplierPageRefresh } from '@/features/supplier/useSupplierPageRefresh';
 
 const date = (value?: string | null) => value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString('vi-VN') : 'Chưa khai báo';
 const time = (value: string) => new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}Z`).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
@@ -22,39 +24,76 @@ function Field({ label, value }: { label: string; value: string }) {
 
 export function BatchProcessDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [dialog, setDialog] = useState<'confirm' | 'updated' | 'cancelled' | null>(
+    location.state?.batchUpdated === true ? 'updated' : null
+  );
+  const [cancelError, setCancelError] = useState('');
   const [data, setData] = useState<SupplierBatchStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [canceling, setCanceling] = useState(false);
   const [error, setError] = useState('');
+  const latestRequest = useRef({ version: 0 });
+  const loadBatch = useCallback(async () => {
+    const request = ++latestRequest.current.version;
+    if (!id || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+      setData(null); setError('Mã lô hàng không hợp lệ.'); setLoading(false);
+      return;
+    }
+    try {
+      const response = await supplierBatchService.getBatchStatus(Number(id));
+      if (request === latestRequest.current.version) { setData(response.data); setError(''); }
+    } catch (e) {
+      if (request === latestRequest.current.version) setError(getAuthErrorMessage(e, 'Không thể tải lô hàng.'));
+    } finally {
+      if (request === latestRequest.current.version) setLoading(false);
+    }
+  }, [id]);
   useEffect(() => {
     let active = true;
-    if (!id || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
-      void Promise.resolve().then(() => { if (active) { setError('Mã lô hàng không hợp lệ.'); setLoading(false); } });
-      return () => { active = false; };
-    }
-    void supplierBatchService.getBatchStatus(Number(id)).then(response => {
-      if (active) { setData(response.data); setError(''); }
-    }).catch(e => { if (active) setError(getAuthErrorMessage(e, 'Không thể tải lô hàng.')); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [id]);
+    const requests = latestRequest.current;
+    void Promise.resolve().then(() => { if (active) void loadBatch(); });
+    return () => { active = false; requests.version++; };
+  }, [loadBatch]);
+  useSupplierPageRefresh(loadBatch, !loading && !canceling && dialog === null);
 
   async function cancel() {
-    if (!data || !canEditSupplierBatch(data.currentStatus) || canceling) return;
-    if (!window.confirm('Bạn có chắc chắn muốn hủy lô hàng này không?')) return;
-    setCanceling(true); setError('');
+    if (!data || !canEditSupplierBatch(data.currentStatus) || getSupplierBatchProgress(data).isStored || canceling) return;
+    latestRequest.current.version++;
+    setCanceling(true); setCancelError(''); setError('');
     try {
       await supplierBatchService.cancelBatch(data.batchId, { expectedCreatedAt: data.createdAt, expectedUpdatedAt: data.updatedAt });
-      const response = await supplierBatchService.getBatchStatus(data.batchId);
-      setData(response.data);
-    } catch (e) { setError(getAuthErrorMessage(e, 'Không thể hủy lô hàng.')); }
+      setDialog('cancelled');
+      setData({ ...data, currentStatus: 'CANCELLED', statusDisplayName: 'Đã hủy' });
+      try {
+        const response = await supplierBatchService.getBatchStatus(data.batchId);
+        setData(response.data);
+      } catch {
+        setError('Lô hàng đã được hủy, nhưng chưa tải lại được chi tiết. Vui lòng tải lại trang.');
+      }
+    } catch (e) { setCancelError(getAuthErrorMessage(e, 'Không thể hủy lô hàng.')); }
     finally { setCanceling(false); }
+  }
+  function closeDialog() {
+    setDialog(null);
+    setCancelError('');
+    if (location.state?.batchUpdated) navigate(location.pathname, { replace: true, state: null });
   }
   if (loading) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>;
   if (!data) return <div className="p-6"><p role="alert" className="text-red-600">{error}</p><Link to="/supplier/batches">Quay lại danh sách lô hàng</Link></div>;
-  const editable = canEditSupplierBatch(data.currentStatus);
   const progress = getSupplierBatchProgress(data);
+  const editable = !progress.isStored && canEditSupplierBatch(data.currentStatus);
   return <div className="p-6 max-w-7xl mx-auto space-y-6">
+    {dialog && <SupplierBatchFeedbackDialog
+      variant={dialog === 'confirm' ? 'confirm' : 'success'}
+      title={dialog === 'confirm' ? 'Hủy lô hàng?' : dialog === 'updated' ? 'Cập nhật lô hàng thành công' : 'Hủy lô hàng thành công'}
+      description={dialog === 'confirm'
+        ? `Bạn có chắc chắn muốn hủy lô hàng #${data.batchCode}? Lô hàng sau khi hủy sẽ không được tiếp nhận.`
+        : dialog === 'updated' ? `Thông tin lô hàng #${data.batchCode} đã được lưu.` : `Lô hàng #${data.batchCode} đã được hủy.`}
+      onClose={closeDialog} onConfirm={() => void cancel()}
+      busy={dialog === 'confirm' && canceling} error={dialog === 'confirm' ? cancelError : undefined}
+    />}
     <div className="flex flex-wrap justify-between gap-4">
       <div><SupplierBatchBreadcrumb batchId={data.batchId} batchCode={data.batchCode} />
         <h1 className="text-2xl font-bold">Chi tiết lô hàng #{data.batchCode}</h1>
@@ -64,7 +103,7 @@ export function BatchProcessDetailPage() {
         <Link to="/supplier/batches" className="text-sm border rounded-lg p-2">Quay lại danh sách</Link>
         {editable && <>
           {!canceling && <Link to={`/supplier/batches/${data.batchId}/edit`} className="text-sm text-blue-700 border rounded-lg p-2">Chỉnh sửa lô hàng</Link>}
-          <button type="button" onClick={() => void cancel()} disabled={canceling} className="text-sm text-red-700 border rounded-lg p-2 disabled:opacity-50">{canceling ? 'Đang hủy...' : 'Hủy lô hàng'}</button>
+          <button type="button" onClick={() => { setCancelError(''); setDialog('confirm'); }} disabled={canceling} className="text-sm text-red-700 border rounded-lg p-2 disabled:opacity-50">{canceling ? 'Đang hủy...' : 'Hủy lô hàng'}</button>
         </>}
       </div>
     </div>
