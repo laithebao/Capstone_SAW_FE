@@ -56,6 +56,8 @@ export async function rejectProductBatch(id: number, supplierId: number, reason:
   return response.data.data
 }
 
+export const QC_RECEIVING_LOCK_MESSAGE = 'Lô hàng đã được QC tiếp nhận. Không thể cập nhật thông tin kiểm nhận.'
+
 export async function updateProductBatchReceivingDetails(id: number, request: UpdateProductBatchRequest): Promise<ProductBatchDetail> {
   const response = await apiClient.put<ApiResponse<ProductBatchDetail>>(`${base}/${id}/receiving-details`, request)
   return response.data.data

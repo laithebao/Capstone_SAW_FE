@@ -5,6 +5,7 @@ import { ROUTES } from '@/constants/routes'
 import { getProductBatch } from '@/services/batchService'
 import { getAuthErrorMessage } from '@/services/authService'
 import ProductBatchStatusBadge from '@/features/operation/components/ProductBatchStatusBadge'
+import ProductBatchQrCodeCard from '@/features/operation/components/ProductBatchQrCodeCard'
 import type { ProductBatchDetail } from '@/types/batch'
 
 const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -31,7 +32,8 @@ export default function ProductBatchDetailPage() {
       setLoading(true)
       setError(null)
       try {
-        setBatch(await getProductBatch(batchId, controller.signal))
+        const data = await getProductBatch(batchId, controller.signal)
+        if (!controller.signal.aborted) setBatch(data)
       } catch (requestError) {
         if (!controller.signal.aborted) {
           setBatch(null)
@@ -46,14 +48,26 @@ export default function ProductBatchDetailPage() {
     return () => { window.clearTimeout(timer); controller.abort() }
   }, [batchId, validId, reloadKey])
 
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') setReloadKey((key) => key + 1) }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [])
+
   return <div className="mx-auto max-w-[1200px] space-y-5">
     <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
       <div><p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Vận hành · Quản lý lô hàng · Chi tiết</p><h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">CHI TIẾT LÔ HÀNG</h1></div>
       <div className="flex flex-wrap gap-2">
-        {batch?.batchStatus === 'PENDING_QC' && <Link to={ROUTES.OPERATION_PRODUCT_BATCH_UPDATE.replace(':id', String(batchId))} className="inline-flex h-10 items-center rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800">Chỉnh sửa kiểm nhận</Link>}
+        {!loading && !error && batch?.canUpdateReceivingInformation && <Link to={ROUTES.OPERATION_PRODUCT_BATCH_UPDATE.replace(':id', String(batchId))} className="inline-flex h-10 items-center rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800">Chỉnh sửa kiểm nhận</Link>}
         <Link to={ROUTES.OPERATION_PRODUCT_BATCHES} className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">← Quay lại danh sách</Link>
       </div>
     </header>
+
+    {!loading && !error && batch?.receivingUpdateLockReason && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{batch.receivingUpdateLockReason}</p>}
 
     {location.state?.receivingUpdated && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">Đã cập nhật thông tin kiểm nhận.</p>}
 
@@ -107,6 +121,7 @@ export default function ProductBatchDetailPage() {
               {batch.batchStatus === 'REJECTED' && batch.rejectionReason && <div className="mt-5 rounded-lg border border-rose-200 bg-rose-50 p-4"><h3 className="text-xs font-bold uppercase tracking-wide text-rose-700">Lý do từ chối</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm text-rose-900">{batch.rejectionReason}</p></div>}
             </div>
           </section>}
+    {validId && !loading && !error && batch && <ProductBatchQrCodeCard key={batchId} batchId={batchId} />}
   </div>
 }
 
