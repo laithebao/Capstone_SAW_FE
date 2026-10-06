@@ -1,4 +1,6 @@
+import { supplierBatchFilterStatuses } from '@/features/supplier/batchStatus';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useSupplierPageRefresh } from '@/features/supplier/useSupplierPageRefresh';
 import { useNavigate } from 'react-router';
 import {
   FileCheck,
@@ -16,8 +18,6 @@ import {
   ChevronRight,
   ArrowUpRight,
   MapPin,
-  ChevronDown,
-  X,
 } from 'lucide-react';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
 import type {
@@ -25,7 +25,8 @@ import type {
   SupplierBatchItemResponse,
   SupplierBatchSummaryResponse,
 } from '@/types/supplierBatch';
-import { VIETNAM_REGIONS } from '@/constants/regions';
+import { supplierService } from '@/services/suppliers/supplierService';
+import type { SupplierGrowingAreaDto } from '@/types/supplier';
 
 export const SupplierBatchListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -38,15 +39,13 @@ export const SupplierBatchListPage: React.FC = () => {
   const [keyword, setKeyword] = useState<string>('');
   const [debouncedKeyword, setDebouncedKeyword] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
-  const [selectedOrigin, setSelectedOrigin] = useState<string>(''); // Filter Khu vực (origin)
-  const [selectedConsumptionStatus, setSelectedConsumptionStatus] = useState<string>(''); // Filter Tiêu thụ
+  const [selectedGrowingAreaId, setSelectedGrowingAreaId] = useState<string>('');
+  const [growingAreas, setGrowingAreas] = useState<SupplierGrowingAreaDto[]>([]);
+  const [loadingAreas, setLoadingAreas] = useState(true);
+  const [areaError, setAreaError] = useState('');
   const [pageIndex, setPageIndex] = useState<number>(1);
   const pageSize = 10;
-
-  // Custom Dropdown Region State
-  const [isRegionDropdownOpen, setIsRegionDropdownOpen] = useState<boolean>(false);
-  const [activeRegionTab, setActiveRegionTab] = useState<string | null>(null);
-  const regionDropdownRef = useRef<HTMLDivElement>(null);
+  const latestRequest = useRef({ version: 0 });
 
   const [summary, setSummary] = useState<SupplierBatchSummaryResponse>({
     totalDeclaredBatches: 0,
@@ -59,18 +58,14 @@ export const SupplierBatchListPage: React.FC = () => {
   const [batches, setBatches] = useState<SupplierBatchItemResponse[]>([]);
   const [totalPages, setTotalPages] = useState<number>(1);
 
-  // Lắng nghe sự kiện click ngoài Dropdown để tự động đóng
+  // Use the same growing areas available in the declaration/edit form.
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        regionDropdownRef.current &&
-        !regionDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsRegionDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    let active = true;
+    void supplierService.getMyProfile()
+      .then(profile => { if (active) setGrowingAreas(profile.growingAreas ?? []); })
+      .catch(() => { if (active) setAreaError('Không thể tải bộ lọc vùng trồng. Vui lòng tải lại trang.'); })
+      .finally(() => { if (active) setLoadingAreas(false); });
+    return () => { active = false; };
   }, []);
 
   // Debounce search keyword
@@ -85,23 +80,21 @@ export const SupplierBatchListPage: React.FC = () => {
 
   // Fetch API
   const fetchBatches = useCallback(async () => {
+    const request = ++latestRequest.current.version;
     try {
       setLoading(true);
       setError(null);
-
-      const queryOrigin = selectedOrigin ? selectedOrigin : undefined;
 
       const response: SupplierBatchListResponse =
         await supplierBatchService.getDeclaredBatches({
           keyword: debouncedKeyword.trim() || undefined,
           status: selectedStatus || undefined,
-          province: queryOrigin, 
-          consumptionStatus: selectedConsumptionStatus || undefined,
+          growingAreaId: selectedGrowingAreaId ? Number(selectedGrowingAreaId) : undefined,
           pageIndex,
           pageSize,
         });
 
-      if (response) {
+      if (response && request === latestRequest.current.version) {
         setSummary(
           response.summary || {
             totalDeclaredBatches: 0,
@@ -112,41 +105,36 @@ export const SupplierBatchListPage: React.FC = () => {
           }
         );
 
-        let fetchedItems = response.batches?.items || [];
-
-        // Client-side filter bổ sung khi chọn UNASSIGNED
-        if (selectedOrigin) {
-          fetchedItems = fetchedItems.filter((item) => {
-            if (selectedOrigin === 'UNASSIGNED') {
-              return !item.province || item.province.trim() === '';
-            }
-            return item.province && item.province.toLowerCase().includes(selectedOrigin.toLowerCase());
-          });
-        }
-        setBatches(fetchedItems);
-        setTotalPages(response.batches?.totalPages || 1);
+        setBatches(response.batches?.items || []);
+        const pages = response.batches?.totalPages || 1;
+        setTotalPages(pages);
+        if (pageIndex > pages) setPageIndex(pages);
       }
     } catch (err: unknown) {
       const errorMessage =
         err && typeof err === 'object' && 'response' in err
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : null;
-      setError(errorMessage || 'Không thể tải danh sách lô hàng.');
+      if (request === latestRequest.current.version) setError(errorMessage || 'Không thể tải danh sách lô hàng.');
     } finally {
-      setLoading(false);
+      if (request === latestRequest.current.version) setLoading(false);
     }
-  }, [debouncedKeyword, selectedStatus, selectedOrigin, selectedConsumptionStatus, pageIndex]);
+  }, [debouncedKeyword, selectedStatus, selectedGrowingAreaId, pageIndex]);
 
   useEffect(() => {
-    fetchBatches();
+    let active = true;
+    const requests = latestRequest.current;
+    void Promise.resolve().then(() => { if (active) void fetchBatches(); });
+    return () => { active = false; requests.version++; };
   }, [fetchBatches]);
+  useSupplierPageRefresh(fetchBatches, !loading);
 
   // Helper render Badge Trạng thái
   const renderStatusBadge = (status: string, displayName: string) => {
     const normalizedStatus = (status || '').toUpperCase();
     switch (normalizedStatus) {
       case 'SUBMITTED':
-      case 'PENDING_APPROVAL':
+      case 'PENDING_PREDECLARATION':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
@@ -160,7 +148,7 @@ export const SupplierBatchListPage: React.FC = () => {
             {displayName || 'Chờ kiểm định QC'}
           </span>
         );
-      case 'APPROVED':
+      case 'APPROVED_FOR_STORAGE':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -183,42 +171,6 @@ export const SupplierBatchListPage: React.FC = () => {
     }
   };
 
-  // Helper render Badge Trạng thái Tiêu thụ
-  const renderConsumptionStatusBadge = (
-    status?: string,
-    displayName?: string
-  ) => {
-    if (!status) return <span className="text-gray-400 text-xs">-</span>;
-
-    const normalized = status.toUpperCase();
-    switch (normalized) {
-      case 'IN_STOCK':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">
-            {displayName || 'Tồn kho'}
-          </span>
-        );
-      case 'CONSUMING':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">
-            {displayName || 'Đang tiêu thụ'}
-          </span>
-        );
-      case 'CONSUMED':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
-            {displayName || 'Đã tiêu thụ hết'}
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 text-gray-600 border border-gray-200 whitespace-nowrap">
-            {displayName || status}
-          </span>
-        );
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 space-y-6">
       {/* Header */}
@@ -227,7 +179,7 @@ export const SupplierBatchListPage: React.FC = () => {
           Chào mừng trở lại, Nhà cung cấp
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Dưới đây là tổng quan về trạng thái khai báo, khu vực xuất xứ và tiến độ tiêu thụ các lô hàng nông sản của bạn.
+          Dưới đây là tổng quan về trạng thái khai báo, vùng trồng và tiến độ nhập kho các lô hàng nông sản của bạn.
         </p>
       </div>
 
@@ -333,8 +285,7 @@ export const SupplierBatchListPage: React.FC = () => {
         <button
           onClick={() => {
             setSelectedStatus('');
-            setSelectedOrigin('');
-            setSelectedConsumptionStatus('');
+            setSelectedGrowingAreaId('');
             setKeyword('');
             setPageIndex(1);
           }}
@@ -354,7 +305,7 @@ export const SupplierBatchListPage: React.FC = () => {
               Danh sách lô hàng đã khai báo
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Tra cứu thông tin, địa phương xuất xứ và theo dõi trạng thái tiêu thụ các lô hàng.
+              Tra cứu thông tin, vùng trồng và theo dõi trạng thái xử lý các lô hàng.
             </p>
           </div>
 
@@ -371,126 +322,27 @@ export const SupplierBatchListPage: React.FC = () => {
               />
             </div>
 
-            {/* Custom Multi-level Region Dropdown */}
-            <div className="relative" ref={regionDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setIsRegionDropdownOpen(!isRegionDropdownOpen)}
-                className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 hover:bg-white focus:ring-2 focus:ring-emerald-500 flex items-center gap-2 justify-between min-w-[150px] cursor-pointer"
-              >
-                <span className="truncate">
-                  {selectedOrigin === 'UNASSIGNED'
-                    ? 'Chưa cập nhật'
-                    : selectedOrigin || 'Tất cả khu vực'}
-                </span>
-                {selectedOrigin ? (
-                  <X
-                    className="w-3.5 h-3.5 text-gray-400 hover:text-red-500 cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedOrigin('');
-                      setPageIndex(1);
-                    }}
-                  />
-                ) : (
-                  <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                )}
-              </button>
-
-              {/* Menu xổ xuống dùng VIETNAM_REGIONS từ constants/regions */}
-              {isRegionDropdownOpen && (
-                <div className="absolute right-0 mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50 p-2 space-y-1 text-xs">
-                  <div
-                    onClick={() => {
-                      setSelectedOrigin('');
-                      setIsRegionDropdownOpen(false);
-                      setPageIndex(1);
-                    }}
-                    className={`px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-100 font-medium ${
-                      selectedOrigin === '' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700'
-                    }`}
-                  >
-                    Tất cả khu vực
-                  </div>
-
-                  <div
-                    onClick={() => {
-                      setSelectedOrigin('UNASSIGNED');
-                      setIsRegionDropdownOpen(false);
-                      setPageIndex(1);
-                    }}
-                    className={`px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-100 italic ${
-                      selectedOrigin === 'UNASSIGNED' ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-gray-500'
-                    }`}
-                  >
-                    Chưa cập nhật khu vực
-                  </div>
-
-                  <div className="border-t border-gray-100 my-1"></div>
-
-                  {/* Render danh sách Miền từ VIETNAM_REGIONS */}
-                  {VIETNAM_REGIONS.map((item) => (
-                    <div key={item.region} className="space-y-1">
-                      <div
-                        onClick={() =>
-                          setActiveRegionTab(
-                            activeRegionTab === item.region ? null : item.region
-                          )
-                        }
-                        className="px-3 py-1.5 font-bold text-gray-800 bg-gray-50 rounded-md flex items-center justify-between cursor-pointer hover:bg-gray-100"
-                      >
-                        <span>{item.region}</span>
-                        <ChevronDown
-                          className={`w-3.5 h-3.5 text-gray-400 transition-transform ${
-                            activeRegionTab === item.region ? 'rotate-180' : ''
-                          }`}
-                        />
-                      </div>
-
-                      {activeRegionTab === item.region && (
-                        <div className="pl-3 pr-1 py-1 max-h-48 overflow-y-auto space-y-0.5 border-l-2 border-emerald-500 ml-2">
-                          {item.provinces.map((province) => (
-                            <div
-                              key={province}
-                              onClick={() => {
-                                setSelectedOrigin(province);
-                                setIsRegionDropdownOpen(false);
-                                setPageIndex(1);
-                              }}
-                              className={`px-2 py-1 rounded cursor-pointer hover:bg-emerald-50 hover:text-emerald-700 ${
-                                selectedOrigin === province
-                                  ? 'font-bold text-emerald-600 bg-emerald-50'
-                                  : 'text-gray-600'
-                              }`}
-                            >
-                              {province}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Filter Trạng thái tiêu thụ */}
+            {/* Growing area filter */}
             <select
-              value={selectedConsumptionStatus}
+              aria-label="Lọc vùng trồng"
+              value={selectedGrowingAreaId}
+              disabled={loadingAreas || Boolean(areaError)}
               onChange={(e) => {
-                setSelectedConsumptionStatus(e.target.value);
+                setSelectedGrowingAreaId(e.target.value);
                 setPageIndex(1);
               }}
-              className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full md:w-64 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
             >
-              <option value="">Tất cả tiêu thụ</option>
-              <option value="IN_STOCK">Tồn kho</option>
-              <option value="CONSUMING">Đang tiêu thụ</option>
-              <option value="CONSUMED">Đã tiêu thụ hết</option>
+              <option value="">{loadingAreas ? 'Đang tải vùng trồng...' : 'Tất cả vùng trồng'}</option>
+              {growingAreas.map(area => (
+                <option key={area.growingAreaId} value={area.growingAreaId}>
+                  {[area.areaName, area.ward, area.district, area.province].filter(Boolean).join(' · ')}
+                </option>
+              ))}
             </select>
-
             {/* Filter Status */}
             <select
+              aria-label="Lọc trạng thái lô hàng"
               value={selectedStatus}
               onChange={(e) => {
                 setSelectedStatus(e.target.value);
@@ -499,18 +351,15 @@ export const SupplierBatchListPage: React.FC = () => {
               className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="">Tất cả trạng thái</option>
-              <option value="SUBMITTED">Chờ duyệt</option>
-              <option value="PENDING_QC">Chờ kiểm định QC</option>
-              <option value="APPROVED">Đã duyệt</option>
-              <option value="REJECTED">Bị từ chối</option>
+              {supplierBatchFilterStatuses.map(([status, label]) => <option key={status} value={status}>{label}</option>)}
             </select>
           </div>
         </div>
 
         {/* Error Notification */}
-        {error && (
+        {(error || areaError) && (
           <div className="p-4 bg-red-50 text-red-600 text-xs border-b border-red-100">
-            {error}
+            {error || areaError}
           </div>
         )}
 
@@ -526,7 +375,6 @@ export const SupplierBatchListPage: React.FC = () => {
                 <th className="py-3 px-4 text-right">SỐ LƯỢNG (TẤN)</th>
                 <th className="py-3 px-4 text-center">NGÀY TẠO</th>
                 <th className="py-3 px-4 text-center">TRẠNG THÁI HIỆN HÀNH</th>
-                <th className="py-3 px-4 text-center">TRẠNG THÁI TIÊU THỤ</th>
                 <th className="py-3 px-4 text-center">NGÀY HOÀN THÀNH</th>
                 <th className="py-3 px-4 text-center">THAO TÁC</th>
               </tr>
@@ -534,14 +382,14 @@ export const SupplierBatchListPage: React.FC = () => {
             <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-gray-400">
+                  <td colSpan={9} className="py-12 text-center text-gray-400">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-600" />
                     <span>Đang tải danh sách lô hàng...</span>
                   </td>
                 </tr>
               ) : batches.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-gray-400">
+                  <td colSpan={9} className="py-12 text-center text-gray-400">
                     Không tìm thấy lô hàng nào phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
@@ -561,8 +409,8 @@ export const SupplierBatchListPage: React.FC = () => {
                         <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                         <div className="flex flex-col">
                           <span className="font-semibold text-xs text-gray-800">{batch.areaName || 'Chưa cập nhật'}</span>
-                          {batch.province && (
-                            <span className="text-[10px] text-gray-400 font-normal">{batch.province}</span>
+                          {[batch.ward, batch.district, batch.province].some(Boolean) && (
+                            <span className="text-[10px] text-gray-400 font-normal">{[batch.ward, batch.district, batch.province].filter(Boolean).join(', ')}</span>
                           )}
                         </div>
                       </div>
@@ -586,13 +434,6 @@ export const SupplierBatchListPage: React.FC = () => {
 
                     <td className="py-3.5 px-4 text-center">
                       {renderStatusBadge(batch.status, batch.statusDisplayName)}
-                    </td>
-
-                    <td className="py-3.5 px-4 text-center">
-                      {renderConsumptionStatusBadge(
-                        batch.consumptionStatus,
-                        batch.consumptionStatusDisplayName
-                      )}
                     </td>
 
                     <td className="py-3.5 px-4 text-center text-gray-500 whitespace-nowrap">

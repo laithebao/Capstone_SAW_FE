@@ -1,3 +1,4 @@
+import { uploadSupplierFile } from '@/features/supplier/supplierFiles';
 import { apiClient } from '../apiClient';
 import type {
   DeclareSupplierProfileRequest,
@@ -12,7 +13,8 @@ import type {
 } from '@/types/supplierBatch';
 
 // Hàm helper chuẩn hóa mọi định dạng DTO trả về từ Backend về chuẩn SupplierCropTypeDto
-const normalizeCropType = (item: any): SupplierCropTypeDto => {
+const normalizeCropType = (input: unknown): SupplierCropTypeDto => {
+  const item = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
   return {
     cropTypeId: Number(item?.cropTypeId ?? item?.id ?? 0),
     cropCode: String(item?.cropCode ?? item?.code ?? ''),
@@ -44,22 +46,13 @@ export const supplierService = {
 
   getCropTypes: async (): Promise<SupplierCropTypeDto[]> => {
     try {
-      const response = await apiClient.get<any>('/crop-types', {
+      const response = await apiClient.get<unknown>('/crop-types', {
         params: { pageSize: 100, isActive: true },
       });
       
-      const resData = response.data;
-      let rawList: any[] = [];
-
-      if (resData?.data?.items && Array.isArray(resData.data.items)) {
-        rawList = resData.data.items;
-      } else if (resData?.items && Array.isArray(resData.items)) {
-        rawList = resData.items;
-      } else if (Array.isArray(resData?.data)) {
-        rawList = resData.data;
-      } else if (Array.isArray(resData)) {
-        rawList = resData;
-      }
+      const body = response.data;
+      const resData = (body && typeof body === 'object' ? body : {}) as { data?: { items?: unknown[] } | unknown[]; items?: unknown[] };
+      const rawList: unknown[] = Array.isArray(body) ? body : Array.isArray(resData.data) ? resData.data : resData.data?.items ?? resData.items ?? [];
 
       return rawList.map(normalizeCropType);
     } catch (error) {
@@ -78,34 +71,26 @@ export const supplierService = {
     return response.data;
   },
 
-  updateProfile: async (payload: any) => {
+  updateProfile: async (payload: DeclareSupplierProfileRequest) => {
     const response = await apiClient.put('/suppliers/me/profile', payload, {
       headers: { 'Content-Type': 'application/json' },
     });
     return response.data;
   },
 
-  uploadFile: async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await apiClient.post('/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data.url || response.data;
-  },
+  uploadFile: uploadSupplierFile,
 
   getBatches: async (params?: GetSupplierBatchesQueryRequest): Promise<SupplierBatchListResponse> => {
     const response = await apiClient.get<SupplierBatchListResponse>('/SupplierBatches', { params });
     return response.data;
   },
 
-  createBatch: async (data: any): Promise<any> => {
+  createBatch: async (data: import('@/features/supplier/schemas/supplierBatchSchema').DeclareBatchFormValues) => {
     const response = await apiClient.post('/SupplierBatches', data);
     return response.data;
   },
 
-  updateBatch: async (id: number, data: any): Promise<any> => {
+  updateBatch: async (id: number, data: import('@/features/supplier/schemas/supplierBatchSchema').UpdateBatchFormValues & { expectedCreatedAt: string; expectedUpdatedAt: string | null }) => {
     const response = await apiClient.put(`/SupplierBatches/${id}`, data);
     return response.data;
   },

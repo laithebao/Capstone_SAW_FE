@@ -1,6 +1,12 @@
+import { SupplierBatchBreadcrumb } from '@/features/supplier/components/SupplierBatchBreadcrumb';
+import { SupplierDocumentEditor } from '@/features/supplier/components/SupplierDocuments';
+import type { SupplierDocumentDto } from '@/types/supplier';
+import { optionalNumericInput, type DeclareBatchFormInput } from '@/features/supplier/schemas/supplierBatchSchema';
+import { getAuthErrorMessage } from '@/services/authService';
+import { uploadSupplierFile } from '@/features/supplier/supplierFiles';
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { useForm, type SubmitHandler, type Resolver } from 'react-hook-form';
+import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Info,
@@ -11,6 +17,10 @@ import {
   MapPin,
   Loader2,
   AlertCircle,
+  Thermometer,
+  Droplets,
+  Package,
+  Calendar,
 } from 'lucide-react';
 import {
   updateBatchSchema,
@@ -23,11 +33,15 @@ import type { SupplierGrowingAreaDto, SupplierCropTypeDto } from '@/types/suppli
 export const EditBatchPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [version, setVersion] = useState<{ expectedCreatedAt: string; expectedUpdatedAt: string | null } | null>(null);
+  const [documents, setDocuments] = useState<SupplierDocumentDto[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [batchCode, setBatchCode] = useState<string>('');
+  const [batchCreatedAt, setBatchCreatedAt] = useState<string>('');
 
   // States danh sách Cây trồng & Vùng trồng
   const [cropTypeOptions, setCropTypeOptions] = useState<SupplierCropTypeDto[]>([]);
@@ -39,16 +53,49 @@ export const EditBatchPage: React.FC = () => {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setValue,
-    watch,
     formState: { errors },
-  } = useForm<UpdateBatchFormValues>({
-    resolver: zodResolver(updateBatchSchema) as Resolver<UpdateBatchFormValues>,
+  } = useForm<DeclareBatchFormInput, unknown, UpdateBatchFormValues>({
+    resolver: zodResolver(updateBatchSchema),
   });
 
-  const currentCropTypeId = watch('cropTypeId');
+  // Watch các field cần theo dõi realtime
+  const currentUnit = useWatch({ control, name: 'unit' });
+  const currentCropTypeId = useWatch({ control, name: 'cropTypeId' });
+  const currentPackageCount = useWatch({ control, name: 'packageCount' });
+  const currentPackageUnitWeightKg = useWatch({ control, name: 'packageUnitWeightKg' });
+  const currentDeclaredQuantity = useWatch({ control, name: 'declaredQuantity' });
+
+  // Tính tổng trọng lượng ước tính khi đóng gói theo kiện
+  const estimatedWeightKg = useMemo(() => {
+    if (
+      (currentUnit === 'Bao' || currentUnit === 'Thùng') &&
+      currentPackageCount &&
+      currentPackageUnitWeightKg &&
+      currentPackageCount > 0 &&
+      currentPackageUnitWeightKg > 0
+    ) {
+      return currentPackageCount * currentPackageUnitWeightKg;
+    }
+    return null;
+  }, [currentUnit, currentPackageCount, currentPackageUnitWeightKg]);
+
+  // Hiển thị nhóm đóng gói kiện khi unit là Bao/Thùng
+  const isPackageUnit = currentUnit === 'Bao' || currentUnit === 'Thùng';
+
+  // Đồng bộ declaredQuantity sang packageCount khi người dùng nhập số lượng khai báo và đơn vị là kiện
+  useEffect(() => {
+    if (isPackageUnit) {
+      if (currentDeclaredQuantity && !Number.isNaN(currentDeclaredQuantity)) {
+        setValue('packageCount', currentDeclaredQuantity, { shouldValidate: true });
+      } else {
+        setValue('packageCount', undefined);
+      }
+    }
+  }, [currentDeclaredQuantity, isPackageUnit, setValue]);
 
   useEffect(() => {
     if (!id) return;
@@ -57,27 +104,40 @@ export const EditBatchPage: React.FC = () => {
         setLoading(true);
         setIsLoadingAreas(true);
 
-        const [statusResponse, profile, allCrops] = await Promise.all([
+        const [statusResponse, profile] = await Promise.all([
           supplierBatchService.getBatchStatus(Number(id)),
           supplierService.getMyProfile().catch(() => null),
-          supplierService.getCropTypes().catch(() => []),
         ]);
 
         const data = statusResponse.data;
+
+        // ĐÃ SỬA S04: CHỈ CHO PHÉP SUBMITTED MỚI ĐƯỢC CHỈNH SỬA
+        const EDITABLE_STATUSES = ['SUBMITTED'];
+        const currentStatusStr = data.currentStatus ? String(data.currentStatus).toUpperCase() : '';
+
+        if (!EDITABLE_STATUSES.includes(currentStatusStr)) {
+          console.warn('Hệ thống chặn vì trạng thái thực tế từ Backend là:', data.currentStatus);
+          navigate(`/supplier/batches/${id}`, { replace: true });
+          return;
+        }
+
         setBatchCode(data.batchCode);
+        setVersion({ expectedCreatedAt: data.createdAt, expectedUpdatedAt: data.updatedAt });
+        setDocuments(data.documents ?? []);
+        setBatchCreatedAt(data.createdAt);
 
         // 1. Tải danh sách cây trồng
         let crops: SupplierCropTypeDto[] = [];
         if (profile && Array.isArray(profile.cropTypes) && profile.cropTypes.length > 0) {
           crops = profile.cropTypes;
         } else {
-          crops = allCrops;
+          crops = [];
         }
         setCropTypeOptions(crops);
 
         // Tìm CropType khớp với dữ liệu lô hàng hiện tại
         const matchedCrop = crops.find(
-          (c) => c.cropName === data.cropTypeName || Number(c.cropTypeId) === Number((data as any).cropTypeId)
+          (c) => Number(c.cropTypeId) === data.cropTypeId
         );
 
         let initialCat = '';
@@ -86,9 +146,8 @@ export const EditBatchPage: React.FC = () => {
         if (matchedCrop) {
           initialCat = matchedCrop.categoryName || 'Nông sản khác';
           initialCropId = Number(matchedCrop.cropTypeId);
-        } else if (crops.length > 0) {
-          initialCat = crops[0].categoryName || 'Nông sản khác';
-          initialCropId = Number(crops[0].cropTypeId);
+        } else {
+          setSubmitError('Nông sản không còn được đăng ký. Vui lòng chọn lại nông sản hợp lệ.');
         }
 
         setSelectedCategory(initialCat);
@@ -98,28 +157,52 @@ export const EditBatchPage: React.FC = () => {
         if (profile && profile.growingAreas && profile.growingAreas.length > 0) {
           userAreas = profile.growingAreas;
         } else {
-          userAreas = await supplierService.getGrowingAreas();
+          userAreas = [];
         }
         setGrowingAreas(userAreas);
 
+        // ĐÃ SỬA S06: Bind bằng đúng ID vùng thay vì bằng Tên/Tỉnh để tránh chọn nhầm vùng
         const matchedArea = userAreas.find(
-          (a) => a.areaName === data.areaName || (a.province === data.province && a.district === data.district)
+          (a) => a.growingAreaId === data.growingAreaId
         );
-        const selectedAreaId = matchedArea ? matchedArea.growingAreaId : userAreas[0]?.growingAreaId || 1;
+        if (!matchedArea) setSubmitError('Vùng trồng của lô không còn trong hồ sơ. Vui lòng chọn lại vùng hợp lệ.');
+        const selectedAreaId = matchedArea ? matchedArea.growingAreaId : 0;
 
-        // 3. Fill data vào Form
+        // 3. Xác định unit hợp lệ (map về enum: Tấn | Kg | Bao | Thùng)
+        const rawUnit = ({ kg: 'Kg', kilogram: 'Kg', ton: 'Tấn', tan: 'Tấn', 'tấn': 'Tấn', bao: 'Bao', 'thùng': 'Thùng' } as Record<string, string>)[data.unit.trim().toLowerCase()] ?? data.unit;
+        const validUnits = ['Tấn', 'Kg', 'Bao', 'Thùng'] as const;
+        type ValidUnit = typeof validUnits[number];
+        const mappedUnit: ValidUnit = (validUnits as readonly string[]).includes(rawUnit)
+          ? (rawUnit as ValidUnit)
+          : (() => { throw new Error('Đơn vị của lô không được hỗ trợ. Vui lòng kiểm tra dữ liệu lô.'); })();
+
+        // 4. Định dạng Date cho <input type="date" /> (YYYY-MM-DD)
+        const formatForDateInput = (dateStr?: string | null) => {
+          if (!dateStr) return '';
+          return dateStr.substring(0, 10);
+        };
+
+        // 5. Fill toàn bộ dữ liệu vào Form
         reset({
           cropTypeId: initialCropId,
           productName: data.productName,
           growingAreaId: selectedAreaId,
           declaredQuantity: data.declaredQuantity,
-          unit: data.unit || 'Kg',
-          harvestDate: data.harvestDate,
-          expectedDeliveryDate: data.expectedDeliveryDate || '',
-          note: data.warehouseNote || '',
+          unit: mappedUnit,
+          harvestDate: formatForDateInput(data.harvestDate),
+          expectedDeliveryDate: formatForDateInput(data.expectedDeliveryDate),
+          expiryDate: formatForDateInput(data.expiryDate),
+          packagingType: data.packagingType || '',
+          packageCount: data.packageCount ?? undefined,
+          packageUnitWeightKg: data.packageUnitWeightKg ?? undefined,
+          expectedMinTempC: data.expectedMinTempC ?? undefined,
+          expectedMaxTempC: data.expectedMaxTempC ?? undefined,
+          expectedMinHumidityPct: data.expectedMinHumidityPct ?? undefined,
+          expectedMaxHumidityPct: data.expectedMaxHumidityPct ?? undefined,
+          note: data.supplierNote || '',
         });
-      } catch (err: any) {
-        setSubmitError('Không thể tải thông tin lô hàng.');
+      } catch (err) {
+        setSubmitError(getAuthErrorMessage(err, 'Không thể tải thông tin lô hàng.'));
       } finally {
         setLoading(false);
         setIsLoadingAreas(false);
@@ -127,7 +210,7 @@ export const EditBatchPage: React.FC = () => {
     };
 
     fetchDetailAndProfile();
-  }, [id, reset]);
+  }, [id, reset, navigate]);
 
   // Unique Categories cho Dropdown 1
   const categories = useMemo(() => {
@@ -178,16 +261,17 @@ export const EditBatchPage: React.FC = () => {
   };
 
   const onSubmit: SubmitHandler<UpdateBatchFormValues> = async (values) => {
-    if (!id) return;
+    if (!id || !version || isSubmitting) return;
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      await supplierBatchService.updateBatch(Number(id), values);
-      navigate(`/supplier/batches/${id}/status`);
-    } catch (err: any) {
+      const uploaded = await Promise.all(pendingFiles.map(file => uploadSupplierFile(file)));
+      await supplierBatchService.updateBatch(Number(id), { ...values, ...version, evidenceDocumentUrls: [...documents.map(doc => doc.fileUrl), ...uploaded] });
+      navigate(`/supplier/batches/${id}`, { state: { batchUpdated: true } });
+    } catch (err) {
       setSubmitError(
-        err.response?.data?.message || 'Chỉnh sửa thất bại. Vui lòng kiểm tra lại.'
+        getAuthErrorMessage(err, 'Chỉnh sửa thất bại. Vui lòng kiểm tra lại.')
       );
     } finally {
       setIsSubmitting(false);
@@ -208,13 +292,7 @@ export const EditBatchPage: React.FC = () => {
         {/* Header Bar */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-              <span>SAW System</span>
-              <span>&gt;</span>
-              <span>Quản lý lô sản phẩm</span>
-              <span>&gt;</span>
-              <span className="font-semibold text-gray-700">Chỉnh sửa thông tin lô hàng</span>
-            </div>
+            <SupplierBatchBreadcrumb batchId={Number(id)} batchCode={batchCode} editing />
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">Chỉnh sửa thông tin lô hàng</h1>
               <span className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded font-mono font-semibold">
@@ -230,11 +308,11 @@ export const EditBatchPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => navigate(`/supplier/batches/${id}/status`)}
+              onClick={() => navigate(`/supplier/batches/${id}`)}
               className="bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg border border-gray-300 text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
               <History className="w-3.5 h-3.5" />
-              <span>Lịch sử</span>
+              <span>Hủy & Quay lại</span>
             </button>
             <button
               type="submit"
@@ -358,40 +436,142 @@ export const EditBatchPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Card 2: Khối lượng & Vận chuyển */}
+            {/* Card 2: Khối lượng & Quy cách đóng gói */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
               <div className="flex items-center gap-2 text-xs font-bold text-gray-800 border-b pb-3 mb-4">
                 <Truck className="w-4 h-4 text-gray-500" />
-                <span>2. Khối lượng & Vận chuyển</span>
+                <span>2. Khối lượng & Quy cách đóng gói</span>
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2">
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      KHỐI LƯỢNG KHAI BÁO <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      {...register('declaredQuantity', { valueAsNumber: true })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
+                {/* ĐƠN VỊ (Radio group) */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-2">
+                    ĐƠN VỊ / HÌNH THỨC ĐÓNG GÓI <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {(['Tấn', 'Kg', 'Bao', 'Thùng'] as const).map((unitOption) => (
+                      <label
+                        key={unitOption}
+                        className={`flex items-center justify-center gap-2 border rounded-lg px-3 py-2.5 text-xs font-semibold cursor-pointer transition-all ${
+                          currentUnit === unitOption
+                            ? 'bg-emerald-50 border-emerald-400 text-emerald-700 ring-1 ring-emerald-400'
+                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          value={unitOption}
+                          {...register('unit')}
+                          className="sr-only"
+                        />
+                        {(unitOption === 'Bao' || unitOption === 'Thùng') && (
+                          <Package className="w-3.5 h-3.5" />
+                        )}
+                        {unitOption === 'Bao' ? 'Bao (kiện)' : unitOption === 'Thùng' ? 'Thùng (kiện)' : unitOption}
+                      </label>
+                    ))}
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      ĐƠN VỊ
-                    </label>
-                    <select
-                      {...register('unit')}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="kg">kg</option>
-                      <option value="Tấn">Tấn</option>
-                    </select>
-                  </div>
+                  {errors.unit && (
+                    <p className="text-[11px] text-red-500 mt-1">{errors.unit.message}</p>
+                  )}
+                  {isPackageUnit && (
+                    <p className="text-[11px] text-blue-500 mt-1.5 flex items-center gap-1">
+                      <Info className="w-3 h-3" />
+                      Tổng trọng lượng = Số kiện × Trọng lượng mỗi kiện (Kg)
+                    </p>
+                  )}
                 </div>
 
+                {/* SỐ LƯỢNG KHAI BÁO */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                    {isPackageUnit ? `SỐ LƯỢNG KIỆN (${currentUnit})` : 'KHỐI LƯỢNG KHAI BÁO'}{' '}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step={isPackageUnit ? '1' : '0.01'}
+                    {...register('declaredQuantity', { valueAsNumber: true })}
+                    placeholder={isPackageUnit ? 'Nhập số kiện...' : '0.00'}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  {errors.declaredQuantity && (
+                    <p className="text-[11px] text-red-500 mt-1">
+                      {errors.declaredQuantity.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* NHÓM: QUY CÁCH ĐÓNG GÓI KIỆN — chỉ hiện khi unit là Bao/Thùng */}
+                {isPackageUnit && (
+                  <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-xl space-y-3">
+                    <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wide flex items-center gap-1.5">
+                      <Package className="w-3.5 h-3.5" />
+                      Chi tiết quy cách đóng gói
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* SỐ KIỆN (packageCount) - Tự động điền theo KHỐI LƯỢNG KHAI BÁO */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                          SỐ LƯỢNG KIỆN <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="1"
+                          min="1"
+                          readOnly
+                          {...register('packageCount', { setValueAs: optionalNumericInput })}
+                          placeholder="Được tự động điền..."
+                          className="w-full bg-gray-100 border border-blue-200 rounded-lg px-3 py-2 text-xs text-gray-500 cursor-not-allowed focus:outline-none"
+                        />
+                        {errors.packageCount && (
+                          <p className="text-[11px] text-red-500 mt-1">
+                            {errors.packageCount.message}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* TRỌNG LƯỢNG MỖI KIỆN (packageUnitWeightKg) */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                          TRỌNG LƯỢNG MỖI KIỆN (KG) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          {...register('packageUnitWeightKg', { setValueAs: optionalNumericInput })}
+                          placeholder={currentUnit === 'Bao' ? 'Gợi ý: 25 kg' : 'Gợi ý: 10 kg'}
+                          className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                        {errors.packageUnitWeightKg && (
+                          <p className="text-[11px] text-red-500 mt-1">
+                            {errors.packageUnitWeightKg.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* TỔNG TRỌNG LƯỢNG ƯỚC TÍNH (readonly, realtime) */}
+                    {estimatedWeightKg !== null && (
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide">
+                          Tổng trọng lượng ước tính
+                        </span>
+                        <span className="text-sm font-bold text-emerald-800">
+                          {estimatedWeightKg.toLocaleString('vi-VN')} kg
+                          <span className="ml-2 font-normal text-emerald-600 text-[11px]">
+                            ({(estimatedWeightKg / 1000).toFixed(3)} tấn)
+                          </span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* NGÀY THU HOẠCH & NGÀY GIAO HÀNG DỰ KIẾN */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
@@ -402,26 +582,143 @@ export const EditBatchPage: React.FC = () => {
                       {...register('harvestDate')}
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
+                    {errors.harvestDate && (
+                      <p className="text-[11px] text-red-500 mt-1">{errors.harvestDate.message}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      NGÀY GIAO HÀNG DỰ KIẾN <span className="text-red-500">*</span>
+                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                      <span>NGÀY GIAO HÀNG DỰ KIẾN</span>
                     </label>
                     <input
                       type="date"
                       {...register('expectedDeliveryDate')}
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
+                    {errors.expectedDeliveryDate && (
+                      <p className="text-[11px] text-red-500 mt-1">{errors.expectedDeliveryDate.message}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* NGÀY HẾT HẠN */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                    NGÀY HẾT HẠN SẢN PHẨM
+                  </label>
+                  <input
+                    type="date"
+                    {...register('expiryDate')}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  {errors.expiryDate && (
+                    <p className="text-[11px] text-red-500 mt-1">{errors.expiryDate.message}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Điều kiện bảo quản */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <div className="flex items-center gap-2 text-xs font-bold text-gray-800 border-b pb-3 mb-4">
+                <Thermometer className="w-4 h-4 text-gray-500" />
+                <span>3. Điều kiện bảo quản yêu cầu</span>
+                <span className="text-[10px] font-normal text-gray-400 ml-1">(Không bắt buộc)</span>
+              </div>
+
+              <div className="space-y-4">
+                {/* NHIỆT ĐỘ */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-2 flex items-center gap-1.5">
+                    <Thermometer className="w-3.5 h-3.5 text-orange-400" />
+                    <span>NHIỆT ĐỘ BẢO QUẢN (°C)</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Tối thiểu (°C)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        {...register('expectedMinTempC', { setValueAs: optionalNumericInput })}
+                        placeholder="Ví dụ: 2"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      />
+                      {errors.expectedMinTempC && (
+                        <p className="text-[11px] text-red-500 mt-1">
+                          {errors.expectedMinTempC.message}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Tối đa (°C)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        {...register('expectedMaxTempC', { setValueAs: optionalNumericInput })}
+                        placeholder="Ví dụ: 10"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      />
+                      {errors.expectedMaxTempC && (
+                        <p className="text-[11px] text-red-500 mt-1">
+                          {errors.expectedMaxTempC.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ĐỘ ẨM */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-2 flex items-center gap-1.5">
+                    <Droplets className="w-3.5 h-3.5 text-blue-400" />
+                    <span>ĐỘ ẨM BẢO QUẢN (%)</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Tối thiểu (%)</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="100"
+                        {...register('expectedMinHumidityPct', { setValueAs: optionalNumericInput })}
+                        placeholder="Ví dụ: 60"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                      {errors.expectedMinHumidityPct && (
+                        <p className="text-[11px] text-red-500 mt-1">
+                          {errors.expectedMinHumidityPct.message}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Tối đa (%)</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="100"
+                        {...register('expectedMaxHumidityPct', { setValueAs: optionalNumericInput })}
+                        placeholder="Ví dụ: 85"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                      {errors.expectedMaxHumidityPct && (
+                        <p className="text-[11px] text-red-500 mt-1">
+                          {errors.expectedMaxHumidityPct.message}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Card 3: Ghi chú */}
+            {/* Card 4: Ghi chú */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
               <div className="flex items-center gap-2 text-xs font-bold text-gray-800 border-b pb-3 mb-4">
                 <FileText className="w-4 h-4 text-gray-500" />
-                <span>3. Ghi chú & Tài liệu đính kèm</span>
+                <span>4. Ghi chú & Tài liệu đính kèm</span>
               </div>
               <textarea
                 rows={3}
@@ -429,6 +726,7 @@ export const EditBatchPage: React.FC = () => {
                 placeholder="Ghi chú cho kho nhận..."
                 className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
+              <div className="mt-4"><SupplierDocumentEditor existing={documents} pending={pendingFiles} onExistingChange={setDocuments} onPendingChange={setPendingFiles} disabled={isSubmitting} variant="profile" /></div>
             </div>
           </div>
 
@@ -440,14 +738,30 @@ export const EditBatchPage: React.FC = () => {
                 <span className="text-gray-500">Mã lô:</span>
                 <span className="font-mono font-semibold">{batchCode}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Tạo ngày:</span>
-                <span>24/10/2023 08:30</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Cập nhật cuối:</span>
-                <span>25/10/2023 14:15</span>
-              </div>
+              {batchCreatedAt && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Tạo ngày:</span>
+                  <span>
+                    {new Date(batchCreatedAt).toLocaleString('vi-VN', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              )}
+
+              {/* Preview trọng lượng trong sidebar */}
+              {isPackageUnit && estimatedWeightKg !== null && (
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-gray-500">Trọng lượng ước tính:</span>
+                  <span className="font-semibold text-emerald-700">
+                    {estimatedWeightKg.toLocaleString('vi-VN')} kg
+                  </span>
+                </div>
+              )}
 
               <div className="p-3 bg-emerald-50/60 border border-emerald-100 rounded-lg text-emerald-800 text-[11px] flex gap-2 mt-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />

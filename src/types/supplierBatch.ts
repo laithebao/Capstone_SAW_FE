@@ -13,7 +13,8 @@ export interface GetSupplierBatchesQueryRequest {
   keyword?: string;
   status?: string;
   province?: string; // Đã sửa: Đổi origin thành province
-  consumptionStatus?: string;
+  growingAreaId?: number;
+  consumptionStatus?: string | null;
   fromDate?: string;
   toDate?: string;
   pageIndex?: number;
@@ -38,8 +39,8 @@ export interface SupplierBatchItemResponse {
   completedDate?: string | null;
   status: string;
   statusDisplayName: string;
-  consumptionStatus?: string;
-  consumptionStatusDisplayName?: string;
+  consumptionStatus?: string | null;
+  consumptionStatusDisplayName?: string | null;
 }
 
 // Tổng quan thống kê danh sách lô hàng
@@ -74,6 +75,13 @@ export interface BatchStatusHistoryDto {
 
 // Response chi tiết trạng thái lô hàng
 export interface SupplierBatchStatusResponse {
+  cropTypeId: number;
+  growingAreaId: number;
+  updatedAt: string | null;
+  verifiedQuantity: number | null;
+  verifiedWeightInKg: number | null;
+  supplierNote: string | null;
+  documents: import('./supplier').SupplierDocumentDto[];
   batchId: number;
   batchCode: string;
   productName: string;
@@ -89,12 +97,24 @@ export interface SupplierBatchStatusResponse {
 
   declaredQuantity: number;
   unit: string;
+  packagingType?: string | null;
+  packageCount?: number | null;
+  packageUnitWeightKg?: number | null;
+  expectedMinTempC?: number | null;
+  expectedMaxTempC?: number | null;
+  expectedMinHumidityPct?: number | null;
+  expectedMaxHumidityPct?: number | null;
+  expiryDate?: string | null;
+
   receivedQuantity: number;
   weightInKg: number;
 
   currentStatus: string;
   statusDisplayName: string;
   qcResult?: string | null;
+  qcInspectionStatus?: string | null;
+  qcCompletedAt?: string | null;
+  warehousedAt?: string | null;
   qualityGrade?: string | null;
   rejectionReason?: string | null;
   warehouseNote?: string | null;
