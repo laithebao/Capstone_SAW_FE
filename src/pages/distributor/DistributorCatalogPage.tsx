@@ -39,7 +39,7 @@ export default function DistributorCatalogPage() {
     {selected.length > 0 && <section className={`${panel} sticky bottom-3 space-y-3 border-emerald-300`} aria-label="Các lô đã chọn">
       <div className="flex flex-wrap gap-2">{selected.map(l => <button key={l.batchId} onClick={() => toggle(l)} className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-800" aria-label={`Bỏ chọn ${l.batchCode}`}>{l.batchCode} ×</button>)}</div>
       <div className="flex flex-wrap items-center justify-between gap-3"><p><b>{selected.length}/20 lô</b> · {money(selected.reduce((sum, l) => sum + l.wholeLotPrice, 0))}</p><button className={primary} onClick={() => navigate(ROUTES.DISTRIBUTOR_ORDER_CREATE, { state: { lots: selected } })}>Tạo Đơn Hàng</button></div>
-      <p className="text-xs text-slate-500">Lô chỉ được giữ khi quản lý kho duyệt đơn. Giá và tồn kho sẽ được kiểm tra lại khi gửi đơn.</p>
+      <p className="text-xs text-slate-500">Sau khi gửi đơn, lô tạm ẩn khỏi catalog trong lúc chờ xử lý. Nếu đơn bị từ chối hoặc hủy, lô sẽ hiện lại khi vẫn đủ điều kiện bán.</p>
     </section>}
   </div>
 }
