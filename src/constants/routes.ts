@@ -50,6 +50,11 @@ export const ROUTES = {
 
 
   DISTRIBUTOR: '/distributor',
+  DISTRIBUTOR_CATALOG: '/distributor/catalog',
+  DISTRIBUTOR_LOT_DETAIL: '/distributor/catalog/:id',
+  DISTRIBUTOR_ORDERS: '/distributor/orders',
+  DISTRIBUTOR_ORDER_CREATE: '/distributor/orders/new',
+  DISTRIBUTOR_ORDER_DETAIL: '/distributor/orders/:id',
   FORBIDDEN: '/403',
 } as const
 

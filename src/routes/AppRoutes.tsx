@@ -22,6 +22,11 @@ import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
 import VerifyEmailPage from '@/pages/auth/VerifyEmailPage'
 import ChangePasswordPage from '@/pages/auth/ChangePasswordPage'
 import DistributorDashboardPage from '@/pages/distributor/DistributorDashboardPage'
+import DistributorCatalogPage from '@/pages/distributor/DistributorCatalogPage'
+import DistributorLotDetailPage from '@/pages/distributor/DistributorLotDetailPage'
+import CreateDistributorOrderPage from '@/pages/distributor/CreateDistributorOrderPage'
+import DistributorOrderListPage from '@/pages/distributor/DistributorOrderListPage'
+import DistributorOrderDetailPage from '@/pages/distributor/DistributorOrderDetailPage'
 import OperationDashboardPage from '@/pages/operation/OperationDashboardPage'
 import GoodsReceiptManagementPage from '@/pages/operation/GoodsReceiptManagementPage'
 import CreateGoodsReceiptPage from '@/pages/operation/CreateGoodsReceiptPage'
@@ -131,6 +136,11 @@ export default function AppRoutes() {
 
           <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
             <Route path={ROUTES.DISTRIBUTOR} element={<DistributorDashboardPage />} />
+            <Route path={ROUTES.DISTRIBUTOR_CATALOG} element={<DistributorCatalogPage />} />
+            <Route path={ROUTES.DISTRIBUTOR_LOT_DETAIL} element={<DistributorLotDetailPage />} />
+            <Route path={ROUTES.DISTRIBUTOR_ORDERS} element={<DistributorOrderListPage />} />
+            <Route path={ROUTES.DISTRIBUTOR_ORDER_CREATE} element={<CreateDistributorOrderPage />} />
+            <Route path={ROUTES.DISTRIBUTOR_ORDER_DETAIL} element={<DistributorOrderDetailPage />} />
           </Route>
         </Route>
       </Route>
