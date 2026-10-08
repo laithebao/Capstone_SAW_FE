@@ -1,64 +1,66 @@
-import { Navigate, Route, Routes } from 'react-router'
-import { ROLES } from '@/constants/roles'
-import { ROLE_HOME_ROUTES, ROUTES } from '@/constants/routes'
-import { useAuth } from '@/hooks/useAuth'
-import AuthLayout from '@/layouts/AuthLayout'
-import DashboardLayout from '@/layouts/DashboardLayout'
-import PublicLayout from '@/layouts/PublicLayout'
-import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
-import CropTypesPage from '@/pages/admin/CropTypesPage'
-import CropTypeFormPage from '@/pages/admin/CropTypeFormPage'
-import InspectionStandardsPage from '@/pages/admin/InspectionStandardsPage'
-import InspectionStandardListPage from '@/pages/admin/InspectionStandardListPage'
-import InspectionStandardDetailPage from '@/pages/admin/InspectionStandardDetailPage'
-import InspectionStandardVersionFormPage from '@/pages/admin/InspectionStandardVersionFormPage'
-import UserAccessPage from '@/pages/admin/UserAccessPage'
-import AuditLogPage from '@/pages/admin/AuditLogPage'
-import AuditLogDetailPage from '@/pages/admin/AuditLogDetailPage'
-import LoginPage from '@/pages/auth/LoginPage'
-import RegisterPage from '@/pages/auth/RegisterPage'
-import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
-import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
-import VerifyEmailPage from '@/pages/auth/VerifyEmailPage'
-import ChangePasswordPage from '@/pages/auth/ChangePasswordPage'
-import DistributorDashboardPage from '@/pages/distributor/DistributorDashboardPage'
-import DistributorCatalogPage from '@/pages/distributor/DistributorCatalogPage'
-import DistributorLotDetailPage from '@/pages/distributor/DistributorLotDetailPage'
-import CreateDistributorOrderPage from '@/pages/distributor/CreateDistributorOrderPage'
-import DistributorOrderListPage from '@/pages/distributor/DistributorOrderListPage'
-import DistributorOrderDetailPage from '@/pages/distributor/DistributorOrderDetailPage'
-import OperationDashboardPage from '@/pages/operation/OperationDashboardPage'
-import GoodsReceiptManagementPage from '@/pages/operation/GoodsReceiptManagementPage'
-import CreateGoodsReceiptPage from '@/pages/operation/CreateGoodsReceiptPage'
-import GoodsReceiptDetailPage from '@/pages/operation/GoodsReceiptDetailPage'
-import ProductBatchManagementPage from '@/pages/operation/ProductBatchManagementPage'
-import ProductBatchDetailPage from '@/pages/operation/ProductBatchDetailPage'
-import CreateProductBatchPage from '@/pages/operation/CreateProductBatchPage'
-import UpdateProductBatchPage from '@/pages/operation/UpdateProductBatchPage'
-import QCDashboardPage from '@/pages/qc/QCDashboardPage'
-import QCInspectionListPage from '@/pages/qc/QCInspectionListPage'
-import QCInspectionCreatePage from '@/pages/qc/QCInspectionCreatePage'
-import QCInspectionDetailPage from '@/pages/qc/QCInspectionDetailPage'
-import SupplierDashboardPage from '@/pages/supplier/SupplierDashboardPage'
-import SupplierProfilePage from '@/pages/supplier/SupplierProfilePage'
-import { DeclareSupplierProfilePage } from '@/pages/supplier/DeclareSupplierProfilePage' // <-- IMPORT THÊM Ở ĐÂY
-import ForbiddenPage from '@/pages/system/ForbiddenPage'
-import NotFoundPage from '@/pages/system/NotFoundPage'
-import TraceabilityPage from '@/pages/traceability/TraceabilityPage'
-import WarehouseManagerDashboardPage from '@/pages/warehouse-manager/WarehouseManagerDashboardPage'
-import ProtectedRoute from '@/routes/ProtectedRoute'
-import RoleRoute from '@/routes/RoleRoute'
-import EditSupplierProfilePage from '@/pages/supplier/EditSupplierProfilePage'
-import BatchProcessDetailPage from '@/pages/supplier/BatchProcessDetailPage'
-import DeclareBatchPage from '@/pages/supplier/DeclareBatchPage'
-import EditBatchPage from '@/pages/supplier/EditBatchPage'
-import SupplierBatchListPage from '@/pages/supplier/SupplierBatchListPage'
-import BatchStatusDetailPage from '@/pages/supplier/BatchStatusDetailPage'
-import { SupplierGuard } from '@/routes/SupplierGuard'
+import { Navigate, Route, Routes } from "react-router";
+import { ROLES } from "@/constants/roles";
+import { ROLE_HOME_ROUTES, ROUTES } from "@/constants/routes";
+import { useAuth } from "@/hooks/useAuth";
+import AuthLayout from "@/layouts/AuthLayout";
+import DashboardLayout from "@/layouts/DashboardLayout";
+import PublicLayout from "@/layouts/PublicLayout";
+import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
+import CropTypesPage from "@/pages/admin/CropTypesPage";
+import CropTypeFormPage from "@/pages/admin/CropTypeFormPage";
+import InspectionStandardsPage from "@/pages/admin/InspectionStandardsPage";
+import InspectionStandardListPage from "@/pages/admin/InspectionStandardListPage";
+import InspectionStandardDetailPage from "@/pages/admin/InspectionStandardDetailPage";
+import InspectionStandardVersionFormPage from "@/pages/admin/InspectionStandardVersionFormPage";
+import UserAccessPage from "@/pages/admin/UserAccessPage";
+import AuditLogPage from "@/pages/admin/AuditLogPage";
+import AuditLogDetailPage from "@/pages/admin/AuditLogDetailPage";
+import LoginPage from "@/pages/auth/LoginPage";
+import RegisterPage from "@/pages/auth/RegisterPage";
+import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
+import VerifyEmailPage from "@/pages/auth/VerifyEmailPage";
+import ChangePasswordPage from "@/pages/auth/ChangePasswordPage";
+import DistributorDashboardPage from "@/pages/distributor/DistributorDashboardPage";
+import DistributorCatalogPage from "@/pages/distributor/DistributorCatalogPage";
+import DistributorLotDetailPage from "@/pages/distributor/DistributorLotDetailPage";
+import CreateDistributorOrderPage from "@/pages/distributor/CreateDistributorOrderPage";
+import DistributorOrderListPage from "@/pages/distributor/DistributorOrderListPage";
+import DistributorOrderDetailPage from "@/pages/distributor/DistributorOrderDetailPage";
+import OperationDashboardPage from "@/pages/operation/OperationDashboardPage";
+import GoodsReceiptManagementPage from "@/pages/operation/GoodsReceiptManagementPage";
+import CreateGoodsReceiptPage from "@/pages/operation/CreateGoodsReceiptPage";
+import GoodsReceiptDetailPage from "@/pages/operation/GoodsReceiptDetailPage";
+import ProductBatchManagementPage from "@/pages/operation/ProductBatchManagementPage";
+import ProductBatchDetailPage from "@/pages/operation/ProductBatchDetailPage";
+import CreateProductBatchPage from "@/pages/operation/CreateProductBatchPage";
+import UpdateProductBatchPage from "@/pages/operation/UpdateProductBatchPage";
+import QCDashboardPage from "@/pages/qc/QCDashboardPage";
+import QCInspectionListPage from "@/pages/qc/QCInspectionListPage";
+import QCInspectionCreatePage from "@/pages/qc/QCInspectionCreatePage";
+import QCInspectionDetailPage from "@/pages/qc/QCInspectionDetailPage";
+import SupplierDashboardPage from "@/pages/supplier/SupplierDashboardPage";
+import SupplierProfilePage from "@/pages/supplier/SupplierProfilePage";
+import { DeclareSupplierProfilePage } from "@/pages/supplier/DeclareSupplierProfilePage"; // <-- IMPORT THÊM Ở ĐÂY
+import ForbiddenPage from "@/pages/system/ForbiddenPage";
+import NotFoundPage from "@/pages/system/NotFoundPage";
+import TraceabilityPage from "@/pages/traceability/TraceabilityPage";
+import WarehouseManagerDashboardPage from "@/pages/warehouse-manager/WarehouseManagerDashboardPage";
+import WarehouseDistributorOrdersPage from "@/pages/warehouse-manager/WarehouseDistributorOrdersPage";
+import ProtectedRoute from "@/routes/ProtectedRoute";
+import RoleRoute from "@/routes/RoleRoute";
+import EditSupplierProfilePage from "@/pages/supplier/EditSupplierProfilePage";
+import BatchProcessDetailPage from "@/pages/supplier/BatchProcessDetailPage";
+import DeclareBatchPage from "@/pages/supplier/DeclareBatchPage";
+import EditBatchPage from "@/pages/supplier/EditBatchPage";
+import SupplierBatchListPage from "@/pages/supplier/SupplierBatchListPage";
+import BatchStatusDetailPage from "@/pages/supplier/BatchStatusDetailPage";
+import { SupplierGuard } from "@/routes/SupplierGuard";
 
 export default function AppRoutes() {
-  const { user, isAuthenticated } = useAuth()
-  const homeRoute = isAuthenticated && user ? ROLE_HOME_ROUTES[user.role] : ROUTES.LOGIN
+  const { user, isAuthenticated } = useAuth();
+  const homeRoute =
+    isAuthenticated && user ? ROLE_HOME_ROUTES[user.role] : ROUTES.LOGIN;
 
   return (
     <Routes>
@@ -80,70 +82,213 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
-          <Route path={ROUTES.CHANGE_PASSWORD} element={<ChangePasswordPage />} />
+          <Route
+            path={ROUTES.CHANGE_PASSWORD}
+            element={<ChangePasswordPage />}
+          />
           <Route element={<RoleRoute allowedRoles={[ROLES.ADMINISTRATOR]} />}>
             <Route path={ROUTES.ADMIN} element={<AdminDashboardPage />} />
-            <Route path={ROUTES.ADMIN_USER_ACCESS} element={<UserAccessPage />} />
+            <Route
+              path={ROUTES.ADMIN_USER_ACCESS}
+              element={<UserAccessPage />}
+            />
             <Route path={ROUTES.ADMIN_CROP_TYPES} element={<CropTypesPage />} />
-            <Route path={ROUTES.ADMIN_CROP_TYPE_NEW} element={<CropTypeFormPage />} />
-            <Route path={ROUTES.ADMIN_CROP_TYPE_EDIT} element={<CropTypeFormPage />} />
-            <Route path={ROUTES.ADMIN_INSPECTION_STANDARDS} element={<InspectionStandardListPage />} />
-            <Route path={ROUTES.ADMIN_INSPECTION_STANDARD_NEW} element={<InspectionStandardsPage />} />
-            <Route path={ROUTES.ADMIN_INSPECTION_STANDARD_DETAIL} element={<InspectionStandardDetailPage />} />
-            <Route path={ROUTES.ADMIN_INSPECTION_STANDARD_VERSION_NEW} element={<InspectionStandardVersionFormPage />} />
+            <Route
+              path={ROUTES.ADMIN_CROP_TYPE_NEW}
+              element={<CropTypeFormPage />}
+            />
+            <Route
+              path={ROUTES.ADMIN_CROP_TYPE_EDIT}
+              element={<CropTypeFormPage />}
+            />
+            <Route
+              path={ROUTES.ADMIN_INSPECTION_STANDARDS}
+              element={<InspectionStandardListPage />}
+            />
+            <Route
+              path={ROUTES.ADMIN_INSPECTION_STANDARD_NEW}
+              element={<InspectionStandardsPage />}
+            />
+            <Route
+              path={ROUTES.ADMIN_INSPECTION_STANDARD_DETAIL}
+              element={<InspectionStandardDetailPage />}
+            />
+            <Route
+              path={ROUTES.ADMIN_INSPECTION_STANDARD_VERSION_NEW}
+              element={<InspectionStandardVersionFormPage />}
+            />
             <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogPage />} />
-            <Route path={ROUTES.ADMIN_AUDIT_CHANGES} element={<AuditLogPage />} />
-            <Route path={ROUTES.ADMIN_AUDIT_DETAIL} element={<AuditLogDetailPage />} />
+            <Route
+              path={ROUTES.ADMIN_AUDIT_CHANGES}
+              element={<AuditLogPage />}
+            />
+            <Route
+              path={ROUTES.ADMIN_AUDIT_DETAIL}
+              element={<AuditLogDetailPage />}
+            />
           </Route>
-          <Route element={<RoleRoute allowedRoles={[ROLES.WAREHOUSE_MANAGER]} />}>
-            <Route path={ROUTES.WAREHOUSE_MANAGER} element={<WarehouseManagerDashboardPage />} />
+          <Route
+            element={<RoleRoute allowedRoles={[ROLES.WAREHOUSE_MANAGER]} />}
+          >
+            <Route
+              path={ROUTES.WAREHOUSE_MANAGER}
+              element={<WarehouseManagerDashboardPage view="dashboard" />}
+            />
+            <Route
+              path={ROUTES.WAREHOUSE_INVENTORY}
+              element={<WarehouseManagerDashboardPage view="inventory" />}
+            />
+            <Route
+              path={ROUTES.WAREHOUSE_CAPACITY}
+              element={<WarehouseManagerDashboardPage view="capacity" />}
+            />
+            <Route
+              path={ROUTES.WAREHOUSE_QUALITY}
+              element={<WarehouseManagerDashboardPage view="quality" />}
+            />
+            <Route
+              path={ROUTES.WAREHOUSE_ORDERS}
+              element={<WarehouseDistributorOrdersPage />}
+            />
           </Route>
           {/* QC – Đọc: danh sách + chi tiết (WAREHOUSE_MANAGER chỉ xem) */}
-          <Route element={<RoleRoute allowedRoles={[ROLES.QC_STAFF, ROLES.WAREHOUSE_MANAGER, ROLES.ADMINISTRATOR]} />}>
-            <Route path={ROUTES.QC}                  element={<QCDashboardPage />} />
-            <Route path={ROUTES.QC_INSPECTIONS}      element={<QCInspectionListPage />} />
-            <Route path={ROUTES.QC_INSPECTION_DETAIL} element={<QCInspectionDetailPage />} />
+          <Route
+            element={
+              <RoleRoute
+                allowedRoles={[
+                  ROLES.QC_STAFF,
+                  ROLES.WAREHOUSE_MANAGER,
+                  ROLES.ADMINISTRATOR,
+                ]}
+              />
+            }
+          >
+            <Route path={ROUTES.QC} element={<QCDashboardPage />} />
+            <Route
+              path={ROUTES.QC_INSPECTIONS}
+              element={<QCInspectionListPage />}
+            />
+            <Route
+              path={ROUTES.QC_INSPECTION_DETAIL}
+              element={<QCInspectionDetailPage />}
+            />
           </Route>
           {/* QC – Ghi: tạo phiếu mới (WAREHOUSE_MANAGER bị chặn) */}
-          <Route element={<RoleRoute allowedRoles={[ROLES.QC_STAFF, ROLES.ADMINISTRATOR]} />}>
-            <Route path={ROUTES.QC_INSPECTION_NEW} element={<QCInspectionCreatePage />} />
+          <Route
+            element={
+              <RoleRoute allowedRoles={[ROLES.QC_STAFF, ROLES.ADMINISTRATOR]} />
+            }
+          >
+            <Route
+              path={ROUTES.QC_INSPECTION_NEW}
+              element={<QCInspectionCreatePage />}
+            />
           </Route>
           <Route element={<RoleRoute allowedRoles={[ROLES.OPERATION_STAFF]} />}>
-            <Route path={ROUTES.OPERATION} element={<OperationDashboardPage />} />
-            <Route path={ROUTES.OPERATION_GOODS_RECEIPTS} element={<GoodsReceiptManagementPage />} />
-            <Route path={ROUTES.OPERATION_GOODS_RECEIPT_CREATE} element={<CreateGoodsReceiptPage />} />
-            <Route path={ROUTES.OPERATION_GOODS_RECEIPT_DETAIL} element={<GoodsReceiptDetailPage />} />
-            <Route path={ROUTES.OPERATION_PRODUCT_BATCHES} element={<ProductBatchManagementPage />} />
-            <Route path={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL} element={<ProductBatchDetailPage />} />
-            <Route path={ROUTES.OPERATION_PRODUCT_BATCH_CREATE} element={<CreateProductBatchPage />} />
-            <Route path={ROUTES.OPERATION_PRODUCT_BATCH_UPDATE} element={<UpdateProductBatchPage />} />
+            <Route
+              path={ROUTES.OPERATION}
+              element={<OperationDashboardPage />}
+            />
+            <Route
+              path={ROUTES.OPERATION_GOODS_RECEIPTS}
+              element={<GoodsReceiptManagementPage />}
+            />
+            <Route
+              path={ROUTES.OPERATION_GOODS_RECEIPT_CREATE}
+              element={<CreateGoodsReceiptPage />}
+            />
+            <Route
+              path={ROUTES.OPERATION_GOODS_RECEIPT_DETAIL}
+              element={<GoodsReceiptDetailPage />}
+            />
+            <Route
+              path={ROUTES.OPERATION_PRODUCT_BATCHES}
+              element={<ProductBatchManagementPage />}
+            />
+            <Route
+              path={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL}
+              element={<ProductBatchDetailPage />}
+            />
+            <Route
+              path={ROUTES.OPERATION_PRODUCT_BATCH_CREATE}
+              element={<CreateProductBatchPage />}
+            />
+            <Route
+              path={ROUTES.OPERATION_PRODUCT_BATCH_UPDATE}
+              element={<UpdateProductBatchPage />}
+            />
           </Route>
-          
+
           {/* PHÂN HỆ SUPPLIER */}
           <Route element={<RoleRoute allowedRoles={[ROLES.SUPPLIER]} />}>
             <Route element={<SupplierGuard />}>
-              <Route path={ROUTES.SUPPLIER} element={<SupplierDashboardPage />} />
-              <Route path={ROUTES.SUPPLIER_PROFILE} element={<SupplierProfilePage />} />
-              <Route path={ROUTES.SUPPLIER_PROFILE_DECLARE} element={<DeclareSupplierProfilePage />} />
-              <Route path={ROUTES.SUPPLIER_PROFILE_EDIT} element={<EditSupplierProfilePage />} />
-              <Route path={ROUTES.SUPPLIER_BATCHES} element={<SupplierBatchListPage />} />
-              <Route path={ROUTES.SUPPLIER_BATCH_NEW} element={<DeclareBatchPage />} />
-              <Route path={ROUTES.SUPPLIER_BATCH_EDIT} element={<EditBatchPage />} />
-              <Route path={ROUTES.SUPPLIER_BATCH_STATUS} element={<BatchStatusDetailPage />} />
-              <Route path={ROUTES.SUPPLIER_BATCH_DETAIL} element={<BatchProcessDetailPage />} />
+              <Route
+                path={ROUTES.SUPPLIER}
+                element={<SupplierDashboardPage />}
+              />
+              <Route
+                path={ROUTES.SUPPLIER_PROFILE}
+                element={<SupplierProfilePage />}
+              />
+              <Route
+                path={ROUTES.SUPPLIER_PROFILE_DECLARE}
+                element={<DeclareSupplierProfilePage />}
+              />
+              <Route
+                path={ROUTES.SUPPLIER_PROFILE_EDIT}
+                element={<EditSupplierProfilePage />}
+              />
+              <Route
+                path={ROUTES.SUPPLIER_BATCHES}
+                element={<SupplierBatchListPage />}
+              />
+              <Route
+                path={ROUTES.SUPPLIER_BATCH_NEW}
+                element={<DeclareBatchPage />}
+              />
+              <Route
+                path={ROUTES.SUPPLIER_BATCH_EDIT}
+                element={<EditBatchPage />}
+              />
+              <Route
+                path={ROUTES.SUPPLIER_BATCH_STATUS}
+                element={<BatchStatusDetailPage />}
+              />
+              <Route
+                path={ROUTES.SUPPLIER_BATCH_DETAIL}
+                element={<BatchProcessDetailPage />}
+              />
             </Route>
           </Route>
 
           <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
-            <Route path={ROUTES.DISTRIBUTOR} element={<DistributorDashboardPage />} />
-            <Route path={ROUTES.DISTRIBUTOR_CATALOG} element={<DistributorCatalogPage />} />
-            <Route path={ROUTES.DISTRIBUTOR_LOT_DETAIL} element={<DistributorLotDetailPage />} />
-            <Route path={ROUTES.DISTRIBUTOR_ORDERS} element={<DistributorOrderListPage />} />
-            <Route path={ROUTES.DISTRIBUTOR_ORDER_CREATE} element={<CreateDistributorOrderPage />} />
-            <Route path={ROUTES.DISTRIBUTOR_ORDER_DETAIL} element={<DistributorOrderDetailPage />} />
+            <Route
+              path={ROUTES.DISTRIBUTOR}
+              element={<DistributorDashboardPage />}
+            />
+            <Route
+              path={ROUTES.DISTRIBUTOR_CATALOG}
+              element={<DistributorCatalogPage />}
+            />
+            <Route
+              path={ROUTES.DISTRIBUTOR_LOT_DETAIL}
+              element={<DistributorLotDetailPage />}
+            />
+            <Route
+              path={ROUTES.DISTRIBUTOR_ORDERS}
+              element={<DistributorOrderListPage />}
+            />
+            <Route
+              path={ROUTES.DISTRIBUTOR_ORDER_CREATE}
+              element={<CreateDistributorOrderPage />}
+            />
+            <Route
+              path={ROUTES.DISTRIBUTOR_ORDER_DETAIL}
+              element={<DistributorOrderDetailPage />}
+            />
           </Route>
         </Route>
       </Route>
     </Routes>
-  )
+  );
 }
