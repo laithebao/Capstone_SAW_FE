@@ -12,11 +12,16 @@ import type {
 
 export async function getWarehouseDistributorOrders(
   status = "PENDING",
+  page = 1,
+  pageSize = 20,
   signal?: AbortSignal,
 ) {
   const response = await apiClient.get<
     ApiResponse<WarehouseDistributorOrderPage>
-  >("/warehouse-manager/orders", { params: { status }, signal });
+  >("/warehouse-manager/orders", {
+    params: { status, page, pageSize },
+    signal,
+  });
   return response.data.data;
 }
 export async function getWarehouseDistributorOrder(id: number) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AppIcon from "@/components/common/AppIcon";
 import {
   approveWarehouseDistributorOrder,
@@ -22,12 +22,17 @@ export default function WarehouseDistributorOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const requestRef = useRef(0);
   const load = async () => {
     setLoading(true);
     setError("");
     try {
-      const data = await getWarehouseDistributorOrders();
+      const data = await getWarehouseDistributorOrders("PENDING", page);
       setOrders(data.items);
+      setTotalCount(data.totalCount);
     } catch {
       setError("Không thể tải danh sách đơn hàng.");
     } finally {
@@ -36,12 +41,19 @@ export default function WarehouseDistributorOrdersPage() {
   };
   useEffect(() => {
     void load();
-  }, []);
+  }, [page]);
   const open = async (id: number) => {
+    const requestId = ++requestRef.current;
+    setDetailLoading(true);
+    setSelected(null);
     try {
-      setSelected(await getWarehouseDistributorOrder(id));
+      const detail = await getWarehouseDistributorOrder(id);
+      if (requestId === requestRef.current) setSelected(detail);
     } catch {
-      setError("Không thể tải chi tiết đơn hàng.");
+      if (requestId === requestRef.current)
+        setError("Không thể tải chi tiết đơn hàng.");
+    } finally {
+      if (requestId === requestRef.current) setDetailLoading(false);
     }
   };
   const approve = async () => {
@@ -52,8 +64,10 @@ export default function WarehouseDistributorOrdersPage() {
     try {
       setSelected(await approveWarehouseDistributorOrder(selected.id));
       await load();
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? "Không thể phê duyệt đơn hàng.");
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } })
+        .response?.data?.message;
+      setError(message ?? "Không thể phê duyệt đơn hàng.");
     } finally {
       setBusy(false);
     }
@@ -77,7 +91,7 @@ export default function WarehouseDistributorOrdersPage() {
             onClick={() => void load()}
             className="flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white"
           >
-            <AppIcon name="refresh" />
+            <AppIcon name="pending" />
             Làm mới
           </button>
         </div>
@@ -134,10 +148,35 @@ export default function WarehouseDistributorOrdersPage() {
                   ))}
                 </tbody>
               </table>
+              <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+                <span>{totalCount} đơn tất cả</span>
+                <div className="flex gap-2">
+                  <button
+                    disabled={page === 1}
+                    onClick={() => setPage((value) => value - 1)}
+                    className="rounded border px-3 py-1 disabled:opacity-40"
+                  >
+                    Trang trước
+                  </button>
+                  <span className="px-2 py-1">{page}</span>
+                  <button
+                    disabled={page * 20 >= totalCount}
+                    onClick={() => setPage((value) => value + 1)}
+                    className="rounded border px-3 py-1 disabled:opacity-40"
+                  >
+                    Trang sau
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
-        {selected && (
+        {detailLoading && (
+          <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">
+            Đang tải chi tiết đơn...
+          </div>
+        )}
+        {selected && !detailLoading && (
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between">
               <div>
@@ -145,6 +184,16 @@ export default function WarehouseDistributorOrdersPage() {
                 <p className="text-slate-500">
                   {selected.distributorName} ·{" "}
                   {money.format(selected.totalAmount)}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Ngày tạo:{" "}
+                  {new Date(selected.createdAt).toLocaleDateString("vi-VN")} ·
+                  Giao dự kiến:{" "}
+                  {selected.expectedDeliveryDate
+                    ? new Date(
+                        selected.expectedDeliveryDate,
+                      ).toLocaleDateString("vi-VN")
+                    : "Chưa xác định"}
                 </p>
               </div>
               <button
@@ -169,7 +218,11 @@ export default function WarehouseDistributorOrdersPage() {
                       l.stockAvailable ? "text-emerald-700" : "text-rose-700"
                     }
                   >
-                    {l.requestedWeightKg} kg / có {l.availableWeightKg} kg
+                    Yêu cầu {l.requestedWeightKg} kg · Khả dụng{" "}
+                    {l.availableWeightKg} kg ·{" "}
+                    {l.stockAvailable
+                      ? "Đủ điều kiện"
+                      : `Thiếu ${Math.max(l.requestedWeightKg - l.availableWeightKg, 0)} kg`}
                   </span>
                 </div>
               ))}

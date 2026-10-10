@@ -55,6 +55,13 @@ function inventoryLevel(item: InventoryLocationLevel) {
   };
 }
 function capacityLevel(status: string) {
+  if (status === "UNCONFIGURED")
+    return {
+      label: "Chưa cấu hình sức chứa",
+      bar: "bg-slate-400",
+      text: "text-slate-600",
+      badge: "bg-slate-100",
+    };
   if (status === "OVERCROWDED")
     return {
       label: "Quá tải",
@@ -87,12 +94,7 @@ function StatCard({
   value: string | number;
   note: string;
   icon:
-    | "database"
-    | "pending"
-    | "dashboard"
-    | "alert"
-    | "package"
-    | "clipboard";
+    "database" | "pending" | "dashboard" | "alert" | "package" | "clipboard";
   tone: string;
 }) {
   return (
@@ -127,14 +129,19 @@ export default function WarehouseManagerDashboardPage({
   const load = useCallback(async (signal?: AbortSignal) => {
     setError("");
     try {
-      const [inventoryData, capacityData, qualityData] = await Promise.all([
+      const results = await Promise.allSettled([
         getWarehouseInventoryLevels(signal),
         getWarehouseCapacity(signal),
         getProductQualityDistribution(signal),
       ]);
-      setInventory(inventoryData);
-      setCapacity(capacityData);
-      setQuality(qualityData);
+      if (results[0].status === "fulfilled") setInventory(results[0].value);
+      if (results[1].status === "fulfilled") setCapacity(results[1].value);
+      if (results[2].status === "fulfilled") setQuality(results[2].value);
+      if (
+        results.some((result) => result.status === "rejected") &&
+        !signal?.aborted
+      )
+        setError("Một số dữ liệu phân tích chưa tải được. Bạn có thể thử lại.");
     } catch (cause) {
       if (!signal?.aborted)
         setError(
@@ -221,19 +228,19 @@ export default function WarehouseManagerDashboardPage({
       <nav aria-label="Điều hướng biểu đồ kho" className="flex flex-wrap gap-2">
         <a
           href="/warehouse-manager/inventory"
-          className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
+          className={`rounded-lg border px-4 py-2 text-sm font-semibold ${view === "inventory" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600 hover:text-emerald-700"}`}
         >
           Mức tồn kho
         </a>
         <a
           href="/warehouse-manager/capacity"
-          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:text-emerald-700"
+          className={`rounded-lg border px-4 py-2 text-sm font-semibold ${view === "capacity" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600 hover:text-emerald-700"}`}
         >
           Sức chứa kho
         </a>
         <a
           href="/warehouse-manager/quality"
-          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:text-emerald-700"
+          className={`rounded-lg border px-4 py-2 text-sm font-semibold ${view === "quality" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600 hover:text-emerald-700"}`}
         >
           Phân bố chất lượng
         </a>
@@ -528,59 +535,65 @@ export default function WarehouseManagerDashboardPage({
               </p>
             </div>
             <div className="mt-5 grid gap-4 xl:grid-cols-2">
-              {capacity.locations.map((item) => {
-                const state = capacityLevel(item.status);
-                return (
-                  <article
-                    key={item.locationId}
-                    className="rounded-xl border border-slate-200 p-4"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="text-sm font-semibold">
-                          {item.locationCode}
-                        </h4>
-                        <p className="text-xs text-slate-500">
-                          {item.zoneName}
-                        </p>
+              {capacity.locations.length === 0 ? (
+                <div className="col-span-full rounded-lg bg-slate-50 p-8 text-center text-sm text-slate-500">
+                  Chưa có dữ liệu vị trí kho. Hãy tải lại sau khi cấu hình kho.
+                </div>
+              ) : (
+                capacity.locations.map((item) => {
+                  const state = capacityLevel(item.status);
+                  return (
+                    <article
+                      key={item.locationId}
+                      className="rounded-xl border border-slate-200 p-4"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="text-sm font-semibold">
+                            {item.locationCode}
+                          </h4>
+                          <p className="text-xs text-slate-500">
+                            {item.zoneName}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${state.badge} ${state.text}`}
+                        >
+                          {state.label}
+                        </span>
                       </div>
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${state.badge} ${state.text}`}
-                      >
-                        {state.label}
-                      </span>
-                    </div>
-                    <div className="mt-4 flex items-end justify-between">
-                      <strong className="text-lg">
-                        {item.utilizationPercent == null
-                          ? "—"
-                          : `${kg.format(item.utilizationPercent)}%`}
-                      </strong>
-                      <span className="text-xs text-slate-500">
-                        {kg.format(item.usedWeightKg)} /{" "}
-                        {item.maxWeightKg == null
-                          ? "—"
-                          : kg.format(item.maxWeightKg)}{" "}
-                        kg
-                      </span>
-                    </div>
-                    <div className="relative mt-2 h-4 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className={`h-full rounded-full ${state.bar}`}
-                        style={{
-                          width: `${Math.min(item.utilizationPercent ?? 0, 100)}%`,
-                        }}
-                      />
-                      <i className="absolute inset-y-0 left-[90%] w-px bg-slate-700/50" />
-                    </div>
-                    <p className="mt-2 text-[11px] text-slate-400">
-                      {item.availableWeightKg == null
-                        ? "Chưa thiết lập sức chứa tối đa"
-                        : `Còn ${kg.format(item.availableWeightKg)} kg khả dụng`}
-                    </p>
-                  </article>
-                );
-              })}
+                      <div className="mt-4 flex items-end justify-between">
+                        <strong className="text-lg">
+                          {item.utilizationPercent == null
+                            ? "—"
+                            : `${kg.format(item.utilizationPercent)}%`}
+                        </strong>
+                        <span className="text-xs text-slate-500">
+                          {kg.format(item.usedWeightKg)} /{" "}
+                          {item.maxWeightKg == null
+                            ? "—"
+                            : kg.format(item.maxWeightKg)}{" "}
+                          kg
+                        </span>
+                      </div>
+                      <div className="relative mt-2 h-4 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className={`h-full rounded-full ${state.bar}`}
+                          style={{
+                            width: `${Math.min(item.utilizationPercent ?? 0, 100)}%`,
+                          }}
+                        />
+                        <i className="absolute inset-y-0 left-[90%] w-px bg-slate-700/50" />
+                      </div>
+                      <p className="mt-2 text-[11px] text-slate-400">
+                        {item.availableWeightKg == null
+                          ? "Chưa thiết lập sức chứa tối đa"
+                          : `Còn ${kg.format(item.availableWeightKg)} kg khả dụng`}
+                      </p>
+                    </article>
+                  );
+                })
+              )}
             </div>
           </div>
         </section>
