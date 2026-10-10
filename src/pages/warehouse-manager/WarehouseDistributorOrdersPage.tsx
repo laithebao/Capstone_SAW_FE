@@ -140,7 +140,7 @@ export default function WarehouseDistributorOrdersPage() {
             onClick={() => void load()}
             className="flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white"
           >
-            <AppIcon name="pending" />
+            <AppIcon name="refresh" />
             Làm mới
           </button>
         </div>
