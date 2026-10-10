@@ -25,6 +25,7 @@ export default function WarehouseDistributorOrdersPage() {
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [history, setHistory] = useState<WarehouseDistributorOrderSummary[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [editedLines, setEditedLines] = useState<
     Record<number, { weight: number; price: number }>
@@ -37,6 +38,15 @@ export default function WarehouseDistributorOrdersPage() {
       const data = await getWarehouseDistributorOrders("PENDING", page);
       setOrders(data.items);
       setTotalCount(data.totalCount);
+      const [approved, rejected] = await Promise.all([
+        getWarehouseDistributorOrders("APPROVED", 1, 20),
+        getWarehouseDistributorOrders("REJECTED", 1, 20),
+      ]);
+      setHistory(
+        [...approved.items, ...rejected.items].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+      );
     } catch {
       setError("Không thể tải danh sách đơn hàng.");
     } finally {
@@ -85,8 +95,9 @@ export default function WarehouseDistributorOrdersPage() {
           editedLines[line.orderDetailId]?.weight ?? line.requestedWeightKg,
         unitPrice: editedLines[line.orderDetailId]?.price ?? line.unitPrice,
       }));
-      setSelected(await approveWarehouseDistributorOrder(selected.id, lines));
+      await approveWarehouseDistributorOrder(selected.id, lines);
       await load();
+      setSelected(null);
     } catch (error: unknown) {
       const message = (error as { response?: { data?: { message?: string } } })
         .response?.data?.message;
@@ -101,8 +112,9 @@ export default function WarehouseDistributorOrdersPage() {
     if (!reason?.trim()) return;
     setBusy(true);
     try {
-      setSelected(await rejectWarehouseDistributorOrder(selected.id, reason));
+      await rejectWarehouseDistributorOrder(selected.id, reason);
       await load();
+      setSelected(null);
     } catch {
       setError("Không thể từ chối đơn hàng.");
     } finally {
@@ -349,6 +361,31 @@ export default function WarehouseDistributorOrdersPage() {
             </div>
           </div>
         )}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Lịch sử xử lý đơn</h2>
+              <p className="text-sm text-slate-500">Các đơn đã được duyệt hoặc từ chối bởi Warehouse Manager.</p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">{history.length} đơn</span>
+          </div>
+          {history.length === 0 ? (
+            <p className="py-6 text-center text-slate-500">Chưa có lịch sử xử lý.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
+                  <tr><th className="p-3">Mã đơn</th><th className="p-3">Nhà phân phối</th><th className="p-3">Ngày tạo</th><th className="p-3">Giá trị</th><th className="p-3">Trạng thái</th></tr>
+                </thead>
+                <tbody>{history.map((o) => <tr key={`${o.id}-${o.status}`} className="border-b border-slate-100">
+                  <td className="p-3 font-semibold">{o.orderCode}</td><td className="p-3">{o.distributorName}</td>
+                  <td className="p-3">{new Date(o.createdAt).toLocaleDateString("vi-VN")}</td><td className="p-3">{money.format(o.totalAmount)}</td>
+                  <td className="p-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${o.status === "APPROVED" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{o.status === "APPROVED" ? "Đã duyệt" : "Đã từ chối"}</span></td>
+                </tr>)}</tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
