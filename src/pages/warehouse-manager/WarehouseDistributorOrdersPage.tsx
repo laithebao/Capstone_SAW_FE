@@ -137,6 +137,7 @@ export default function WarehouseDistributorOrdersPage() {
             </p>
           </div>
           <button
+            aria-label="Làm mới danh sách đơn hàng"
             onClick={() => void load()}
             className="flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white"
           >
