@@ -4,6 +4,7 @@ import {
   approveWarehouseDistributorOrder,
   getWarehouseDistributorOrder,
   getWarehouseDistributorOrders,
+  rejectWarehouseDistributorOrder,
 } from "@/services/inventoryService";
 import type {
   WarehouseDistributorOrderDetail,
@@ -25,6 +26,9 @@ export default function WarehouseDistributorOrdersPage() {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [editedLines, setEditedLines] = useState<
+    Record<number, { weight: number; price: number }>
+  >({});
   const requestRef = useRef(0);
   const load = async () => {
     setLoading(true);
@@ -48,7 +52,20 @@ export default function WarehouseDistributorOrdersPage() {
     setSelected(null);
     try {
       const detail = await getWarehouseDistributorOrder(id);
-      if (requestId === requestRef.current) setSelected(detail);
+      if (requestId === requestRef.current) {
+        setSelected(detail);
+        setEditedLines(
+          Object.fromEntries(
+            detail.lines.map((line) => [
+              line.orderDetailId,
+              {
+                weight: line.approvedWeightKg || line.requestedWeightKg,
+                price: line.unitPrice,
+              },
+            ]),
+          ),
+        );
+      }
     } catch {
       if (requestId === requestRef.current)
         setError("Không thể tải chi tiết đơn hàng.");
@@ -62,12 +79,32 @@ export default function WarehouseDistributorOrdersPage() {
     setBusy(true);
     setError("");
     try {
-      setSelected(await approveWarehouseDistributorOrder(selected.id));
+      const lines = selected.lines.map((line) => ({
+        orderDetailId: line.orderDetailId,
+        approvedWeightKg:
+          editedLines[line.orderDetailId]?.weight ?? line.requestedWeightKg,
+        unitPrice: editedLines[line.orderDetailId]?.price ?? line.unitPrice,
+      }));
+      setSelected(await approveWarehouseDistributorOrder(selected.id, lines));
       await load();
     } catch (error: unknown) {
       const message = (error as { response?: { data?: { message?: string } } })
         .response?.data?.message;
       setError(message ?? "Không thể phê duyệt đơn hàng.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const reject = async () => {
+    if (!selected) return;
+    const reason = window.prompt("Nhập lý do từ chối đơn:");
+    if (!reason?.trim()) return;
+    setBusy(true);
+    try {
+      setSelected(await rejectWarehouseDistributorOrder(selected.id, reason));
+      await load();
+    } catch {
+      setError("Không thể từ chối đơn hàng.");
     } finally {
       setBusy(false);
     }
@@ -195,6 +232,18 @@ export default function WarehouseDistributorOrdersPage() {
                       ).toLocaleDateString("vi-VN")
                     : "Chưa xác định"}
                 </p>
+                <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+                  <p>
+                    <strong>Địa chỉ giao:</strong> {selected.deliveryAddress}
+                  </p>
+                  <p>
+                    <strong>Liên hệ:</strong>{" "}
+                    {selected.contactPhone || "Chưa có"}
+                  </p>
+                  <p>
+                    <strong>Ghi chú:</strong> {selected.orderNote || "Không có"}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setSelected(null)}
@@ -213,6 +262,53 @@ export default function WarehouseDistributorOrdersPage() {
                     {l.productName}
                     {l.batchCode ? ` · ${l.batchCode}` : ""}
                   </span>
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <label>
+                      Kg duyệt{" "}
+                      <input
+                        type="number"
+                        min="0"
+                        max={l.requestedWeightKg}
+                        value={
+                          editedLines[l.orderDetailId]?.weight ??
+                          l.requestedWeightKg
+                        }
+                        onChange={(event) =>
+                          setEditedLines((current) => ({
+                            ...current,
+                            [l.orderDetailId]: {
+                              weight: Number(event.target.value),
+                              price:
+                                current[l.orderDetailId]?.price ?? l.unitPrice,
+                            },
+                          }))
+                        }
+                        className="w-24 rounded border px-2 py-1"
+                      />
+                    </label>
+                    <label>
+                      Đơn giá{" "}
+                      <input
+                        type="number"
+                        min="0"
+                        value={
+                          editedLines[l.orderDetailId]?.price ?? l.unitPrice
+                        }
+                        onChange={(event) =>
+                          setEditedLines((current) => ({
+                            ...current,
+                            [l.orderDetailId]: {
+                              weight:
+                                current[l.orderDetailId]?.weight ??
+                                l.requestedWeightKg,
+                              price: Number(event.target.value),
+                            },
+                          }))
+                        }
+                        className="w-28 rounded border px-2 py-1"
+                      />
+                    </label>
+                  </div>
                   <span
                     className={
                       l.stockAvailable ? "text-emerald-700" : "text-rose-700"
@@ -242,6 +338,13 @@ export default function WarehouseDistributorOrdersPage() {
                   : selected.status === "PENDING"
                     ? "Duyệt đơn"
                     : "Đã xử lý"}
+              </button>
+              <button
+                disabled={busy || selected.status !== "PENDING"}
+                onClick={() => void reject()}
+                className="ml-2 rounded-lg border border-rose-200 px-5 py-2.5 font-semibold text-rose-700 disabled:opacity-50"
+              >
+                Từ chối đơn
               </button>
             </div>
           </div>

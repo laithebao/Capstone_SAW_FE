@@ -21,6 +21,7 @@ export interface WarehouseDistributorOrderLine {
   requestedWeightKg: number;
   availableWeightKg: number;
   unitPrice: number;
+  approvedWeightKg: number;
   stockAvailable: boolean;
 }
 export interface WarehouseDistributorOrderDetail {
@@ -31,6 +32,14 @@ export interface WarehouseDistributorOrderDetail {
   totalAmount: number;
   createdAt: string;
   expectedDeliveryDate?: string;
+  deliveryAddress: string;
+  contactPhone?: string;
+  orderNote?: string;
   stockAvailable: boolean;
   lines: WarehouseDistributorOrderLine[];
+}
+export interface WarehouseOrderApprovalLine {
+  orderDetailId: number;
+  approvedWeightKg: number;
+  unitPrice: number;
 }
