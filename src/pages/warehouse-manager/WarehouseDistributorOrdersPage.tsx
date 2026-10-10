@@ -152,7 +152,7 @@ export default function WarehouseDistributorOrdersPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900">Đơn chờ duyệt</h2>
-            <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
+            <span aria-live="polite" className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
               {orders.length} đơn
             </span>
           </div>
@@ -367,7 +367,7 @@ export default function WarehouseDistributorOrdersPage() {
               <h2 className="text-lg font-bold text-slate-900">Lịch sử xử lý đơn</h2>
               <p className="text-sm text-slate-500">Các đơn đã được duyệt hoặc từ chối bởi Warehouse Manager.</p>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">{history.length} đơn</span>
+            <span aria-live="polite" className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">{history.length} đơn</span>
           </div>
           {history.length === 0 ? (
             <p className="py-6 text-center text-slate-500">Chưa có lịch sử xử lý.</p>
