@@ -6,6 +6,7 @@ import { getProductBatch } from '@/services/batchService'
 import { getAuthErrorMessage } from '@/services/authService'
 import ProductBatchStatusBadge from '@/features/operation/components/ProductBatchStatusBadge'
 import ProductBatchQrCodeCard from '@/features/operation/components/ProductBatchQrCodeCard'
+import ProductBatchRelatedInformation from '@/features/operation/components/ProductBatchRelatedInformation'
 import type { ProductBatchDetail } from '@/types/batch'
 
 const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -121,7 +122,10 @@ export default function ProductBatchDetailPage() {
               {batch.batchStatus === 'REJECTED' && batch.rejectionReason && <div className="mt-5 rounded-lg border border-rose-200 bg-rose-50 p-4"><h3 className="text-xs font-bold uppercase tracking-wide text-rose-700">Lý do từ chối</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm text-rose-900">{batch.rejectionReason}</p></div>}
             </div>
           </section>}
-    {validId && !loading && !error && batch && <ProductBatchQrCodeCard key={batchId} batchId={batchId} />}
+    {validId && !loading && !error && batch && <>
+      <ProductBatchRelatedInformation batch={batch} />
+      <ProductBatchQrCodeCard key={batchId} batchId={batchId} />
+    </>}
   </div>
 }
 
