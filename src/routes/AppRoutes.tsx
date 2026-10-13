@@ -47,6 +47,7 @@ import NotFoundPage from "@/pages/system/NotFoundPage";
 import TraceabilityPage from "@/pages/traceability/TraceabilityPage";
 import WarehouseManagerDashboardPage from "@/pages/warehouse-manager/WarehouseManagerDashboardPage";
 import WarehouseDistributorOrdersPage from "@/pages/warehouse-manager/WarehouseDistributorOrdersPage";
+import WarehouseSaleOffersPage from "@/pages/warehouse-manager/WarehouseSaleOffersPage";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import RoleRoute from "@/routes/RoleRoute";
 import EditSupplierProfilePage from "@/pages/supplier/EditSupplierProfilePage";
@@ -149,6 +150,10 @@ export default function AppRoutes() {
             <Route
               path={ROUTES.WAREHOUSE_ORDERS}
               element={<WarehouseDistributorOrdersPage />}
+            />
+            <Route
+              path={ROUTES.WAREHOUSE_SALE_OFFERS}
+              element={<WarehouseSaleOffersPage />}
             />
           </Route>
           {/* QC – Đọc: danh sách + chi tiết (WAREHOUSE_MANAGER chỉ xem) */}
