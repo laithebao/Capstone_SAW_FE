@@ -22,7 +22,7 @@ try {
   const debugPort = listener.address().port
   await new Promise((resolve) => listener.close(resolve))
   edge = spawn(process.env.EDGE_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
+    '--headless=new', '--disable-gpu', '--disable-sync', '--disable-features=msImplicitSignin', '--no-first-run', '--no-default-browser-check',
     `--remote-debugging-port=${debugPort}`, `--user-data-dir=${path.join(temp, 'profile')}`, 'about:blank',
   ], { windowsHide: true, stdio: 'ignore' })
   let version
@@ -50,6 +50,13 @@ try {
     } else handlers.get(message.method)?.(message.params, message.sessionId)
   }
   const { targetId } = await call('Target.createTarget', { url: 'about:blank' })
+  handlers.set('Target.targetCreated', e => {
+    if (e.targetInfo.url.startsWith('edge://sync-confirmation-dialog')) void call('Target.closeTarget', { targetId: e.targetInfo.targetId })
+  })
+  await call('Target.setDiscoverTargets', { discover: true })
+  for (const target of (await call('Target.getTargets')).targetInfos) {
+    if (target.url.startsWith('edge://sync-confirmation-dialog')) await call('Target.closeTarget', { targetId: target.targetId })
+  }
   const { sessionId } = await call('Target.attachToTarget', { targetId, flatten: true })
   const page = (method, params) => call(method, params, sessionId)
   const evaluate = async (expression) => {

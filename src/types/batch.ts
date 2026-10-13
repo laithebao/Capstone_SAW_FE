@@ -22,6 +22,10 @@ export interface ProductBatchListResponse {
 }
 
 export interface ProductBatchDetail extends ProductBatchListItem {
+  latestQcInspection: ProductBatchQcSummary | null
+  goodsReceipts: ProductBatchGoodsReceipt[]
+  statusHistory: ProductBatchStatusHistoryItem[]
+  warehouseTransactions: ProductBatchWarehouseTransaction[]
   canUpdateReceivingInformation: boolean
   receivingUpdateLockReason: string | null
   weightInKg: number
@@ -45,6 +49,57 @@ export interface ProductBatchDetail extends ProductBatchListItem {
   expectedMinHumidityPct: number | null
   expectedMaxHumidityPct: number | null
   shelfLifeDaysSnapshot: number | null
+}
+
+export interface ProductBatchQcSummary {
+  id: number
+  inspectionCode: string
+  inspectionStatus: string
+  qcResult: string | null
+  qualityGrade: string | null
+  startedAt: string
+  completedAt: string | null
+  qcStaffName: string | null
+  note: string | null
+}
+
+export interface ProductBatchGoodsReceipt {
+  id: number
+  receiptCode: string
+  receiptStatus: 'DRAFT' | 'COMMITTED'
+  receivedAt: string
+  committedAt: string | null
+  warehouseLocationId: number
+  locationName: string | null
+  operationStaffName: string | null
+  note: string | null
+  receivedQuantity: number
+  unit: string
+  weightInKg: number
+}
+
+export interface ProductBatchStatusHistoryItem {
+  id: number
+  changedAt: string
+  oldStatus: string | null
+  newStatus: string
+  changedByName: string | null
+  changeReason: string | null
+}
+
+export interface ProductBatchWarehouseTransaction {
+  id: number
+  transactionType: string
+  code: string
+  status: string
+  recordedAt: string
+  quantity: number
+  unit: string
+  weightInKg: number | null
+  fromLocationName: string | null
+  toLocationName: string | null
+  performedByName: string | null
+  note: string | null
 }
 
 export interface ProductBatchFilterOption {
