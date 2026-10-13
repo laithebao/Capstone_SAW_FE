@@ -56,7 +56,11 @@ export const roleDashboardConfigs: Record<
         icon: "clipboard",
         route: ROUTES.WAREHOUSE_QUALITY,
       },
-      { label: "Lô hàng", icon: "package" },
+      {
+        label: "Công bố lô bán",
+        icon: "package",
+        route: ROUTES.WAREHOUSE_SALE_OFFERS,
+      },
       {
         label: "Phê duyệt đơn",
         icon: "clipboard",

@@ -27,6 +27,7 @@ export const ROUTES = {
   WAREHOUSE_CAPACITY: "/warehouse-manager/capacity",
   WAREHOUSE_QUALITY: "/warehouse-manager/quality",
   WAREHOUSE_ORDERS: "/warehouse-manager/orders",
+  WAREHOUSE_SALE_OFFERS: "/warehouse-manager/sale-offers",
   QC: "/qc",
   QC_INSPECTIONS: "/qc/inspections",
   QC_INSPECTION_NEW: "/qc/inspections/new",

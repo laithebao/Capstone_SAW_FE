@@ -10,6 +10,11 @@ import type {
   WarehouseDistributorOrderPage,
 } from "@/types/warehouseOrder";
 import type { WarehouseOrderApprovalLine } from "@/types/warehouseOrder";
+import type {
+  WarehouseSaleOfferItem,
+  WarehouseSaleOfferPage,
+  WarehouseSaleOfferUpdateRequest,
+} from "@/types/warehouseSaleOffer";
 
 export async function getWarehouseDistributorOrders(
   status = "PENDING",
@@ -69,5 +74,28 @@ export async function getProductQualityDistribution(signal?: AbortSignal) {
   const response = await apiClient.get<
     ApiResponse<ProductQualityDistributionChart>
   >("/warehouse-manager/inventory/quality-distribution", { signal });
+  return response.data.data;
+}
+
+export async function getWarehouseSaleOffers(
+  search: string,
+  page: number,
+  signal?: AbortSignal,
+) {
+  const response = await apiClient.get<ApiResponse<WarehouseSaleOfferPage>>(
+    "/warehouse-manager/inventory/sale-offers",
+    { params: { search: search || undefined, page, pageSize: 20 }, signal },
+  );
+  return response.data.data;
+}
+
+export async function updateWarehouseSaleOffer(
+  batchId: number,
+  request: WarehouseSaleOfferUpdateRequest,
+) {
+  const response = await apiClient.put<ApiResponse<WarehouseSaleOfferItem>>(
+    `/warehouse-manager/inventory/sale-offers/${batchId}`,
+    request,
+  );
   return response.data.data;
 }
