@@ -27,9 +27,6 @@ export default function WarehouseDistributorOrdersPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [history, setHistory] = useState<WarehouseDistributorOrderSummary[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [editedLines, setEditedLines] = useState<
-    Record<number, { weight: number; price: number }>
-  >({});
   const requestRef = useRef(0);
   const load = async () => {
     setLoading(true);
@@ -64,17 +61,6 @@ export default function WarehouseDistributorOrdersPage() {
       const detail = await getWarehouseDistributorOrder(id);
       if (requestId === requestRef.current) {
         setSelected(detail);
-        setEditedLines(
-          Object.fromEntries(
-            detail.lines.map((line) => [
-              line.orderDetailId,
-              {
-                weight: line.approvedWeightKg || line.requestedWeightKg,
-                price: line.unitPrice,
-              },
-            ]),
-          ),
-        );
       }
     } catch {
       if (requestId === requestRef.current)
@@ -89,13 +75,7 @@ export default function WarehouseDistributorOrdersPage() {
     setBusy(true);
     setError("");
     try {
-      const lines = selected.lines.map((line) => ({
-        orderDetailId: line.orderDetailId,
-        approvedWeightKg:
-          editedLines[line.orderDetailId]?.weight ?? line.requestedWeightKg,
-        unitPrice: editedLines[line.orderDetailId]?.price ?? line.unitPrice,
-      }));
-      await approveWarehouseDistributorOrder(selected.id, lines);
+      await approveWarehouseDistributorOrder(selected.id);
       await load();
       setSelected(null);
     } catch (error: unknown) {
@@ -276,51 +256,12 @@ export default function WarehouseDistributorOrdersPage() {
                     {l.batchCode ? ` · ${l.batchCode}` : ""}
                   </span>
                   <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <label>
-                      Kg duyệt{" "}
-                      <input
-                        type="number"
-                        min="0"
-                        max={l.requestedWeightKg}
-                        value={
-                          editedLines[l.orderDetailId]?.weight ??
-                          l.requestedWeightKg
-                        }
-                        onChange={(event) =>
-                          setEditedLines((current) => ({
-                            ...current,
-                            [l.orderDetailId]: {
-                              weight: Number(event.target.value),
-                              price:
-                                current[l.orderDetailId]?.price ?? l.unitPrice,
-                            },
-                          }))
-                        }
-                        className="w-24 rounded border px-2 py-1"
-                      />
-                    </label>
-                    <label>
-                      Đơn giá{" "}
-                      <input
-                        type="number"
-                        min="0"
-                        value={
-                          editedLines[l.orderDetailId]?.price ?? l.unitPrice
-                        }
-                        onChange={(event) =>
-                          setEditedLines((current) => ({
-                            ...current,
-                            [l.orderDetailId]: {
-                              weight:
-                                current[l.orderDetailId]?.weight ??
-                                l.requestedWeightKg,
-                              price: Number(event.target.value),
-                            },
-                          }))
-                        }
-                        className="w-28 rounded border px-2 py-1"
-                      />
-                    </label>
+                    <span className="rounded-md bg-white px-3 py-1.5 text-slate-600 ring-1 ring-slate-200">
+                      Khối lượng lô: <strong className="text-slate-900">{l.requestedWeightKg} kg</strong>
+                    </span>
+                    <span className="rounded-md bg-white px-3 py-1.5 text-slate-600 ring-1 ring-slate-200">
+                      Giá nguyên lô: <strong className="text-slate-900">{money.format(l.unitPrice)}</strong>
+                    </span>
                   </div>
                   <span
                     className={

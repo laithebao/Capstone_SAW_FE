@@ -9,6 +9,8 @@ export interface WarehouseSaleOfferItem {
   availableWeightKg: number;
   wholeLotPrice: number | null;
   isPublished: boolean;
+  isSold: boolean;
+  isPendingApproval: boolean;
   canPublish: boolean;
   ineligibilityReason: string | null;
   updatedAt: string | null;
