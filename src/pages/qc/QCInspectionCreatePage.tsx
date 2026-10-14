@@ -66,7 +66,7 @@ export default function QCInspectionCreatePage() {
     setError('')
     apiClient
       .get<ApiResponse<ProductBatchListResponse>>(
-        '/operation/product-batches?status=PENDING_QC&pageSize=100'
+        '/operation/product-batches?status=PENDING_QC&withoutActiveInspection=true&pageSize=100'
       )
       .then(r => setBatches(r.data.data?.items ?? []))
       .catch(err => {
@@ -180,7 +180,7 @@ export default function QCInspectionCreatePage() {
           )}
           {batches.length === 0 && !loadingBatches && (
             <p className="text-xs text-amber-600 font-medium">
-              ⚠ Không có lô hàng nào đang chờ kiểm định.
+              ⚠ Không có lô hàng nào đang chờ kiểm định mà chưa có phiếu kiểm định.
             </p>
           )}
         </div>
