@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router'
+import { NavLink, useLocation } from 'react-router'
 import { ROLE_HOME_ROUTES, ROUTES } from '@/constants/routes'
 import { useAuth } from '@/hooks/useAuth'
 import AppIcon from '@/components/common/AppIcon'
@@ -8,6 +8,8 @@ import { adminMenu, roleDashboardConfigs } from '@/features/role-dashboard/roleD
 
 export default function Sidebar({isOpen,onClose}:{isOpen:boolean;onClose:()=>void}) {
   const { user, logout } = useAuth()
+  const { pathname } = useLocation()
+
   const items = user?.role === ROLES.ADMINISTRATOR
     ? adminMenu
     : user ? roleDashboardConfigs[user.role].menu : []
@@ -48,6 +50,31 @@ export default function Sidebar({isOpen,onClose}:{isOpen:boolean;onClose:()=>voi
     return undefined
   }
 
+  /**
+   * Tính isActive thủ công để kiểm soát chính xác:
+   * - "Phiếu kiểm định" (/qc/inspections): active khi path bắt đầu bằng
+   *   /qc/inspections NHƯNG không phải /qc/inspections/new
+   * - "Tạo phiếu mới" (/qc/inspections/new): active chỉ khi path chính xác
+   * - Trang home (index 0): exact match
+   * - Các route khác: prefix match (active khi path bắt đầu bằng route)
+   */
+  const computeIsActive = (route: string, index: number): boolean => {
+    if (route === ROUTES.QC_INSPECTION_NEW) {
+      // "Tạo phiếu mới" — chỉ active khi đúng trang new
+      return pathname === ROUTES.QC_INSPECTION_NEW
+    }
+    if (route === ROUTES.QC_INSPECTIONS) {
+      // "Phiếu kiểm định" — active khi trong /qc/inspections/* nhưng không phải /new
+      return pathname.startsWith(ROUTES.QC_INSPECTIONS) && pathname !== ROUTES.QC_INSPECTION_NEW
+    }
+    if (index === 0) {
+      // Trang home — exact match
+      return pathname === route
+    }
+    // Mặc định: prefix match
+    return pathname.startsWith(route)
+  }
+
   return (
     <>
       {isOpen && <button className="fixed inset-0 z-40 bg-slate-950/45 lg:hidden" onClick={onClose} aria-label="Đóng menu" />}
@@ -62,19 +89,24 @@ export default function Sidebar({isOpen,onClose}:{isOpen:boolean;onClose:()=>voi
         <nav className="flex-1 space-y-1 px-3 py-5" aria-label="Điều hướng chính">
           {user && items.map((item, i) => {
             const route = getRoute(item, i)
-            return route
-              ? <NavLink
-                  key={item.label}
-                  to={route}
-                  onClick={onClose}
-                  end={i === 0 || route === ROUTES.QC_INSPECTIONS}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium ${isActive ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`
-                  }
-                >
+            if (!route) {
+              return (
+                <button key={item.label} type="button" className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50">
                   <AppIcon name={item.icon} className="size-[18px]" />{item.label}
-                </NavLink>
-              : <button key={item.label} type="button" className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50"><AppIcon name={item.icon} className="size-[18px]" />{item.label}</button>
+                </button>
+              )
+            }
+            const isActive = computeIsActive(route, i)
+            return (
+              <NavLink
+                key={item.label}
+                to={route}
+                onClick={onClose}
+                className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium ${isActive ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`}
+              >
+                <AppIcon name={item.icon} className="size-[18px]" />{item.label}
+              </NavLink>
+            )
           })}
         </nav>
         <div className="border-t border-white/10 p-3">
