@@ -71,6 +71,14 @@ export default function WarehouseSaleOffersPage() {
   };
 
   const save = async (item: WarehouseSaleOfferItem, isPublished: boolean) => {
+    if (item.isPendingApproval) {
+      setError("Lô hàng đang chờ duyệt đơn mua, không thể thay đổi giá hoặc trạng thái bán.");
+      return;
+    }
+    if (item.isSold) {
+      setError("Lô hàng đã bán, không thể thay đổi giá hoặc trạng thái bán.");
+      return;
+    }
     const price = Number(prices[item.batchId]);
     if (!Number.isFinite(price) || price <= 0) {
       setError("Giá bán nguyên lô phải lớn hơn 0.");
@@ -156,14 +164,13 @@ export default function WarehouseSaleOffersPage() {
             <p className="py-14 text-center text-slate-500">Chưa có lô hàng nào đã nhập kho.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1050px] text-left text-sm">
+              <table className="w-full min-w-[900px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-4 py-3">Lô hàng</th>
                     <th className="px-4 py-3">Chất lượng</th>
                     <th className="px-4 py-3">Khối lượng</th>
                     <th className="px-4 py-3">Giá nguyên lô</th>
-                    <th className="px-4 py-3">Điều kiện</th>
                     <th className="px-4 py-3">Trạng thái bán</th>
                     <th className="px-4 py-3 text-right">Thao tác</th>
                   </tr>
@@ -186,47 +193,54 @@ export default function WarehouseSaleOffersPage() {
                         <p className="text-xs text-slate-500">Nhập kho {weight.format(item.verifiedWeightKg)} kg</p>
                       </td>
                       <td className="px-4 py-4">
-                        <input
-                          aria-label={`Giá bán lô ${item.batchCode}`}
-                          type="number"
-                          min="1"
-                          step="1"
-                          value={prices[item.batchId] ?? ""}
-                          onChange={(event) => setPrices((current) => ({ ...current, [item.batchId]: event.target.value }))}
-                          className="w-44 rounded-lg border border-slate-300 px-3 py-2 font-semibold outline-none focus:border-emerald-600"
-                          placeholder="Nhập giá VND"
-                        />
-                        {item.wholeLotPrice && <p className="mt-1 text-xs text-slate-500">Hiện tại: {money.format(item.wholeLotPrice)}</p>}
-                      </td>
-                      <td className="max-w-xs px-4 py-4">
-                        {item.canPublish ? (
-                          <span className="font-semibold text-emerald-700">Đủ điều kiện công bố</span>
+                        {item.isPendingApproval || item.isSold ? (
+                          <p className="font-semibold text-slate-900">
+                            {item.wholeLotPrice == null ? "—" : money.format(item.wholeLotPrice)}
+                          </p>
                         ) : (
-                          <span className="text-rose-700">{item.ineligibilityReason}</span>
+                          <>
+                            <input
+                              aria-label={`Giá bán lô ${item.batchCode}`}
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={prices[item.batchId] ?? ""}
+                              onChange={(event) => setPrices((current) => ({ ...current, [item.batchId]: event.target.value }))}
+                              className="w-44 rounded-lg border border-slate-300 px-3 py-2 font-semibold outline-none focus:border-emerald-600"
+                              placeholder="Nhập giá VND"
+                            />
+                            {item.wholeLotPrice && <p className="mt-1 text-xs text-slate-500">Hiện tại: {money.format(item.wholeLotPrice)}</p>}
+                          </>
                         )}
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.isPublished ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                          {item.isPublished ? "Đã công bố" : "Chưa công bố"}
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.isPendingApproval ? "bg-amber-50 text-amber-700" : item.isSold ? "bg-blue-50 text-blue-700" : item.isPublished ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                          {item.isPendingApproval ? "Đang chờ duyệt" : item.isSold ? "Đã bán" : item.isPublished ? "Đã công bố" : "Chưa công bố"}
                         </span>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            disabled={busyId === item.batchId}
-                            onClick={() => void save(item, item.isPublished)}
-                            className="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 disabled:opacity-50"
-                          >
-                            Lưu giá
-                          </button>
-                          <button
-                            disabled={busyId === item.batchId || (!item.isPublished && !item.canPublish)}
-                            onClick={() => void save(item, !item.isPublished)}
-                            className={`rounded-lg px-3 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 ${item.isPublished ? "bg-slate-600" : "bg-emerald-700"}`}
-                          >
-                            {item.isPublished ? "Ẩn lô" : "Công bố bán"}
-                          </button>
-                        </div>
+                        {item.isPendingApproval || item.isSold ? (
+                          <p className="text-right text-sm font-semibold text-slate-500">
+                            {item.isPendingApproval ? "Chờ xử lý đơn" : "Đã hoàn tất bán"}
+                          </p>
+                        ) : (
+                          <div className="flex justify-end gap-2">
+                            <button
+                              disabled={busyId === item.batchId}
+                              onClick={() => void save(item, item.isPublished)}
+                              className="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 disabled:opacity-50"
+                            >
+                              Lưu giá
+                            </button>
+                            <button
+                              disabled={busyId === item.batchId || (!item.isPublished && !item.canPublish)}
+                              onClick={() => void save(item, !item.isPublished)}
+                              className={`rounded-lg px-3 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 ${item.isPublished ? "bg-slate-600" : "bg-emerald-700"}`}
+                            >
+                              {item.isPublished ? "Ẩn lô" : "Công bố bán"}
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

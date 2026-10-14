@@ -38,8 +38,3 @@ export interface WarehouseDistributorOrderDetail {
   stockAvailable: boolean;
   lines: WarehouseDistributorOrderLine[];
 }
-export interface WarehouseOrderApprovalLine {
-  orderDetailId: number;
-  approvedWeightKg: number;
-  unitPrice: number;
-}
