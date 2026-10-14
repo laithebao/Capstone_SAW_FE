@@ -447,6 +447,7 @@ export const SupplierBatchListPage: React.FC = () => {
                         onClick={() => navigate(`/supplier/batches/${batch.batchId}`)}
                         className="p-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer"
                         title="Xem chi tiết lô hàng"
+                        aria-label={`Xem chi tiết lô hàng ${batch.batchCode}`}
                       >
                         <Eye className="w-4 h-4" />
                       </button>
