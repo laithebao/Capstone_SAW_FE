@@ -12,7 +12,6 @@ export interface SupplierProgressStep {
 }
 
 const storedStatuses = new Set(['IN_STOCK', 'RESERVED', 'PARTIALLY_ISSUED', 'ISSUED']);
-const hiddenStatuses = new Set(['RESERVED', 'PARTIALLY_ISSUED', 'ISSUED']);
 const timestamp = (value: string) => Date.parse(/(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}Z`);
 
 export function getSupplierBatchProgress(data: SupplierBatchStatusResponse) {
@@ -22,11 +21,10 @@ export function getSupplierBatchProgress(data: SupplierBatchStatusResponse) {
   const storedEvent = storedIndex < 0 ? undefined : chronological[storedIndex];
   const isStored = Boolean(data.warehousedAt) || data.receivedQuantity > 0 || storedStatuses.has(data.currentStatus) || Boolean(storedEvent);
   const storedAt = data.warehousedAt ?? (storedEvent?.newStatus === 'IN_STOCK' ? storedEvent.changedAt : undefined);
-  const visible = chronological.filter((item, index) => {
-    if (hiddenStatuses.has(item.newStatus) || storedStatuses.has(item.oldStatus)) return false;
-    if (isStored && storedIndex >= 0 && index > storedIndex) return false;
-    return !storedAt || timestamp(item.changedAt) <= timestamp(storedAt);
-  });
+  // Keep the complete audit trail after warehouse approval or issue. The progress
+  // diagram still uses warehouse entry as its final supplier milestone, while the
+  // history panel shows every status record returned by the API.
+  const visible = chronological;
   const event = (status: string) => [...visible].reverse().find(item => item.newStatus === status && item.oldStatus !== status);
   const rejection = !isStored && data.currentStatus === 'REJECTED' ? event('REJECTED') : undefined;
   const inspection = data.qcInspectionStatus;

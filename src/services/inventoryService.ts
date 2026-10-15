@@ -9,7 +9,6 @@ import type {
   WarehouseDistributorOrderDetail,
   WarehouseDistributorOrderPage,
 } from "@/types/warehouseOrder";
-import type { WarehouseOrderApprovalLine } from "@/types/warehouseOrder";
 import type {
   WarehouseSaleOfferItem,
   WarehouseSaleOfferPage,
@@ -36,13 +35,10 @@ export async function getWarehouseDistributorOrder(id: number) {
   >(`/warehouse-manager/orders/${id}`);
   return response.data.data;
 }
-export async function approveWarehouseDistributorOrder(
-  id: number,
-  lines: WarehouseOrderApprovalLine[],
-) {
+export async function approveWarehouseDistributorOrder(id: number) {
   const response = await apiClient.post<
     ApiResponse<WarehouseDistributorOrderDetail>
-  >(`/warehouse-manager/orders/${id}/approve`, { lines });
+  >(`/warehouse-manager/orders/${id}/approve`);
   return response.data.data;
 }
 export async function rejectWarehouseDistributorOrder(
