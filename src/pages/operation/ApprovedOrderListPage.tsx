@@ -42,7 +42,7 @@ export default function ApprovedOrderListPage() {
       onSubmit={e => { e.preventDefault(); setQuery({ ...filters, page: 1 }) }}>
       <label className="space-y-2 text-sm">Tìm kiếm<input aria-label="Tìm đơn chờ soạn" maxLength={100} className={input} value={filters.search} placeholder="Mã đơn, nhà phân phối, sản phẩm, lô..." onChange={e => field('search', e.target.value)} /></label>
       <label className="space-y-2 text-sm">Trạng thái<select className={input} value={filters.status} onChange={e => field('status', e.target.value)}>
-        <option value="">Tất cả đơn chờ soạn</option><option value="APPROVED">Đã duyệt · chờ phân bổ</option><option value="RESERVED">Đã giữ hàng</option><option value="PARTIALLY_PICKED">Đang soạn một phần</option>
+        <option value="">Tất cả đơn chờ soạn</option><option value="APPROVED">Đã duyệt · chờ phân bổ</option><option value="RESERVED">Đã giữ hàng</option><option value="PARTIALLY_PICKED">Đang soạn một phần</option><option value="PARTIALLY_ISSUED">Đã xuất một phần · còn cần soạn</option>
       </select></label>
       <label className="space-y-2 text-sm">Sắp xếp<select className={input} value={filters.sort} onChange={e => field('sort', e.target.value)}>
         <option value="approved_desc">Duyệt mới nhất</option><option value="approved_asc">Duyệt cũ nhất</option><option value="delivery_asc">Ngày giao tăng dần</option><option value="delivery_desc">Ngày giao giảm dần</option>

@@ -145,7 +145,7 @@ export const roleDashboardConfigs: Record<
       { label: "Quản lý lô hàng", icon: "package" },
       { label: "Nhập kho", icon: "package" },
       { label: "Đơn hàng chờ soạn", icon: "clipboard", route: ROUTES.OPERATION_PICKING_ORDERS },
-      { label: "Xuất kho", icon: "logout" },
+      { label: "Xuất kho", icon: "logout", route: ROUTES.OPERATION_GOODS_ISSUES },
       { label: "Chuyển kho", icon: "pending" },
       { label: "Điều chỉnh tồn", icon: "clipboard" },
     ],
