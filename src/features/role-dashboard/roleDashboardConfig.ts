@@ -144,6 +144,7 @@ export const roleDashboardConfigs: Record<
       commonDashboard,
       { label: "Quản lý lô hàng", icon: "package" },
       { label: "Nhập kho", icon: "package" },
+      { label: "Đơn hàng chờ soạn", icon: "clipboard", route: ROUTES.OPERATION_PICKING_ORDERS },
       { label: "Xuất kho", icon: "logout" },
       { label: "Chuyển kho", icon: "pending" },
       { label: "Điều chỉnh tồn", icon: "clipboard" },

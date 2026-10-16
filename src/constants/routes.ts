@@ -33,6 +33,8 @@ export const ROUTES = {
   QC_INSPECTION_NEW: "/qc/inspections/new",
   QC_INSPECTION_DETAIL: "/qc/inspections/:id",
   OPERATION: "/operation",
+  OPERATION_PICKING_ORDERS: "/operation/picking-orders",
+  OPERATION_PICKING_ORDER_DETAIL: "/operation/picking-orders/:id",
   OPERATION_GOODS_RECEIPTS: "/operation/goods-receipts",
   OPERATION_GOODS_RECEIPT_CREATE: "/operation/goods-receipts/create",
   OPERATION_GOODS_RECEIPT_DETAIL: "/operation/goods-receipts/:id",

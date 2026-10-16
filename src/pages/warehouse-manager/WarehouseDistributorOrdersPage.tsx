@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AppIcon from "@/components/common/AppIcon";
 import {
   approveWarehouseDistributorOrder,
   getWarehouseDistributorOrder,
   getWarehouseDistributorOrders,
   rejectWarehouseDistributorOrder,
+  reserveWarehouseDistributorOrder,
 } from "@/services/inventoryService";
 import type {
   WarehouseDistributorOrderDetail,
@@ -28,19 +29,22 @@ export default function WarehouseDistributorOrdersPage() {
   const [history, setHistory] = useState<WarehouseDistributorOrderSummary[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const requestRef = useRef(0);
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const data = await getWarehouseDistributorOrders("PENDING", page);
       setOrders(data.items);
       setTotalCount(data.totalCount);
-      const [approved, rejected] = await Promise.all([
+      const [approved, rejected, reserved, partial, picked] = await Promise.all([
         getWarehouseDistributorOrders("APPROVED", 1, 20),
         getWarehouseDistributorOrders("REJECTED", 1, 20),
+        getWarehouseDistributorOrders("RESERVED", 1, 20),
+        getWarehouseDistributorOrders("PARTIALLY_PICKED", 1, 20),
+        getWarehouseDistributorOrders("PICKED", 1, 20),
       ]);
       setHistory(
-        [...approved.items, ...rejected.items].sort(
+        [...approved.items, ...rejected.items, ...reserved.items, ...partial.items, ...picked.items].sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         ),
       );
@@ -49,10 +53,11 @@ export default function WarehouseDistributorOrdersPage() {
     } finally {
       setLoading(false);
     }
-  };
-  useEffect(() => {
-    void load();
   }, [page]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
   const open = async (id: number) => {
     const requestId = ++requestRef.current;
     setDetailLoading(true);
@@ -100,6 +105,18 @@ export default function WarehouseDistributorOrdersPage() {
     } finally {
       setBusy(false);
     }
+  };
+  const reserve = async () => {
+    if (!selected || busy || !window.confirm(`Thử phân bổ đủ hàng đã duyệt cho đơn ${selected.orderCode}?`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      const detail = await reserveWarehouseDistributorOrder(selected.id);
+      await load();
+      setSelected(detail);
+    } catch (e: unknown) {
+      setError((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "Chưa thể giữ đủ hàng cho đơn. Đơn vẫn chờ phân bổ.");
+    } finally { setBusy(false); }
   };
   return (
     <div className="min-h-full bg-slate-50 p-6">
@@ -278,6 +295,7 @@ export default function WarehouseDistributorOrdersPage() {
               ))}
             </div>
             <div className="mt-5 flex justify-end">
+              {selected.status === "APPROVED" && <button disabled={busy} onClick={() => void reserve()} className="mr-2 rounded-lg bg-emerald-700 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{busy ? "Đang phân bổ..." : "Thử phân bổ hàng"}</button>}
               <button
                 disabled={
                   busy ||
@@ -320,9 +338,9 @@ export default function WarehouseDistributorOrdersPage() {
                   <tr><th className="p-3">Mã đơn</th><th className="p-3">Nhà phân phối</th><th className="p-3">Ngày tạo</th><th className="p-3">Giá trị</th><th className="p-3">Trạng thái</th></tr>
                 </thead>
                 <tbody>{history.map((o) => <tr key={`${o.id}-${o.status}`} className="border-b border-slate-100">
-                  <td className="p-3 font-semibold">{o.orderCode}</td><td className="p-3">{o.distributorName}</td>
+                  <td className="p-3 font-semibold"><button onClick={() => void open(o.id)} className="text-emerald-700 underline">{o.orderCode}</button></td><td className="p-3">{o.distributorName}</td>
                   <td className="p-3">{new Date(o.createdAt).toLocaleDateString("vi-VN")}</td><td className="p-3">{money.format(o.totalAmount)}</td>
-                  <td className="p-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${o.status === "APPROVED" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{o.status === "APPROVED" ? "Đã duyệt" : "Đã từ chối"}</span></td>
+                  <td className="p-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${o.status === "REJECTED" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{{ APPROVED: "Đã duyệt · chờ phân bổ", RESERVED: "Đã giữ hàng", PARTIALLY_PICKED: "Đang soạn một phần", PICKED: "Đã soạn đủ", REJECTED: "Đã từ chối" }[o.status] ?? o.status}</span></td>
                 </tr>)}</tbody>
               </table>
             </div>

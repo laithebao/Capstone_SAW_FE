@@ -28,6 +28,8 @@ import CreateDistributorOrderPage from "@/pages/distributor/CreateDistributorOrd
 import DistributorOrderListPage from "@/pages/distributor/DistributorOrderListPage";
 import DistributorOrderDetailPage from "@/pages/distributor/DistributorOrderDetailPage";
 import OperationDashboardPage from "@/pages/operation/OperationDashboardPage";
+import ApprovedOrderListPage from "@/pages/operation/ApprovedOrderListPage";
+import PickingOrderDetailPage from "@/pages/operation/PickingOrderDetailPage";
 import GoodsReceiptManagementPage from "@/pages/operation/GoodsReceiptManagementPage";
 import CreateGoodsReceiptPage from "@/pages/operation/CreateGoodsReceiptPage";
 import GoodsReceiptDetailPage from "@/pages/operation/GoodsReceiptDetailPage";
@@ -190,6 +192,8 @@ export default function AppRoutes() {
             />
           </Route>
           <Route element={<RoleRoute allowedRoles={[ROLES.OPERATION_STAFF]} />}>
+            <Route path={ROUTES.OPERATION_PICKING_ORDERS} element={<ApprovedOrderListPage />} />
+            <Route path={ROUTES.OPERATION_PICKING_ORDER_DETAIL} element={<PickingOrderDetailPage />} />
             <Route
               path={ROUTES.OPERATION}
               element={<OperationDashboardPage />}
