@@ -62,7 +62,7 @@ try {
   const until = async (test, name) => {
     for (let i = 0; i < 150; i++) { if (await test()) return; await delay(100) }
     const view = await evaluate('({path: location.pathname, text: document.body?.innerText?.slice(0, 1800) ?? ""})')
-    throw new Error(`Timed out: ${name}; view=${JSON.stringify(view)}`)
+    throw new Error(`Timed out: ${name}; view=${JSON.stringify(view)}; network=${JSON.stringify(network.slice(-8))}`)
   }
   const text = () => evaluate('document.body?.innerText ?? ""')
   const screenshot = async name => {
@@ -81,10 +81,12 @@ try {
     const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
     Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); })()`)
   await page('Page.enable'); await page('Runtime.enable'); await page('Network.enable')
-  const errors = [], requests = [], checks = []
+  const errors = [], requests = [], checks = [], network = []
   handlers.set('Runtime.exceptionThrown', e => errors.push(e.exceptionDetails.text))
   handlers.set('Page.javascriptDialogOpening', () => { void page('Page.handleJavaScriptDialog', { accept: true }) })
-  handlers.set('Network.requestWillBeSent', e => { if (e.request.url.includes('/api/')) requests.push(e.request) })
+  handlers.set('Network.requestWillBeSent', e => { if (e.request.url.includes('/api/')) { requests.push(e.request); network.push({ url: e.request.url, method: e.request.method }) } })
+  handlers.set('Network.responseReceived', e => { if (e.response.url.includes('/api/')) network.push({ url: e.response.url, status: e.response.status }) })
+  handlers.set('Network.loadingFailed', e => network.push({ requestId: e.requestId, error: e.errorText }))
   let bootstrap
   const authenticate = async (role, token) => {
     if (bootstrap) await page('Page.removeScriptToEvaluateOnNewDocument', { identifier: bootstrap })
@@ -123,8 +125,9 @@ try {
   await navigate(`/operation/picking-orders/${expiredId}`)
   await until(async () => (await text()).includes('Lô hàng đã hết hạn'), 'expiry blocks picking')
   assert.equal(await evaluate(`document.querySelectorAll('input[type="number"]').length`), 0)
-  assert.equal((await text()).includes('Yêu cầu loại bỏ'), false)
-  checks.push('waiting allocation and expired batch cannot pick, no disposal UI')
+  assert.ok(await evaluate(`!![...document.querySelectorAll('a')].find(a => a.textContent === 'Yêu cầu loại bỏ lô' && a.getAttribute('href').startsWith('/operation/stock-adjustments/create?batchId=') && a.getAttribute('href').includes('kind=DISPOSAL'))`))
+  assert.equal(await evaluate(`document.querySelectorAll('textarea').length`), 0, 'disposal uses the shared adjustment form, not an inline picking workflow')
+  checks.push('waiting allocation and expired batch cannot pick; disposal link uses shared adjustment form')
 
   await navigate(`/operation/picking-orders/${mainId}`)
   await until(() => evaluate(`!!document.querySelector('input[type="number"]:not(:disabled)')`), 'editable reservation')
