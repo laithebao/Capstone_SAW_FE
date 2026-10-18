@@ -1,3 +1,4 @@
+import SupplierDeclarationSummary from '@/features/operation/components/SupplierDeclarationSummary'
 import axios from 'axios'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
@@ -9,12 +10,6 @@ import { getAuthErrorMessage } from '@/services/authService'
 import { getProductBatch, QC_RECEIVING_LOCK_MESSAGE, updateProductBatchReceivingDetails } from '@/services/batchService'
 import type { ProductBatchDetail } from '@/types/batch'
 
-const number = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(value)
-const optional = (value: number | null, unit = '') => value === null ? '—' : `${number(value)}${unit}`
-
-function Info({ label, value }: { label: string; value: string }) {
-  return <div><dt className="text-xs font-semibold text-slate-500">{label}</dt><dd className="mt-1 break-words text-sm font-medium text-slate-900">{value}</dd></div>
-}
 
 export default function UpdateProductBatchPage() {
   const { id } = useParams()
@@ -94,7 +89,7 @@ export default function UpdateProductBatchPage() {
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (savingRef.current || !batch?.canUpdateReceivingInformation || requiresReload || checkingAvailability || loading) return
-    const parsed = parseReceivingDetails(receiving)
+    const parsed = parseReceivingDetails(receiving, batch.unit)
     if (!parsed.data) { setError(parsed.error); return }
     savingRef.current = true
     availabilityRequest.current?.abort()
@@ -144,30 +139,12 @@ export default function UpdateProductBatchPage() {
     {batch && !loading && batch.canUpdateReceivingInformation && <form noValidate onSubmit={(event) => void save(event)} className="space-y-5">
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold">Nhà cung cấp khai báo · chỉ đọc</h2>
-        <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Info label="Mã lô" value={batch.batchCode} />
-          <Info label="Nhà cung cấp" value={batch.supplierName} />
-          <Info label="Sản phẩm" value={batch.productName} />
-          <Info label="Loại nông sản" value={`${batch.cropTypeName} · ${batch.categoryName}`} />
-          <Info label="Vùng trồng" value={batch.growingAreaName} />
-          <Info label="Ngày thu hoạch" value={batch.harvestDate} />
-          <Info label="Số lượng khai báo" value={`${number(batch.quantity)} ${batch.unit}`} />
-          <Info label="Khối lượng khai báo" value={`${number(batch.weightInKg)} kg`} />
-          <Info label="Quy cách đóng gói" value={batch.packagingType ?? '—'} />
-          <Info label="Số kiện" value={optional(batch.packageCount)} />
-          <Info label="Khối lượng mỗi kiện" value={optional(batch.packageUnitWeightKg, ' kg')} />
-          <Info label="Ghi chú nhà cung cấp" value={batch.note?.trim() || '—'} />
-          <Info label="Nhiệt độ bảo quản dự kiến" value={`${optional(batch.expectedMinTempC)} – ${optional(batch.expectedMaxTempC)} °C`} />
-          <Info label="Độ ẩm bảo quản dự kiến" value={`${optional(batch.expectedMinHumidityPct)} – ${optional(batch.expectedMaxHumidityPct)} %`} />
-          <Info label="Thời hạn bảo quản" value={optional(batch.shelfLifeDaysSnapshot, ' ngày')} />
-          <Info label="Ngày giao dự kiến" value={batch.expectedDeliveryDate ?? '—'} />
-          <Info label="Ngày hết hạn" value={batch.expiryDate ?? '—'} />
-        </dl>
+        <SupplierDeclarationSummary declaration={{ ...batch, declaredQuantity: batch.quantity }} />
       </section>
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold">Staff kiểm nhận · có thể sửa</h2>
         <p className="mt-1 text-xs text-slate-500">Trường chưa ghi nhận sẽ để trống. Để trống trường tùy chọn để xóa giá trị đã lưu.</p>
-        <div className="mt-4"><ReceivingDetailsFields value={receiving} onChange={setReceiving} unit={batch.unit} declaredQuantity={batch.quantity} declaredWeight={batch.weightInKg} disabled={saving} /></div>
+        <div className="mt-4"><ReceivingDetailsFields value={receiving} onChange={(next) => { setReceiving(next); if (!requiresReload) setError(null) }} unit={batch.unit} declaredQuantity={batch.quantity} declaredWeight={batch.weightInKg} disabled={saving} /></div>
       </section>
       <div className="flex justify-end gap-3">
         <Link to={detailPath} className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700">Hủy</Link>

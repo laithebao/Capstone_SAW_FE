@@ -1,3 +1,4 @@
+import SupplierDeclarationSummary from '@/features/operation/components/SupplierDeclarationSummary'
 import axios from 'axios'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
@@ -9,14 +10,7 @@ import type { ProductBatchFilterOption, SubmittedDeclarationDetail, SubmittedDec
 import ReceivingDetailsFields from '@/features/operation/components/ReceivingDetailsFields'
 import { emptyReceivingDetails, parseReceivingDetails, suggestedReceivingDetails } from '@/features/operation/receivingDetails'
 
-const number = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(value)
-const optionalNumber = (value: number | null, suffix = '') => value === null ? '—' : `${number(value)}${suffix}`
-const date = (value: string | null) => value ? new Intl.DateTimeFormat('vi-VN').format(new Date(`${value}T00:00:00`)) : '—'
 const inputClass = 'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-50 disabled:text-slate-400'
-
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
-  return <div className="min-w-0"><dt className="text-xs font-semibold text-slate-500">{label}</dt><dd className="mt-1 break-words text-sm font-medium text-slate-900">{value || '—'}</dd></div>
-}
 
 export default function CreateProductBatchPage() {
   const navigate = useNavigate()
@@ -99,7 +93,7 @@ export default function CreateProductBatchPage() {
     event.preventDefault()
     if (submittingRef.current || !detail || detail.id !== Number(declarationId) ||
         detail.supplierId !== Number(supplierId)) return
-    const parsed = parseReceivingDetails(receiving)
+    const parsed = parseReceivingDetails(receiving, detail.unit)
     if (!parsed.data) {
       setError(parsed.error)
       return
@@ -170,7 +164,7 @@ export default function CreateProductBatchPage() {
             <select aria-label="Nhà cung cấp" value={supplierId} disabled={loadingSuppliers || submitting} onChange={(event) => changeSupplier(event.target.value)} className={inputClass}><option value="">{loadingSuppliers ? 'Đang tải nhà cung cấp...' : 'Chọn nhà cung cấp'}</option>{suppliers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
           </label>
           <label className="space-y-1.5 text-sm font-semibold text-slate-700">Khai báo chờ xử lý
-            <select aria-label="Khai báo chờ xử lý" value={declarationId} disabled={!supplierId || loadingDeclarations || submitting} onChange={(event) => changeDeclaration(event.target.value)} className={inputClass}><option value="">{loadingDeclarations ? 'Đang tải khai báo...' : 'Chọn khai báo'}</option>{declarations.map((item) => <option key={item.id} value={item.id}>{item.batchCode} · {item.productName} · {number(item.declaredQuantity)} {item.unit}</option>)}</select>
+            <select aria-label="Khai báo chờ xử lý" value={declarationId} disabled={!supplierId || loadingDeclarations || submitting} onChange={(event) => changeDeclaration(event.target.value)} className={inputClass}><option value="">{loadingDeclarations ? 'Đang tải khai báo...' : 'Chọn khai báo'}</option>{declarations.map((item) => <option key={item.id} value={item.id}>{item.batchCode} · {item.cropTypeName} · {item.productName}</option>)}</select>
           </label>
         </div>
         {!loadingSuppliers && suppliers.length === 0 && !error && <p className="mt-4 text-sm text-slate-500">Không có nhà cung cấp nào có khai báo đang chờ xử lý.</p>}
@@ -182,31 +176,13 @@ export default function CreateProductBatchPage() {
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold">Thông tin nhà cung cấp đã khai báo</h2>
           <p className="mt-1 text-xs text-slate-500">Chỉ để đối chiếu; các thông tin này không được thay đổi tại đây.</p>
-          <dl className="mt-5 grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-            <ReadOnlyField label="Mã lô" value={detail.batchCode} />
-            <ReadOnlyField label="Nhà cung cấp" value={detail.supplierName} />
-            <ReadOnlyField label="Sản phẩm" value={detail.productName} />
-            <ReadOnlyField label="Loại nông sản" value={detail.cropTypeName} />
-            <ReadOnlyField label="Vùng trồng" value={detail.growingAreaName} />
-            <ReadOnlyField label="Ngày thu hoạch" value={date(detail.harvestDate)} />
-            <ReadOnlyField label="Số lượng khai báo" value={`${number(detail.declaredQuantity)} ${detail.unit}`} />
-            <ReadOnlyField label="Khối lượng khai báo" value={`${number(detail.weightInKg)} kg`} />
-            <ReadOnlyField label="Quy cách đóng gói" value={detail.packagingType ?? '—'} />
-            <ReadOnlyField label="Số kiện" value={optionalNumber(detail.packageCount)} />
-            <ReadOnlyField label="Khối lượng mỗi kiện" value={optionalNumber(detail.packageUnitWeightKg, ' kg')} />
-            <ReadOnlyField label="Nhiệt độ bảo quản dự kiến" value={`${optionalNumber(detail.expectedMinTempC)} – ${optionalNumber(detail.expectedMaxTempC)} °C`} />
-            <ReadOnlyField label="Độ ẩm bảo quản dự kiến" value={`${optionalNumber(detail.expectedMinHumidityPct)} – ${optionalNumber(detail.expectedMaxHumidityPct)} %`} />
-            <ReadOnlyField label="Thời hạn bảo quản" value={optionalNumber(detail.shelfLifeDaysSnapshot, ' ngày')} />
-            <ReadOnlyField label="Ngày giao dự kiến" value={date(detail.expectedDeliveryDate)} />
-            <ReadOnlyField label="Ngày hết hạn" value={date(detail.expiryDate)} />
-          </dl>
-          {detail.note && <div className="mt-5 border-t border-slate-100 pt-4"><p className="text-xs font-semibold text-slate-500">Mô tả / ghi chú</p><p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">{detail.note}</p></div>}
+          <SupplierDeclarationSummary declaration={detail} />
         </section>
 
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold">Staff kiểm nhận tại kho</h2>
           <p className="mt-1 text-xs text-slate-500">Giá trị gợi ý từ khai báo chỉ nằm trong form. Bạn có thể sửa trước khi xác nhận.</p>
-          <div className="mt-4"><ReceivingDetailsFields value={receiving} onChange={setReceiving} unit={detail.unit} declaredQuantity={detail.declaredQuantity} declaredWeight={detail.weightInKg} disabled={submitting} /></div>
+          <div className="mt-4"><ReceivingDetailsFields value={receiving} onChange={(next) => { setReceiving(next); setError(null) }} unit={detail.unit} declaredQuantity={detail.declaredQuantity} declaredWeight={detail.weightInKg} disabled={submitting} /></div>
         </section>
       </>}
 

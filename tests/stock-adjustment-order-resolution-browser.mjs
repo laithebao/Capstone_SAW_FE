@@ -62,6 +62,8 @@ try {
     await navigate(`/operation/stock-adjustments/create?batchId=${c.batch}&kind=${c.kind}`)
     await until(() => evaluate(`!!document.querySelector('textarea[aria-label="Lý do điều chỉnh"]')`), 'existing adjustment form')
     assert.match(await text(), /Đơn liên quan/)
+    assert.equal((await text()).includes('COUNT chỉ ghi'), false)
+    assert.ok((await text()).includes('Chỉ ghi phần hàng còn lại'))
     if (c.kind === 'COUNT') await fill('input[aria-label="Lượng thực đếm"]', '80')
     await fill('textarea[aria-label="Lý do điều chỉnh"]', 'Browser verified ' + c.flow)
     await click(c.kind === 'COUNT' ? 'Gửi yêu cầu điều chỉnh' : 'Gửi yêu cầu loại bỏ')
@@ -69,8 +71,15 @@ try {
     await until(async () => (await text()).includes('Chi tiết phiếu điều chỉnh') && (await text()).includes('Chờ quản lý kho'), 'staff saved pending adjustment')
     const id = await evaluate('Number(location.pathname.split("/").at(-1))')
     await screenshot(c.flow + '-staff-pending.png')
+    await evaluate(`document.querySelector('button[aria-label="Thông báo"]').click()`)
+    await until(() => evaluate(`!!document.querySelector('#notification-inbox')`), 'staff inbox')
+    assert.equal(await evaluate(`document.querySelector('#notification-inbox').innerText.includes('Có phiếu điều chỉnh tồn cần xử lý')`), false)
+    await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`)
     await switchTo('WAREHOUSE_MANAGER', process.env.SAW_TEST_MANAGER_TOKEN, managerRoute(id)); await ready()
     assert.equal((await text()).includes('Hủy đơn, giữ phiếu chờ xử lý'), false)
+    assert.equal((await text()).includes('Lưu nháp đề xuất'), false)
+    const stockHeaders = await evaluate(`[...document.querySelectorAll('th')].map(e=>e.textContent.trim())`)
+    assert.deepEqual(stockHeaders, ['Vị trí', 'Tồn hiện tại (kg)', 'Thực đếm / đề nghị sau (kg)', 'Chênh lệch (kg)'])
     await evaluate(`document.querySelector('button[aria-label="Thông báo"]').click()`)
     await until(async () => (await text()).includes('Có phiếu điều chỉnh tồn cần xử lý'), 'persistent inbox')
     assert.ok(await evaluate(`!!document.querySelector('#notification-inbox a[href="/warehouse-manager/stock-adjustments/${id}"]')`))
@@ -83,6 +92,11 @@ try {
       await until(async () => (await text()).includes('Chờ khách phản hồi'), 'sent proposal')
       assert.equal((await text()).includes('Đề xuất phiên bản'), false)
       assert.equal((await text()).includes('Hủy đơn, giữ phiếu chờ xử lý'), false)
+      await switchTo('OPERATION_STAFF', process.env.SAW_TEST_TOKEN, `/operation/stock-adjustments/${id}`)
+      await until(async () => (await text()).includes('Quản lý kho đang xử lý'), 'staff operational progress')
+      assert.equal((await text()).includes('Chờ khách phản hồi'), false)
+      assert.equal((await text()).includes('Đề xuất điều chỉnh'), false)
+      assert.equal((await text()).includes('8.500.000'), false)
       await switchTo('DISTRIBUTOR', c.customerToken, `/distributor/orders/${c.order}`)
       await until(async () => (await text()).includes('Đề xuất điều chỉnh') && (await text()).includes('8.500.000'), 'own customer proposal')
       assert.equal((await text()).includes('Phiên bản 1'), false)
@@ -102,12 +116,18 @@ try {
     await click('Xác nhận quyết định')
     await until(async () => (await text()).includes('Đã duyệt') && (await text()).includes('Đã xử lý'), 'manager final review')
     await screenshot(c.flow + '-manager-final.png')
-    if (c.kind === 'COUNT') {
+    {
       await navigate('/warehouse-manager/sale-offers')
       await until(() => evaluate(`[...document.querySelectorAll('tbody tr')].some(row => row.innerText.includes(${JSON.stringify(c.batchCode)}))`), 'sale offer after approval')
       const offer = await evaluate(`(() => { const row = [...document.querySelectorAll('tbody tr')].find(row => row.innerText.includes(${JSON.stringify(c.batchCode)})); return { text: row.innerText, price: row.querySelector('input')?.value } })()`)
       if (c.flow === 'decline') assert.equal(offer.price, '8500000', 'approved proposal price is already filled without re-entry')
-      else assert.match(offer.text, /8\.500\.000/, 'sold lot shows its effective order price')
+      if (c.flow === 'decline') assert.ok(offer.text.includes('Đã công bố'), 'approved remainder automatically published')
+      if (c.flow === 'accept') assert.match(offer.text, /8\.500\.000/, 'sold lot shows its effective order price')
+      if (c.flow === 'disposal') {
+        assert.ok(offer.text.includes('Đã loại bỏ'))
+        assert.equal(offer.price, undefined, 'disposed lot has no editable price')
+        assert.equal(await evaluate(`(() => { const row = [...document.querySelectorAll('tbody tr')].find(row => row.innerText.includes(${JSON.stringify(c.batchCode)})); return row.querySelectorAll('button').length })()`), 0)
+      }
     }
     await switchTo('OPERATION_STAFF', process.env.SAW_TEST_TOKEN, `/operation/picking-orders/${c.order}`)
     if (c.flow === 'accept') {
@@ -117,6 +137,9 @@ try {
     } else {
       await until(async () => (await text()).includes('Đơn đã hủy'), 'staff cancelled status')
       assert.equal(await evaluate(`[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Xác nhận'&&!b.disabled)`), false)
+      await navigate('/operation/picking-orders')
+      await until(async () => (await text()).includes(c.orderCode), 'cancelled order preserved in picking list')
+      assert.ok(await evaluate(`[...document.querySelectorAll('tbody tr')].find(row=>row.innerText.includes(${JSON.stringify(c.orderCode)})).innerText.includes('Đã hủy')`))
     }
     await switchTo('DISTRIBUTOR', c.customerToken, `/distributor/orders/${c.order}`)
     await until(async () => (await text()).includes(c.flow === 'accept' ? 'Đã có hiệu lực' : 'Lý do hủy:'), 'customer sees durable final outcome')

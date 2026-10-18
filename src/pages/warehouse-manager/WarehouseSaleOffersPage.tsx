@@ -194,7 +194,7 @@ export default function WarehouseSaleOffersPage() {
                         <p className="text-xs text-slate-500">Nhập kho {weight.format(item.verifiedWeightKg)} kg</p>
                       </td>
                       <td className="px-4 py-4">
-                        {item.isPendingApproval || item.isSold ? (
+                        {item.batchStatus === 'DISPOSED' || item.isPendingApproval || item.isSold ? (
                           <p className="font-semibold text-slate-900">
                             {item.wholeLotPrice == null ? "—" : money.format(item.wholeLotPrice)}
                           </p>
@@ -210,20 +210,20 @@ export default function WarehouseSaleOffersPage() {
                               className="w-44 rounded-lg border border-slate-300 px-3 py-2 font-semibold outline-none focus:border-emerald-600"
                               placeholder="Nhập giá VND"
                             />
-                            {item.requiresRepricing && <p className="mt-1 text-xs font-semibold text-amber-800">Cần định giá lại phần lô đã kiểm đếm. Giá đề xuất khách không tự công bố.</p>}
+                            {item.requiresRepricing && <p className="mt-1 text-xs font-semibold text-amber-800">Cần định giá lại phần lô đã kiểm đếm. Cần lưu giá mới trước khi công bố.</p>}
                             {item.wholeLotPrice && <p className="mt-1 text-xs text-slate-500">Hiện tại: {money.format(item.wholeLotPrice)}</p>}
                           </>
                         )}
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.isPendingApproval ? "bg-amber-50 text-amber-700" : item.isSold ? "bg-blue-50 text-blue-700" : item.isPublished ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                          {item.isPendingApproval ? "Đang chờ duyệt" : item.isSold ? "Đã bán" : item.isPublished ? "Đã công bố" : "Chưa công bố"}
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.batchStatus === "DISPOSED" ? "bg-rose-50 text-rose-700" : item.isPendingApproval ? "bg-amber-50 text-amber-700" : item.isSold ? "bg-blue-50 text-blue-700" : item.isPublished ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                          {item.batchStatus === "DISPOSED" ? "Đã loại bỏ" : item.isPendingApproval ? "Đang chờ duyệt" : item.isSold ? "Đã bán" : item.isPublished ? "Đã công bố" : "Chưa công bố"}
                         </span>
                       </td>
                       <td className="px-4 py-4">
-                        {item.isPendingApproval || item.isSold ? (
+                        {item.batchStatus === 'DISPOSED' || item.isPendingApproval || item.isSold ? (
                           <p className="text-right text-sm font-semibold text-slate-500">
-                            {item.isPendingApproval ? "Chờ xử lý đơn" : "Đã hoàn tất bán"}
+                            {item.batchStatus === "DISPOSED" ? "Đã loại bỏ khỏi tồn kho" : item.isPendingApproval ? "Chờ xử lý đơn" : "Đã hoàn tất bán"}
                           </p>
                         ) : (
                           <div className="flex justify-end gap-2">
