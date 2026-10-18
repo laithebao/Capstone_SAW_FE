@@ -36,5 +36,7 @@ export interface WarehouseDistributorOrderDetail {
   contactPhone?: string;
   orderNote?: string;
   stockAvailable: boolean;
+  cancellationReason?: string | null;
+  adjustments?: { id: number; code: string; state: string }[];
   lines: WarehouseDistributorOrderLine[];
 }

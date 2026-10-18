@@ -1,4 +1,6 @@
 export interface WarehouseSaleOfferItem {
+  requiresRepricing?: boolean;
+  publicationSnapshot?: string;
   batchId: number;
   batchCode: string;
   productName: string;
@@ -24,6 +26,7 @@ export interface WarehouseSaleOfferPage {
 }
 
 export interface WarehouseSaleOfferUpdateRequest {
+  expectedSnapshot?: string;
   wholeLotPrice: number;
   isPublished: boolean;
 }

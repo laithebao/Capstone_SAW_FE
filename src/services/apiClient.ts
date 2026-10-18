@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { ROUTES } from '@/constants/routes'
 
 // AuthContext là nơi quản lý phiên. Biến cục bộ giúp request thường nhanh hơn;
 // sessionStorage là nguồn khôi phục khi Vite hot-reload lại module trong lúc phát triển.
@@ -57,7 +58,7 @@ apiClient.interceptors.response.use(
 
       // 403 – không đủ quyền: chuyển về trang Forbidden thay vì lỗi mơ hồ
       if (status === 403) {
-        window.location.href = '/forbidden'
+        window.location.href = ROUTES.FORBIDDEN
         return Promise.reject(error)
       }
     }

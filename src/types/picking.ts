@@ -15,7 +15,7 @@ export interface PickingOrderLine {
   id: number; cropName: string; requestedProductBatchId: number | null; requestedBatchCode: string | null; productName: string | null; approvedWeightKg: number
   reservedWeightKg: number; pickedWeightKg: number; reservations: PickingReservation[]
 }
-export interface PickingOrderDetail { order: PickingOrderSummary; lines: PickingOrderLine[] }
+export interface PickingOrderDetail { order: PickingOrderSummary; lines: PickingOrderLine[]; adjustments?: { id: number; code: string; state: string }[] }
 export interface ConfirmPickingRequest {
   requestId: string; reservationId: number; orderDetailId: number; inventoryId: number; productBatchId: number
   quantityKg: number; expectedPickedQuantityKg: number; note: string | null

@@ -44,7 +44,7 @@ export default function WarehouseSaleOffersPage() {
         Object.fromEntries(
           result.items.map((item) => [
             item.batchId,
-            item.wholeLotPrice?.toString() ?? "",
+            item.requiresRepricing ? "" : item.wholeLotPrice?.toString() ?? "",
           ]),
         ),
       );
@@ -93,6 +93,7 @@ export default function WarehouseSaleOffersPage() {
     setMessage("");
     try {
       const updated = await updateWarehouseSaleOffer(item.batchId, {
+        expectedSnapshot: item.publicationSnapshot,
         wholeLotPrice: price,
         isPublished,
       });
@@ -209,6 +210,7 @@ export default function WarehouseSaleOffersPage() {
                               className="w-44 rounded-lg border border-slate-300 px-3 py-2 font-semibold outline-none focus:border-emerald-600"
                               placeholder="Nhập giá VND"
                             />
+                            {item.requiresRepricing && <p className="mt-1 text-xs font-semibold text-amber-800">Cần định giá lại phần lô đã kiểm đếm. Giá đề xuất khách không tự công bố.</p>}
                             {item.wholeLotPrice && <p className="mt-1 text-xs text-slate-500">Hiện tại: {money.format(item.wholeLotPrice)}</p>}
                           </>
                         )}

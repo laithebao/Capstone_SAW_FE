@@ -56,7 +56,7 @@ try {
   const ready = () => until(async () => (await text()).includes('Quyết định của quản lý kho'), 'review loaded')
   await authenticate('WAREHOUSE_MANAGER', process.env.SAW_TEST_MANAGER_TOKEN)
   await navigate('/warehouse-manager/stock-adjustments')
-  await until(async () => (await text()).includes('Danh sách yêu cầu') && (await text()).includes('Xem chi tiết'), 'manager list')
+  await until(async () => (await text()).includes('Danh sách yêu cầu') && await evaluate(`!!document.querySelector('tbody td:last-child a[aria-label^="Xem chi tiết phiếu"] svg')`), 'manager list with accessible detail icons')
   await fill('input[aria-label="Tìm phiếu điều chỉnh"]', 'unknown-review-browser')
   await click('Áp dụng bộ lọc'); await until(async () => (await text()).includes('Chưa có phiếu điều chỉnh phù hợp.'), 'manager server search')
   checks.push('real Manager server list/search/empty state')

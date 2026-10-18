@@ -19,7 +19,7 @@ const dotClasses: Record<ProductBatchStatusTone, string> = {
 export default function ProductBatchStatusBadge({ status, compact = false }: { status: string; compact?: boolean }) {
   const { label, tone } = getProductBatchStatusPresentation(status)
 
-  return <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 font-medium whitespace-nowrap ${compact ? 'text-[11px]' : 'text-xs'} ${badgeClasses[tone]}`}>
+  return <span className={`inline-flex h-fit w-fit items-center self-start gap-1 rounded-full border px-2 py-1 font-medium whitespace-nowrap ${compact ? 'text-[11px]' : 'text-xs'} ${badgeClasses[tone]}`}>
     <span className={`size-1.5 shrink-0 rounded-full ${dotClasses[tone]}`} aria-hidden="true" />
     {label}
   </span>

@@ -1,3 +1,5 @@
+import { Link } from 'react-router';
+import { ROUTES } from '@/constants/routes';
 import { useCallback, useEffect, useRef, useState } from "react";
 import AppIcon from "@/components/common/AppIcon";
 import {
@@ -36,15 +38,16 @@ export default function WarehouseDistributorOrdersPage() {
       const data = await getWarehouseDistributorOrders("PENDING", page);
       setOrders(data.items);
       setTotalCount(data.totalCount);
-      const [approved, rejected, reserved, partial, picked] = await Promise.all([
+      const [approved, rejected, reserved, partial, picked, cancelled] = await Promise.all([
         getWarehouseDistributorOrders("APPROVED", 1, 20),
         getWarehouseDistributorOrders("REJECTED", 1, 20),
         getWarehouseDistributorOrders("RESERVED", 1, 20),
         getWarehouseDistributorOrders("PARTIALLY_PICKED", 1, 20),
         getWarehouseDistributorOrders("PICKED", 1, 20),
+        getWarehouseDistributorOrders("CANCELLED", 1, 20),
       ]);
       setHistory(
-        [...approved.items, ...rejected.items, ...reserved.items, ...partial.items, ...picked.items].sort(
+        [...approved.items, ...rejected.items, ...reserved.items, ...partial.items, ...picked.items, ...cancelled.items].sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         ),
       );
@@ -263,6 +266,8 @@ export default function WarehouseDistributorOrdersPage() {
               </button>
             </div>
             <div className="mt-4 space-y-2">
+              {selected.cancellationReason && <p className="rounded-lg bg-rose-50 p-3 text-rose-800">Lý do hủy: {selected.cancellationReason} Đối soát tiền ngoài hệ thống.</p>}
+              {selected.adjustments?.map(a => <Link key={a.id} className="block rounded-lg bg-amber-50 p-3 text-amber-900 underline" to={ROUTES.WAREHOUSE_STOCK_ADJUSTMENT_DETAIL.replace(':id', String(a.id))}>{a.code} · Xem tiến độ xử lý điều chỉnh tồn</Link>)}
               {selected.lines.map((l) => (
                 <div
                   key={l.orderDetailId}
@@ -340,7 +345,7 @@ export default function WarehouseDistributorOrdersPage() {
                 <tbody>{history.map((o) => <tr key={`${o.id}-${o.status}`} className="border-b border-slate-100">
                   <td className="p-3 font-semibold"><button onClick={() => void open(o.id)} className="text-emerald-700 underline">{o.orderCode}</button></td><td className="p-3">{o.distributorName}</td>
                   <td className="p-3">{new Date(o.createdAt).toLocaleDateString("vi-VN")}</td><td className="p-3">{money.format(o.totalAmount)}</td>
-                  <td className="p-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${o.status === "REJECTED" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{{ APPROVED: "Đã duyệt · chờ phân bổ", RESERVED: "Đã giữ hàng", PARTIALLY_PICKED: "Đang soạn một phần", PICKED: "Đã soạn đủ", REJECTED: "Đã từ chối" }[o.status] ?? o.status}</span></td>
+                  <td className="p-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${["REJECTED", "CANCELLED"].includes(o.status) ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{{ APPROVED: "Đã duyệt · chờ phân bổ", RESERVED: "Đã giữ hàng", PARTIALLY_PICKED: "Đang soạn một phần", PICKED: "Đã soạn đủ", REJECTED: "Đã từ chối", CANCELLED: "Đã hủy" }[o.status] ?? o.status}</span></td>
                 </tr>)}</tbody>
               </table>
             </div>
