@@ -64,6 +64,11 @@ try {
   const click = label => evaluate(`[...document.querySelectorAll('button,a')].find(e=>e.textContent.trim()===${JSON.stringify(label)}).click()`)
   const setValue = (selector, value) => until(() => evaluate(`(() => { const e=document.querySelector(${JSON.stringify(selector)}); if (!e) return false; Object.getOwnPropertyDescriptor(Object.getPrototypeOf(e),'value').set.call(e,${JSON.stringify(String(value))}); e.dispatchEvent(new Event(e.tagName==='SELECT'?'change':'input',{bubbles:true})); return true; })()`), `input available: ${selector}`)
   await page('Page.enable'); await page('Runtime.enable')
+  handlers.set('Fetch.requestPaused', async event => {
+    await page('Fetch.fulfillRequest', { requestId: event.requestId, responseCode: 200,
+      responseHeaders: [{ name: 'Content-Type', value: 'image/png' }], body: process.env.SAW_TEST_QR_IMAGE })
+  })
+  await page('Fetch.enable', { patterns: [{ urlPattern: 'https://assets.test.invalid/distributor-qr.png' }] })
   const errors = []
   handlers.set('Runtime.exceptionThrown', e => errors.push(e.exceptionDetails.text))
   await page('Emulation.setDeviceMetricsOverride', { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false })
@@ -86,6 +91,10 @@ try {
   assert.ok((await text()).includes('Tiêu chuẩn kiểm định áp dụng'))
   assert.ok((await text()).includes('Phiên bản'), 'actual QC standard version is displayed')
   assert.ok((await text()).includes('1.500.000'))
+  await until(() => evaluate(`(() => { const qr = document.querySelector('section[aria-label="Mã QR truy xuất lô hàng"] img'); return qr?.complete && qr.naturalWidth > 0 })()`), 'existing QR image rendered')
+  assert.equal(await evaluate(`document.querySelector('section[aria-label="Mã QR truy xuất lô hàng"] a').href`), process.env.SAW_TEST_TRACEABILITY_URL)
+  assert.ok((await text()).includes('Mở truy xuất'))
+  assert.ok((await text()).includes('Tải PNG'))
   await click('Chọn mua nguyên lô')
   await until(() => evaluate(`location.pathname === '/distributor/catalog' && !!document.querySelector('section[aria-label="Các lô đã chọn"]')`), 'selection survives detail navigation')
   await click('Tạo Đơn Hàng')
