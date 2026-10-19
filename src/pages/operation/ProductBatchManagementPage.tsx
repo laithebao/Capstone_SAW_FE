@@ -23,7 +23,6 @@ const dateTime = (value: string) => {
   const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }).format(date)
   return `${day} · ${time}`
 }
-const quantity = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(value)
 
 function loadError(error: unknown): string {
   if (axios.isAxiosError(error) && error.response?.status === 403) return 'You are not allowed to access this page.'
@@ -133,27 +132,25 @@ export default function ProductBatchManagementPage() {
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[930px] table-fixed text-left text-sm">
-          <colgroup><col className="w-[16%]" /><col className="w-[18%]" /><col className="w-[17%]" /><col className="w-[12%]" /><col className="w-[16%]" /><col className="w-[13%]" /><col className="w-[8%]" /></colgroup>
+          <colgroup><col className="w-[18%]" /><col className="w-[22%]" /><col className="w-[19%]" /><col className="w-[17%]" /><col className="w-[16%]" /><col className="w-[8%]" /></colgroup>
           <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
               <th className="h-12 px-3 font-semibold">Mã lô</th>
               <th className="h-12 px-3 font-semibold">Sản phẩm / loại</th>
               <th className="h-12 px-3 font-semibold">Nhà cung cấp</th>
-              <th className="h-12 whitespace-nowrap px-3 text-left font-semibold">Số lượng</th>
               <th className="h-12 whitespace-nowrap px-3 font-semibold">Ngày tạo</th>
               <th className="h-12 px-3 text-center font-semibold">Trạng thái hiện tại</th>
               <th className="h-12 whitespace-nowrap px-2 text-center font-semibold">Thao tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading ? <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500">Đang tải danh sách lô hàng...</td></tr>
+            {loading ? <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">Đang tải danh sách lô hàng...</td></tr>
               : error ? null
-                : items.length === 0 ? <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500">No product batches found.</td></tr>
+                : items.length === 0 ? <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">No product batches found.</td></tr>
                   : items.map((item) => <tr key={item.id} className="hover:bg-slate-50">
                     <td className="whitespace-nowrap px-3 py-3.5 font-mono text-[13px] font-semibold text-emerald-700">{item.batchCode}</td>
                     <td className="px-3 py-3.5"><p className="text-sm font-semibold leading-5">{item.productName}</p><p className="mt-0.5 text-[13px] leading-5 text-slate-500">{item.cropTypeName} · {item.categoryName}</p></td>
                     <td className="px-3 py-3.5"><span className="line-clamp-2 max-w-[190px] leading-5">{item.supplierName}</span></td>
-                    <td className="whitespace-nowrap px-3 py-3.5 text-left tabular-nums">{quantity(item.quantity)} {item.unit}</td>
                     <td className="whitespace-nowrap px-3 py-3.5 text-[13px] tabular-nums text-slate-600">{dateTime(item.createdAt)}</td>
                     <td className="px-3 py-3.5 text-center"><ProductBatchStatusBadge status={item.batchStatus} compact /></td>
                     <td className="px-2 py-3.5 text-center"><Link to={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL.replace(':id', String(item.id))} className="inline-grid size-9 place-items-center rounded-lg text-emerald-700 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600" aria-label={`Xem chi tiết lô ${item.batchCode}`} title={`Xem chi tiết lô ${item.batchCode}`}><Eye className="size-4" /></Link></td>

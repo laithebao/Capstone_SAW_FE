@@ -4,7 +4,10 @@ import { getAuthErrorMessage } from '@/services/authService'
 import { downloadQrPng, getProductBatchQrCode } from '@/services/qrCodeService'
 import type { ProductBatchQrCode } from '@/types/qrCode'
 
-export default function ProductBatchQrCodeCard({ batchId }: { batchId: number }) {
+export default function ProductBatchQrCodeCard({ batchId, loadQrCode = getProductBatchQrCode }: {
+  batchId: number
+  loadQrCode?: (id: number, signal?: AbortSignal) => Promise<ProductBatchQrCode>
+}) {
   const [qr, setQr] = useState<ProductBatchQrCode | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -20,7 +23,7 @@ export default function ProductBatchQrCodeCard({ batchId }: { batchId: number })
       setLoading(true)
       setError(null)
       try {
-        const result = await getProductBatchQrCode(batchId, controller.signal)
+        const result = await loadQrCode(batchId, controller.signal)
         if (controller.signal.aborted) return
         setQr(result)
         if (result.status === 'PENDING') timer = window.setTimeout(() => setReloadKey((key) => key + 1), 15000)
@@ -32,7 +35,7 @@ export default function ProductBatchQrCodeCard({ batchId }: { batchId: number })
     }
     timer = window.setTimeout(() => { void load() }, 0)
     return () => { controller.abort(); window.clearTimeout(timer) }
-  }, [batchId, reloadKey])
+  }, [batchId, reloadKey, loadQrCode])
 
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === 'visible') setReloadKey((key) => key + 1) }
@@ -52,7 +55,7 @@ export default function ProductBatchQrCodeCard({ batchId }: { batchId: number })
     setDownloading(true)
     setDownloadError(null)
     try {
-      const current = await getProductBatchQrCode(batchId, controller.signal)
+      const current = await loadQrCode(batchId, controller.signal)
       if (controller.signal.aborted) return
       setQr(current)
       if (current.status !== 'READY' || !current.qrImageUrl) return

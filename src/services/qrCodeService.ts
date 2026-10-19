@@ -7,6 +7,11 @@ export async function getProductBatchQrCode(id: number, signal?: AbortSignal): P
   return response.data.data
 }
 
+export async function getDistributorLotQrCode(id: number, signal?: AbortSignal): Promise<ProductBatchQrCode> {
+  const response = await apiClient.get<ApiResponse<ProductBatchQrCode>>(`/distributor/orders/catalog/${id}/qr-code`, { signal })
+  return response.data.data
+}
+
 // Fetch the actual bytes: an <a download> alone is ignored for cross-origin images.
 // Deliberately use fetch, not the authenticated apiClient, for Cloudinary requests.
 export async function downloadQrPng(imageUrl: string, batchCode: string, signal?: AbortSignal): Promise<void> {

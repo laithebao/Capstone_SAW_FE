@@ -51,6 +51,10 @@ export async function rejectWarehouseDistributorOrder(
   return response.data.data;
 }
 
+export async function reserveWarehouseDistributorOrder(id: number) {
+  return (await apiClient.post<ApiResponse<WarehouseDistributorOrderDetail>>(`/warehouse-manager/orders/${id}/reserve`)).data.data;
+}
+
 export async function getWarehouseInventoryLevels(signal?: AbortSignal) {
   const response = await apiClient.get<
     ApiResponse<WarehouseInventoryLevelChart>

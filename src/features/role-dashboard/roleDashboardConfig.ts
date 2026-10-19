@@ -66,6 +66,7 @@ export const roleDashboardConfigs: Record<
         icon: "clipboard",
         route: ROUTES.WAREHOUSE_ORDERS,
       },
+      { label: "Duyệt điều chỉnh tồn", icon: "clipboard", route: ROUTES.WAREHOUSE_STOCK_ADJUSTMENTS },
       { label: "Cảnh báo", icon: "alert" },
       { label: "Báo cáo", icon: "download" },
     ],
@@ -144,9 +145,10 @@ export const roleDashboardConfigs: Record<
       commonDashboard,
       { label: "Quản lý lô hàng", icon: "package" },
       { label: "Nhập kho", icon: "package" },
-      { label: "Xuất kho", icon: "logout" },
+      { label: "Đơn hàng chờ soạn", icon: "clipboard", route: ROUTES.OPERATION_PICKING_ORDERS },
+      { label: "Xuất kho", icon: "logout", route: ROUTES.OPERATION_GOODS_ISSUES },
       { label: "Chuyển kho", icon: "pending" },
-      { label: "Điều chỉnh tồn", icon: "clipboard" },
+      { label: "Điều chỉnh tồn", icon: "clipboard", route: ROUTES.OPERATION_STOCK_ADJUSTMENTS },
     ],
     stats: [
       {

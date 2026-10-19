@@ -17,7 +17,7 @@ const statusLabels: Record<string, string> = {
 }
 const transactionLabels: Record<string, string> = {
   GOODS_RECEIPT: 'Phiếu nhập kho', GOODS_ISSUE: 'Phiếu xuất kho',
-  STOCK_TRANSFER: 'Chuyển kho', STOCK_ADJUSTMENT: 'Điều chỉnh tồn',
+  STOCK_TRANSFER: 'Chuyển kho', STOCK_ADJUSTMENT: 'Điều chỉnh tồn', STOCK_DISPOSAL: 'Loại bỏ toàn lô',
 }
 const card = 'rounded-xl border border-slate-200 bg-white p-5 shadow-sm'
 

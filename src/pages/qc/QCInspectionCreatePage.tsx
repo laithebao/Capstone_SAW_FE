@@ -12,7 +12,7 @@ interface BatchOption {
   productName: string
   cropTypeName: string
   cropTypeId: number    // needed to filter compatible standards
-  quantity: number
+  verifiedQuantity: number | null
   unit: string
   batchStatus: string
 }
@@ -173,7 +173,7 @@ export default function QCInspectionCreatePage() {
               <option value="">— Chọn lô hàng cần kiểm định —</option>
               {batches.map(b => (
                 <option key={b.id} value={b.id}>
-                  [{b.batchCode}] {b.productName} · {b.cropTypeName} · {b.quantity} {b.unit}
+                  [{b.batchCode}] {b.cropTypeName} · {b.productName}
                 </option>
               ))}
             </select>
@@ -192,7 +192,7 @@ export default function QCInspectionCreatePage() {
               <div><span className="text-xs text-slate-500">Mã lô:</span> <b className="font-mono">{selectedBatch.batchCode}</b></div>
               <div><span className="text-xs text-slate-500">Sản phẩm:</span> {selectedBatch.productName}</div>
               <div><span className="text-xs text-slate-500">Loại nông sản:</span> {selectedBatch.cropTypeName}</div>
-              <div><span className="text-xs text-slate-500">Khối lượng khai báo:</span> {selectedBatch.quantity} {selectedBatch.unit}</div>
+              <div><span className="text-xs text-slate-500">Khối lượng:</span> {selectedBatch.verifiedQuantity == null ? 'Chưa có số liệu kiểm nhận' : `${selectedBatch.verifiedQuantity.toLocaleString('vi-VN', { maximumFractionDigits: 3 })} ${selectedBatch.unit}`}</div>
             </div>
           </div>
         )}

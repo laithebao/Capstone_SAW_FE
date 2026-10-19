@@ -8,6 +8,7 @@ export interface ProductBatchListItem {
   cropTypeName: string
   categoryName: string
   quantity: number
+  verifiedQuantity: number | null
   unit: string
   createdAt: string
   updatedAt: string | null
@@ -129,11 +130,13 @@ export interface SubmittedDeclarationOption {
   id: number
   batchCode: string
   productName: string
+  cropTypeName: string | null
   declaredQuantity: number
   unit: string
 }
 
 export interface SubmittedDeclarationDetail {
+  categoryName?: string | null
   id: number
   batchCode: string
   supplierId: number

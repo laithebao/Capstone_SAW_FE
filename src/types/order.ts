@@ -47,6 +47,7 @@ export interface DistributorLotDetail extends Omit<CatalogLot, 'wholeLotPrice'> 
   inspectionStandardVersionNo: number | null
 }
 export interface DistributorOrderSummary {
+  workState?: string | null;
   id: number
   orderCode: string
   status: string
@@ -71,7 +72,7 @@ export interface DistributorOrderDetail {
   receivedAt: string | null
   canCancel: boolean
   canConfirmReceipt: boolean
-  lines: { batchId: number; batchCode: string; productName: string; weightKg: number; wholeLotPrice: number }[]
+  lines: { batchId: number; batchCode: string; productName: string; weightKg: number; wholeLotPrice: number; originalWeightKg?: number; originalWholeLotPrice?: number }[]
   history: { oldStatus: string | null; newStatus: string; changedAt: string; reason: string | null }[]
 }
 export interface CreateDistributorOrderRequest {
