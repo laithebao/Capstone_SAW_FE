@@ -19,6 +19,7 @@ import {
   Thermometer,
   Droplets,
   Package,
+  FileCheck2,
 } from 'lucide-react';
 import {
   declareBatchSchema,
@@ -26,7 +27,30 @@ import {
 } from '@/features/supplier/schemas/supplierBatchSchema';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
 import { supplierService } from '@/services/suppliers/supplierService';
-import type { SupplierGrowingAreaDto, SupplierCropTypeDto } from '@/types/supplier';
+import { getEligibleSupplyContractsForBatch } from '@/services/supplyContractService';
+import type { SupplierGrowingAreaDto } from '@/types/supplier';
+import type { SupplyContractBatchOption } from '@/types/supplyContract';
+
+const money = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+  maximumFractionDigits: 0,
+});
+const weight = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 });
+const formatDate = (value: string) => new Intl.DateTimeFormat('vi-VN').format(new Date(`${value}T00:00:00`));
+const periodLabel = (period: 'WEEK' | 'MONTH') => period === 'MONTH' ? 'tháng' : 'tuần';
+const toWeightKg = (
+  unit: DeclareBatchFormValues['unit'],
+  quantity?: number,
+  packageUnitWeightKg?: number | null,
+) => {
+  if (!quantity || quantity <= 0) return null;
+  if (unit === 'Kg') return quantity;
+  if (unit === 'Tấn') return quantity * 1000;
+  return packageUnitWeightKg && packageUnitWeightKg > 0
+    ? quantity * packageUnitWeightKg
+    : null;
+};
 
 export const DeclareBatchPage: React.FC = () => {
   const navigate = useNavigate();
@@ -34,23 +58,25 @@ export const DeclareBatchPage: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
-  // State lưu danh sách cây trồng & vùng trồng của Supplier
-  const [cropTypeOptions, setCropTypeOptions] = useState<SupplierCropTypeDto[]>([]);
+  // Chỉ các hợp đồng đã duyệt, còn hiệu lực và thuộc Supplier hiện tại mới được chọn.
+  const [eligibleContracts, setEligibleContracts] = useState<SupplyContractBatchOption[]>([]);
   const [growingAreas, setGrowingAreas] = useState<SupplierGrowingAreaDto[]>([]);
   const [isLoadingAreas, setIsLoadingAreas] = useState<boolean>(true);
-
-  // State quản lý Category đang chọn ở Dropdown Loại nông sản
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [isLoadingContracts, setIsLoadingContracts] = useState<boolean>(true);
+  const [initialDataError, setInitialDataError] = useState<string | null>(null);
 
   const {
     register,
     control,
     handleSubmit,
     setValue,
+    getValues,
+    setError,
     formState: { errors },
   } = useForm<DeclareBatchFormInput, unknown, DeclareBatchFormValues>({
     resolver: zodResolver(declareBatchSchema),
     defaultValues: {
+      supplyContractId: 0,
       unit: 'Tấn',
       cropTypeId: 0,
       productName: '',
@@ -68,11 +94,12 @@ export const DeclareBatchPage: React.FC = () => {
   });
 
   // Watch các field cần theo dõi realtime
+  const currentSupplyContractId = useWatch({ control, name: 'supplyContractId' });
   const currentUnit = useWatch({ control, name: 'unit' });
-  const currentCropTypeId = useWatch({ control, name: 'cropTypeId' });
   const currentPackageCount = useWatch({ control, name: 'packageCount' });
   const currentPackageUnitWeightKg = useWatch({ control, name: 'packageUnitWeightKg' });
   const currentDeclaredQuantity = useWatch({ control, name: 'declaredQuantity' });
+  const currentExpectedDeliveryDate = useWatch({ control, name: 'expectedDeliveryDate' });
 
   // Biến kiểm tra xem đơn vị hiện tại có phải là Bao hoặc Thùng không
   const isPackageUnit = currentUnit === 'Bao' || currentUnit === 'Thùng';
@@ -120,38 +147,14 @@ export const DeclareBatchPage: React.FC = () => {
     }
   }, [currentDeclaredQuantity, isPackageUnit, setValue]);
 
-  // Fetch danh sách vùng trồng & cây trồng từ hệ thống
+  // Fetch hồ sơ nhà cung cấp.
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setIsLoadingAreas(true);
-        const [profile] = await Promise.all([
-          supplierService.getMyProfile().catch(() => null),
-        ]);
+        setInitialDataError(null);
+        const profile = await supplierService.getMyProfile().catch(() => null);
 
-        // 1. Lấy danh sách cây trồng
-        let crops: SupplierCropTypeDto[] = [];
-        if (profile && Array.isArray(profile.cropTypes) && profile.cropTypes.length > 0) {
-          crops = profile.cropTypes;
-        } else {
-          crops = [];
-        }
-        setCropTypeOptions(crops);
-
-        if (crops.length > 0) {
-          const firstCat = crops[0].categoryName || 'Nông sản khác';
-          setSelectedCategory(firstCat);
-
-          const firstCropInCat = crops.find(
-            (c) => (c.categoryName || 'Nông sản khác') === firstCat
-          );
-          if (firstCropInCat) {
-            setValue('cropTypeId', Number(firstCropInCat.cropTypeId));
-            setValue('productName', firstCropInCat.cropName);
-          }
-        }
-
-        // 2. Lấy danh sách vùng trồng
         if (profile && Array.isArray(profile.growingAreas) && profile.growingAreas.length > 0) {
           setGrowingAreas(profile.growingAreas);
           setValue('growingAreaId', profile.growingAreas[0].growingAreaId);
@@ -160,6 +163,9 @@ export const DeclareBatchPage: React.FC = () => {
         }
       } catch (error) {
         console.error('Lỗi khi tải dữ liệu khởi tạo:', error);
+        setInitialDataError(
+          getAuthErrorMessage(error, 'Không thể tải hợp đồng hoặc hồ sơ nhà cung cấp.')
+        );
       } finally {
         setIsLoadingAreas(false);
       }
@@ -168,52 +174,67 @@ export const DeclareBatchPage: React.FC = () => {
     fetchInitialData();
   }, [setValue]);
 
-  // Lọc ra các Category không trùng lặp cho Dropdown "LOẠI NÔNG SẢN"
-  const categories = useMemo(() => {
-    const setCat = new Set<string>();
-    cropTypeOptions.forEach((c) => {
-      setCat.add(c.categoryName || 'Nông sản khác');
-    });
-    return Array.from(setCat);
-  }, [cropTypeOptions]);
+  // Tải lại hạn mức đúng chu kỳ mỗi khi ngày giao dự kiến thay đổi.
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchContracts = async () => {
+      try {
+        setIsLoadingContracts(true);
+        setInitialDataError(null);
+        const contracts = await getEligibleSupplyContractsForBatch(
+          typeof currentExpectedDeliveryDate === 'string' && currentExpectedDeliveryDate
+            ? currentExpectedDeliveryDate
+            : undefined,
+          controller.signal,
+        );
+        setEligibleContracts(contracts);
+        const selectedId = Number(getValues('supplyContractId'));
+        if (selectedId > 0 && !contracts.some((contract) => contract.id === selectedId)) {
+          setValue('supplyContractId', 0, { shouldValidate: true });
+          setValue('cropTypeId', 0, { shouldValidate: true });
+          setValue('productName', '', { shouldValidate: true });
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error('Lỗi khi tải hợp đồng:', error);
+          setInitialDataError(getAuthErrorMessage(error, 'Không thể tải hạn mức hợp đồng.'));
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingContracts(false);
+      }
+    };
+    fetchContracts();
+    return () => controller.abort();
+  }, [currentExpectedDeliveryDate, getValues, setValue]);
 
-  // Lọc ra danh sách cây trồng thuộc Category đang chọn cho Dropdown "GIỐNG / PHÂN LOẠI SẢN PHẨM"
-  const filteredCropTypes = useMemo(() => {
-    if (!selectedCategory) return cropTypeOptions;
-    return cropTypeOptions.filter(
-      (c) => (c.categoryName || 'Nông sản khác') === selectedCategory
-    );
-  }, [cropTypeOptions, selectedCategory]);
+  const selectedContract = useMemo(
+    () => eligibleContracts.find((contract) => contract.id === Number(currentSupplyContractId)) ?? null,
+    [currentSupplyContractId, eligibleContracts],
+  );
+  const hasAvailableContract = eligibleContracts.some((contract) => contract.remainingQuantityKg > 0);
 
-  // Khi chọn Category khác ở Dropdown 1
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newCat = e.target.value;
-    setSelectedCategory(newCat);
+  const currentWeightKg = useMemo(
+    () => toWeightKg(currentUnit, currentDeclaredQuantity, currentPackageUnitWeightKg),
+    [currentDeclaredQuantity, currentPackageUnitWeightKg, currentUnit],
+  );
+  const maxDeclaredQuantity = useMemo(() => {
+    if (!selectedContract) return undefined;
+    if (currentUnit === 'Kg') return selectedContract.remainingQuantityKg;
+    if (currentUnit === 'Tấn') return selectedContract.remainingQuantityKg / 1000;
+    if (!currentPackageUnitWeightKg || currentPackageUnitWeightKg <= 0) return undefined;
+    return Math.floor(selectedContract.remainingQuantityKg / currentPackageUnitWeightKg);
+  }, [currentPackageUnitWeightKg, currentUnit, selectedContract]);
+  const quotaError = selectedContract && currentWeightKg !== null
+    && currentWeightKg > selectedContract.remainingQuantityKg
+    ? `Tổng khối lượng ${weight.format(currentWeightKg)} kg vượt quá ${weight.format(selectedContract.remainingQuantityKg)} kg còn lại của hợp đồng.`
+    : null;
 
-    const firstCrop = cropTypeOptions.find(
-      (c) => (c.categoryName || 'Nông sản khác') === newCat
-    );
-
-    if (firstCrop) {
-      setValue('cropTypeId', Number(firstCrop.cropTypeId), { shouldValidate: true });
-      setValue('productName', firstCrop.cropName, { shouldValidate: true });
-    } else {
-      setValue('cropTypeId', 0, { shouldValidate: true });
-      setValue('productName', '', { shouldValidate: true });
-    }
-  };
-
-  // Khi chọn CropType ở Dropdown 2
-  const handleCropTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newCropId = Number(e.target.value);
-    setValue('cropTypeId', newCropId, { shouldValidate: true });
-
-    const selectedCrop = cropTypeOptions.find(
-      (c) => Number(c.cropTypeId) === newCropId
-    );
-    if (selectedCrop) {
-      setValue('productName', selectedCrop.cropName, { shouldValidate: true });
-    }
+  const handleContractChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const contractId = Number(event.target.value);
+    const contract = eligibleContracts.find((item) => item.id === contractId);
+    setValue('supplyContractId', contractId, { shouldValidate: true });
+    setValue('cropTypeId', contract?.cropTypeId ?? 0, { shouldValidate: true });
+    setValue('productName', contract?.cropTypeName ?? '', { shouldValidate: true });
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,8 +249,20 @@ export const DeclareBatchPage: React.FC = () => {
   };
 
   const onSubmit: SubmitHandler<DeclareBatchFormValues> = async (values) => {
-    setIsSubmitting(true);
     setSubmitError(null);
+
+    const contract = eligibleContracts.find((item) => item.id === values.supplyContractId);
+    const submittedWeightKg = toWeightKg(values.unit, values.declaredQuantity, values.packageUnitWeightKg);
+    if (!contract || submittedWeightKg === null || submittedWeightKg > contract.remainingQuantityKg) {
+      const message = !contract
+        ? 'Hợp đồng không còn đủ điều kiện. Vui lòng chọn lại.'
+        : `Chỉ được khai báo tối đa ${weight.format(contract.remainingQuantityKg)} kg còn lại của hợp đồng trong chu kỳ này.`;
+      setError('declaredQuantity', { type: 'contractQuota', message });
+      setSubmitError(message);
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       const evidenceDocumentUrls = await Promise.all(uploadedFiles.map(file => uploadSupplierFile(file)));
@@ -254,7 +287,7 @@ export const DeclareBatchPage: React.FC = () => {
               Khai báo thông tin lô hàng
             </h1>
             <p className="text-xs text-gray-500 mt-1">
-              Nhập chi tiết lô nông sản mới để theo dõi trong hệ thống.
+              Chọn hợp đồng đã duyệt trước khi khai báo lô nông sản mới.
             </p>
           </div>
 
@@ -268,7 +301,7 @@ export const DeclareBatchPage: React.FC = () => {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoadingContracts || !hasAvailableContract || Boolean(quotaError)}
               className="bg-zinc-800 hover:bg-zinc-900 text-white font-medium px-5 py-2 rounded-lg text-sm transition flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -284,7 +317,74 @@ export const DeclareBatchPage: React.FC = () => {
           </div>
         )}
 
+        {initialDataError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{initialDataError}</span>
+          </div>
+        )}
+
         <div className="space-y-6">
+          {/* Hợp đồng là điều kiện bắt buộc để khai báo lô hàng. */}
+          <div className="bg-white rounded-xl border border-emerald-200 shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-5 text-gray-800 font-semibold text-sm border-b pb-3">
+              <FileCheck2 className="w-4 h-4 text-emerald-600" />
+              <span>Hợp đồng áp dụng</span>
+            </div>
+
+            <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+              HỢP ĐỒNG ĐÃ ĐƯỢC DUYỆT <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={currentSupplyContractId || ''}
+              onChange={handleContractChange}
+              disabled={isLoadingContracts || eligibleContracts.length === 0}
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 cursor-pointer"
+            >
+              <option value="">
+                {isLoadingContracts ? 'Đang tải hợp đồng...' : 'Chọn hợp đồng cho lô hàng'}
+              </option>
+              {eligibleContracts.map((contract) => (
+                <option key={contract.id} value={contract.id} disabled={contract.remainingQuantityKg <= 0}>
+                  {contract.contractCode} — {contract.cropTypeName} hạng {contract.qualityGrade} — còn {weight.format(contract.remainingQuantityKg)} kg
+                </option>
+              ))}
+            </select>
+            <input type="hidden" {...register('supplyContractId', { valueAsNumber: true })} />
+            {errors.supplyContractId && (
+              <p className="text-[11px] text-red-500 mt-1">{errors.supplyContractId.message}</p>
+            )}
+
+            {!isLoadingContracts && eligibleContracts.length === 0 && !initialDataError && (
+              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                Không có hợp đồng đã được Admin duyệt, còn hiệu lực và phù hợp với ngày giao dự kiến.
+                <button
+                  type="button"
+                  onClick={() => navigate('/supplier/contracts')}
+                  className="ml-2 font-bold underline"
+                >
+                  Xem hợp đồng
+                </button>
+              </div>
+            )}
+
+            {!isLoadingContracts && eligibleContracts.length > 0 && !hasAvailableContract && (
+              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                Các hợp đồng trong chu kỳ này đã dùng hết sản lượng. Hãy chọn ngày giao thuộc chu kỳ tiếp theo hoặc liên hệ Quản lý kho.
+              </div>
+            )}
+
+            {selectedContract && (
+              <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-emerald-50 p-4 text-xs md:grid-cols-5">
+                <div><p className="text-gray-500">Rau củ</p><p className="font-bold text-gray-900">{selectedContract.cropTypeName} · Hạng {selectedContract.qualityGrade}</p></div>
+                <div><p className="text-gray-500">Sản lượng cam kết</p><p className="font-bold text-gray-900">{weight.format(selectedContract.deliveryQuantityKg)} kg/{periodLabel(selectedContract.deliveryPeriod)}</p></div>
+                <div><p className="text-gray-500">Đã khai báo / Còn lại</p><p className="font-bold text-gray-900">{weight.format(selectedContract.usedQuantityKg)} / <span className="text-emerald-700">{weight.format(selectedContract.remainingQuantityKg)} kg</span></p><p className="mt-1 text-[10px] text-gray-500">{formatDate(selectedContract.quotaPeriodStartDate)} – {formatDate(selectedContract.quotaPeriodEndDate)}</p></div>
+                <div><p className="text-gray-500">Đơn giá</p><p className="font-bold text-emerald-700">{money.format(selectedContract.unitPriceVndPerKg)}/kg</p></div>
+                <div><p className="text-gray-500">Hiệu lực đến</p><p className="font-bold text-gray-900">{formatDate(selectedContract.endDate)}</p></div>
+              </div>
+            )}
+          </div>
+
           {/* Card 1: Thông tin cơ bản */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
             <div className="flex items-center gap-2 mb-6 text-gray-800 font-semibold text-sm border-b pb-3">
@@ -300,16 +400,12 @@ export const DeclareBatchPage: React.FC = () => {
                     LOẠI NÔNG SẢN <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={selectedCategory}
-                    onChange={handleCategoryChange}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    value={selectedContract?.categoryName ?? ''}
+                    disabled
+                    className="w-full bg-gray-100 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-700 disabled:opacity-100"
                   >
-                    <option value="">Chọn loại nông sản</option>
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
+                    <option value="">Chọn hợp đồng trước</option>
+                    {selectedContract && <option value={selectedContract.categoryName}>{selectedContract.categoryName}</option>}
                   </select>
                 </div>
 
@@ -319,18 +415,14 @@ export const DeclareBatchPage: React.FC = () => {
                     GIỐNG / PHÂN LOẠI SẢN PHẨM <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={currentCropTypeId || ''}
-                    onChange={handleCropTypeChange}
-                    disabled={!selectedCategory}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 cursor-pointer"
+                    value={selectedContract?.cropTypeId ?? ''}
+                    disabled
+                    className="w-full bg-gray-100 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-700 disabled:opacity-100"
                   >
-                    <option value="">Chọn phân loại sản phẩm</option>
-                    {filteredCropTypes.map((crop) => (
-                      <option key={crop.cropTypeId} value={crop.cropTypeId}>
-                        {crop.cropName}
-                      </option>
-                    ))}
+                    <option value="">Chọn hợp đồng trước</option>
+                    {selectedContract && <option value={selectedContract.cropTypeId}>{selectedContract.cropTypeName}</option>}
                   </select>
+                  <input type="hidden" {...register('cropTypeId', { valueAsNumber: true })} />
                   {errors.cropTypeId && (
                     <p className="text-[11px] text-red-500 mt-1">
                       {errors.cropTypeId.message}
@@ -443,14 +535,22 @@ export const DeclareBatchPage: React.FC = () => {
                 </label>
                 <input
                   type="number"
-                  step={isPackageUnit ? '1' : '0.01'}
+                  step={isPackageUnit ? '1' : '0.001'}
+                  min={isPackageUnit ? 1 : 0.001}
+                  max={maxDeclaredQuantity}
                   {...register('declaredQuantity', { valueAsNumber: true })}
                   placeholder={isPackageUnit ? 'Nhập số kiện...' : '0.00'}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  aria-invalid={Boolean(errors.declaredQuantity || quotaError)}
+                  className={`w-full bg-gray-50 border rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 ${quotaError ? 'border-red-300 focus:ring-red-400' : 'border-gray-200 focus:ring-emerald-500'}`}
                 />
-                {errors.declaredQuantity && (
+                {(errors.declaredQuantity || quotaError) && (
                   <p className="text-[11px] text-red-500 mt-1">
-                    {errors.declaredQuantity.message}
+                    {errors.declaredQuantity?.message ?? quotaError}
+                  </p>
+                )}
+                {selectedContract && !quotaError && (
+                  <p className="mt-1 text-[11px] text-emerald-700">
+                    Tối đa lô này: {weight.format(selectedContract.remainingQuantityKg)} kg còn lại trong chu kỳ.
                   </p>
                 )}
               </div>
@@ -544,7 +644,7 @@ export const DeclareBatchPage: React.FC = () => {
                 <div>
                   <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                    <span>NGÀY GIAO HÀNG DỰ KIẾN</span>
+                    <span>NGÀY GIAO HÀNG DỰ KIẾN <span className="text-red-500">*</span></span>
                   </label>
                   <input
                     type="date"

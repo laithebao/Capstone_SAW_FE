@@ -7,7 +7,7 @@ const decimal = (scale: number, limit: number) => z.number().finite().refine(
   value => Math.abs(value) < limit && Math.abs(value * 10 ** scale - Math.round(value * 10 ** scale)) < 0.000001,
   `Giá trị phải nằm trong giới hạn cho phép và có tối đa ${scale} chữ số thập phân`,
 );
-export const declareBatchSchema = z.object({
+const batchSchema = z.object({
   cropTypeId: z.number().int().positive('Vui lòng chọn nông sản'),
   growingAreaId: z.number().int().positive('Vui lòng chọn vùng trồng'),
   productName: z.string().trim().min(1, 'Vui lòng nhập tên sản phẩm').max(200),
@@ -24,7 +24,9 @@ export const declareBatchSchema = z.object({
   expectedMinHumidityPct: optionalNumber(decimal(2, 10000).min(0).max(100)),
   expectedMaxHumidityPct: optionalNumber(decimal(2, 10000).min(0).max(100)),
   note: z.string().max(1000, 'Ghi chú tối đa 1000 ký tự').optional(),
-}).superRefine((data, ctx) => {
+});
+
+const validateBatch = (data: z.output<typeof batchSchema>, ctx: z.RefinementCtx) => {
   const issue = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   if (data.harvestDate > today) issue('harvestDate', 'Ngày thu hoạch không được ở tương lai');
@@ -39,12 +41,17 @@ export const declareBatchSchema = z.object({
     if (!data.packageUnitWeightKg) issue('packageUnitWeightKg', 'Vui lòng nhập khối lượng kg mỗi kiện');
     if (data.packageCount != null && data.packageCount !== data.declaredQuantity) issue('declaredQuantity', 'Số lượng khai báo phải bằng số kiện');
   }
-});
-export const updateBatchSchema = declareBatchSchema;
+};
+
+export const declareBatchSchema = batchSchema.extend({
+  supplyContractId: z.number().int().positive('Vui lòng chọn hợp đồng đã được duyệt'),
+  expectedDeliveryDate: z.iso.date('Vui lòng chọn ngày giao hàng dự kiến'),
+}).superRefine(validateBatch);
+export const updateBatchSchema = batchSchema.superRefine(validateBatch);
 export type DeclareBatchFormInput = z.input<typeof declareBatchSchema>;
 export type DeclareBatchFormValues = z.output<typeof declareBatchSchema>;
-export type UpdateBatchFormValues = DeclareBatchFormValues;
-export type UpdateBatchFormInput = DeclareBatchFormInput;
+export type UpdateBatchFormInput = z.input<typeof updateBatchSchema>;
+export type UpdateBatchFormValues = z.output<typeof updateBatchSchema>;
 // Form reset can supply API numbers or empty defaults as well as input strings.
 // Keep invalid values invalid so validation can reject them.
 export const optionalNumericInput = (value: unknown): number | undefined => {
