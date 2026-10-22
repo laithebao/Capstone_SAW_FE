@@ -95,6 +95,24 @@ export async function cancelSupplyContractByWarehouse(
   return response.data.data;
 }
 
+export async function rejectSupplyContractCancellationByWarehouse(
+  id: number,
+  reason: string,
+) {
+  const response = await apiClient.post<ApiResponse<SupplyContractDetail>>(
+    `/supply-contracts/${id}/warehouse-cancel-reject`,
+    { reason },
+  );
+  return response.data.data;
+}
+
+export async function cancelSupplyContractByAdmin(id: number) {
+  const response = await apiClient.post<ApiResponse<SupplyContractDetail>>(
+    `/supply-contracts/${id}/admin-cancel`,
+  );
+  return response.data.data;
+}
+
 export async function confirmSupplyContractBySupplier(id: number) {
   const response = await apiClient.post<ApiResponse<SupplyContractDetail>>(
     `/supply-contracts/${id}/supplier-confirm`,

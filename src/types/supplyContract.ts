@@ -5,6 +5,8 @@ export type SupplyContractStatus =
   | "ADMIN_REJECTED"
   | "APPROVED"
   | "CANCELLATION_REQUESTED"
+  | "PENDING_ADMIN_CANCELLATION"
+  | "CANCELLATION_REJECTED"
   | "CANCELLED";
 
 export type DeliveryPeriod = "WEEK" | "MONTH";
@@ -52,6 +54,7 @@ export interface SupplyContractSupplierOption {
   id: number;
   code: string;
   name: string;
+  cropTypeIds: number[];
 }
 
 export interface SupplyContractCropTypeOption {

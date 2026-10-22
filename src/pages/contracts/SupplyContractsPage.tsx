@@ -5,6 +5,7 @@ import { getAuthErrorMessage } from "@/services/authService";
 import {
   approveSupplyContractByAdmin,
   cancelSupplyContractByWarehouse,
+  cancelSupplyContractByAdmin,
   confirmSupplyContractBySupplier,
   createSupplyContract,
   getSupplyContract,
@@ -13,6 +14,7 @@ import {
   rejectSupplyContractByAdmin,
   rejectSupplyContractBySupplier,
   requestSupplyContractCancellation,
+  rejectSupplyContractCancellationByWarehouse,
   updateSupplyContract,
 } from "@/services/supplyContractService";
 import type {
@@ -53,6 +55,8 @@ const statusItems: ReadonlyArray<{
   { value: "ADMIN_REJECTED", label: "Admin từ chối" },
   { value: "APPROVED", label: "Đã duyệt" },
   { value: "CANCELLATION_REQUESTED", label: "Nhà cung cấp yêu cầu hủy" },
+  { value: "PENDING_ADMIN_CANCELLATION", label: "Chờ Admin duyệt hủy" },
+  { value: "CANCELLATION_REJECTED", label: "Quản lý kho không duyệt yêu cầu hủy của bạn" },
   { value: "CANCELLED", label: "Đã hủy" },
 ];
 
@@ -63,6 +67,8 @@ const statusStyle: Record<SupplyContractStatus, string> = {
   ADMIN_REJECTED: "bg-rose-50 text-rose-700",
   APPROVED: "bg-emerald-50 text-emerald-700",
   CANCELLATION_REQUESTED: "bg-orange-50 text-orange-700",
+  PENDING_ADMIN_CANCELLATION: "bg-sky-50 text-sky-700",
+  CANCELLATION_REJECTED: "bg-amber-50 text-amber-700",
   CANCELLED: "bg-slate-200 text-slate-700",
 };
 
@@ -110,6 +116,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("vi-VN", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Asia/Ho_Chi_Minh",
 });
 
 function localIsoDate(date: Date) {
@@ -152,15 +159,28 @@ function deliveryPeriodLabel(period: DeliveryPeriod) {
   return period === "MONTH" ? "tháng" : "tuần";
 }
 
-function ContractStatusBadge({ status }: { status: SupplyContractStatus }) {
+function ContractStatusBadge({ status, mode, cancellationRejected = false }: { status: SupplyContractStatus; mode?: ContractMode; cancellationRejected?: boolean }) {
   return (
     <span
       className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${statusStyle[status]}`}
     >
-      {statusLabel(status)}
+      {mode === "admin" && status === "PENDING_ADMIN_CANCELLATION"
+        ? "Yêu cầu hủy cần xử lý"
+        : mode === "supplier" && status === "PENDING_SUPPLIER"
+          ? "Chờ bạn xác nhận"
+          : mode === "supplier" && status === "PENDING_ADMIN"
+            ? "Đã xác nhận · Chờ Admin duyệt"
+            : mode === "supplier" && status === "CANCELLATION_REQUESTED"
+              ? "Đã gửi yêu cầu hủy"
+              : mode === "supplier" && status === "PENDING_ADMIN_CANCELLATION"
+                ? "Chờ Admin duyệt hủy"
+                : mode === "supplier" && status === "CANCELLATION_REJECTED" && cancellationRejected
+                  ? "Quản lý kho không duyệt yêu cầu hủy của bạn"
+                : statusLabel(status)}
     </span>
   );
 }
+
 
 export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) {
   const [items, setItems] = useState<SupplyContractSummary[]>([]);
@@ -177,6 +197,8 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
   const [actionBusy, setActionBusy] = useState(false);
   const [showFinalConfirmation, setShowFinalConfirmation] = useState(false);
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
+  const [showRejectCancellationConfirmation, setShowRejectCancellationConfirmation] = useState(false);
+  const [showContractDetails, setShowContractDetails] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -184,8 +206,24 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
   const [form, setForm] = useState<ContractFormState>(initialForm);
+  const [durationPreset, setDurationPreset] = useState("3M");
 
   const copy = pageCopy[mode];
+  const selectedSupplier = options?.suppliers.find(
+    (supplier) => supplier.id === Number(form.supplierId),
+  );
+  const availableCropTypes = options?.cropTypes.filter(
+    (crop) => !form.supplierId || selectedSupplier?.cropTypeIds.includes(crop.id),
+  ) ?? [];
+
+  const applyDurationPreset = (preset: string, startDate = form.startDate) => {
+    setDurationPreset(preset);
+    if (preset === "CUSTOM") return;
+    const start = new Date(`${startDate}T00:00:00`);
+    if (preset.endsWith("W")) start.setDate(start.getDate() + Number(preset.slice(0, -1)) * 7);
+    else start.setMonth(start.getMonth() + Number(preset.slice(0, -1)));
+    setForm((current) => ({ ...current, startDate, endDate: localIsoDate(start) }));
+  };
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -226,6 +264,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
     setDetailLoading(true);
     setError("");
     setRejectionReason("");
+    setShowContractDetails(false);
     try {
       const detail = await getSupplyContract(id);
       setSelected(detail);
@@ -249,6 +288,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
   const openCreate = async () => {
     setEditingId(null);
     setForm(initialForm());
+    setDurationPreset("3M");
     setShowCreate(true);
     setError("");
     setMessage("");
@@ -266,25 +306,6 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
     } finally {
       setOptionsLoading(false);
     }
-  };
-
-  const openEdit = () => {
-    if (!selected) return;
-    setEditingId(selected.id);
-    setForm({
-      supplierId: String(selected.supplierId),
-      cropTypeId: String(selected.cropTypeId),
-      qualityGrade: selected.qualityGrade,
-      deliveryQuantityKg: String(selected.deliveryQuantityKg),
-      deliveryPeriod: selected.deliveryPeriod,
-      unitPriceVndPerKg: String(selected.unitPriceVndPerKg),
-      startDate: selected.startDate,
-      endDate: selected.endDate,
-      terms: selected.terms ?? "",
-    });
-    setError("");
-    setMessage("");
-    setShowCreate(true);
   };
 
   const closeContractForm = () => {
@@ -442,7 +463,47 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
       const updated = await cancelSupplyContractByWarehouse(selected.id, reason);
       setSelected(updated);
       setRejectionReason("");
-      setMessage(`Đã hủy hợp đồng ${selected.contractCode}.`);
+      setMessage(`Đã duyệt yêu cầu hủy hợp đồng ${selected.contractCode}, chờ Admin hủy cuối cùng.`);
+      await load();
+    } catch (actionError: unknown) {
+      setError(getAuthErrorMessage(actionError, "Không thể hủy hợp đồng."));
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const rejectCancellationByWarehouse = async () => {
+    if (!selected) return;
+    const reason = rejectionReason.trim();
+    if (reason.length < 5) {
+      setError("Lý do không duyệt yêu cầu hủy phải có ít nhất 5 ký tự.");
+      return;
+    }
+    setActionBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await rejectSupplyContractCancellationByWarehouse(selected.id, reason);
+      setSelected(updated);
+      setRejectionReason("");
+      setMessage(`Đã không duyệt yêu cầu hủy hợp đồng ${selected.contractCode}. Hợp đồng vẫn được duy trì.`);
+      await load();
+    } catch (actionError: unknown) {
+      setError(getAuthErrorMessage(actionError, "Không thể không duyệt yêu cầu hủy."));
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const cancelByAdmin = async () => {
+    if (!selected) return;
+    setActionBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await cancelSupplyContractByAdmin(selected.id);
+      setSelected(updated);
+      setMessage(`Admin đã hủy hợp đồng ${selected.contractCode}.`);
       await load();
     } catch (actionError: unknown) {
       setError(getAuthErrorMessage(actionError, "Không thể hủy hợp đồng."));
@@ -510,12 +571,12 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
           </button>
         </form>
 
-        {error && (
+        {error && !selected && (
           <div className="flex items-start gap-2 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
             <AppIcon name="alert" className="mt-0.5 size-4 shrink-0" /> {error}
           </div>
         )}
-        {message && (
+        {message && !selected && (
           <div className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-700">
             {message}
           </div>
@@ -590,7 +651,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                         <p>đến {formatDate(item.endDate)}</p>
                       </td>
                       <td className="px-4 py-4">
-                        <ContractStatusBadge status={item.status} />
+                        <ContractStatusBadge status={item.status} mode={mode} />
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex justify-end">
@@ -601,13 +662,14 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                               (mode === "supplier" && item.status === "PENDING_SUPPLIER")
                                 || (mode === "admin" && item.status === "PENDING_ADMIN")
                                 || (mode === "warehouse" && item.status === "CANCELLATION_REQUESTED")
+                                || (mode === "admin" && item.status === "PENDING_ADMIN_CANCELLATION")
                                 ? "rounded-lg bg-emerald-700 px-3 py-2 font-semibold text-white hover:bg-emerald-800"
                                 : "rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:border-emerald-600 hover:text-emerald-700"
                             }
                           >
                             {(mode === "supplier" && item.status === "PENDING_SUPPLIER")
-                              || (mode === "admin" && item.status === "PENDING_ADMIN")
-                              ? "Xác nhận"
+                              || (mode === "admin" && (item.status === "PENDING_ADMIN" || item.status === "PENDING_ADMIN_CANCELLATION"))
+                              ? item.status === "PENDING_ADMIN_CANCELLATION" ? "Xử lý yêu cầu" : "Xác nhận"
                               : mode === "warehouse" && item.status === "CANCELLATION_REQUESTED"
                                 ? "Xử lý yêu cầu"
                                 : "Xem chi tiết"}
@@ -675,6 +737,23 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
               <p className="p-10 text-center text-slate-500">Đang tải biểu mẫu...</p>
             ) : (
               <div className="grid gap-5 p-6 sm:grid-cols-2">
+                <label className="space-y-1.5 text-sm font-semibold text-slate-700 sm:col-span-2">
+                  Thời hạn hợp đồng
+                  <select
+                    value={durationPreset}
+                    onChange={(event) => applyDurationPreset(event.target.value)}
+                    disabled={Boolean(editingId)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal outline-none focus:border-emerald-600 disabled:bg-slate-100"
+                  >
+                    <option value="2W">2 tuần</option>
+                    <option value="1M">1 tháng</option>
+                    <option value="3M">3 tháng</option>
+                    <option value="6M">6 tháng</option>
+                    <option value="12M">12 tháng</option>
+                    <option value="CUSTOM">Tùy chỉnh ngày hết hạn</option>
+                  </select>
+                </label>
+
                 <label className="space-y-1.5 text-sm font-semibold text-slate-700">
                   Nhà cung cấp <span className="text-rose-600">*</span>
                   {editingId ? (
@@ -687,9 +766,17 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                     <select
                       required
                       value={form.supplierId}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, supplierId: event.target.value }))
-                      }
+                      onChange={(event) => {
+                        const supplierId = event.target.value;
+                        const supplier = options?.suppliers.find((item) => item.id === Number(supplierId));
+                        setForm((current) => ({
+                          ...current,
+                          supplierId,
+                          cropTypeId: supplier?.cropTypeIds.includes(Number(current.cropTypeId))
+                            ? current.cropTypeId
+                            : "",
+                        }));
+                      }}
                       className="w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal outline-none focus:border-emerald-600"
                     >
                       <option value="">Chọn nhà cung cấp</option>
@@ -720,7 +807,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                       className="w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal outline-none focus:border-emerald-600"
                     >
                       <option value="">Chọn loại rau củ</option>
-                      {options?.cropTypes.map((crop) => (
+                      {availableCropTypes.map((crop) => (
                         <option key={crop.id} value={crop.id}>
                           {crop.code} - {crop.name} ({crop.categoryName})
                         </option>
@@ -828,7 +915,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                     min={editingId ? undefined : localIsoDate(new Date())}
                     value={form.startDate}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, startDate: event.target.value }))
+                      applyDurationPreset(durationPreset, event.target.value)
                     }
                     className="w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal outline-none focus:border-emerald-600"
                   />
@@ -842,7 +929,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                     min={form.startDate}
                     value={form.endDate}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, endDate: event.target.value }))
+                      (setDurationPreset("CUSTOM"), setForm((current) => ({ ...current, endDate: event.target.value })))
                     }
                     className="w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal outline-none focus:border-emerald-600"
                   />
@@ -922,7 +1009,20 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                 </div>
 
                 <div className="space-y-6 p-6">
-                  <ContractStatusBadge status={selected.status} />
+                  <ContractStatusBadge
+                    status={selected.status}
+                    mode={mode}
+                    cancellationRejected={mode === "supplier" && selected.status === "CANCELLATION_REJECTED"}
+                  />
+
+                  {mode === "supplier" && selected.status === "CANCELLATION_REJECTED" && selected.cancellationReason && (
+                    <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                      <h3 className="font-bold text-amber-900">Quản lý kho không duyệt yêu cầu hủy của bạn</h3>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-amber-800">
+                        Lý do: {selected.cancellationReason}
+                      </p>
+                    </section>
+                  )}
 
                   {selected.status === "CANCELLATION_REQUESTED" && (
                     <section className="rounded-xl border border-orange-200 bg-orange-50 p-4">
@@ -946,6 +1046,18 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                       </p>
                     </section>
                   )}
+
+                  <button
+                    type="button"
+                    onClick={() => setShowContractDetails((visible) => !visible)}
+                    className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-bold text-slate-800 hover:bg-slate-100"
+                    aria-expanded={showContractDetails}
+                  >
+                    <span>{showContractDetails ? "Ẩn thông tin hợp đồng" : "Hiển thị thông tin hợp đồng"}</span>
+                    <span className={`text-lg transition-transform ${showContractDetails ? "rotate-180" : ""}`}>⌄</span>
+                  </button>
+
+                  {showContractDetails && <>
 
                   <section className="grid gap-4 rounded-xl border border-slate-200 p-5 sm:grid-cols-2">
                     <DetailField label="Nhà cung cấp" value={selected.supplierName} />
@@ -977,6 +1089,8 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                       {selected.terms || "Không có điều khoản bổ sung."}
                     </p>
                   </section>
+
+                  </>}
 
                   <section className="space-y-3 border-t border-slate-200 pt-5">
                     <h3 className="font-bold text-slate-900">Lịch sử xử lý</h3>
@@ -1027,22 +1141,41 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                         title="Supplier đã gửi yêu cầu hủy"
                         detail={`${selected.cancellationRequestReason ?? "Không có lý do"} · ${formatDateTime(selected.cancellationRequestedAt)}`}
                         complete
-                        rejected
+                      />
+                    )}
+                    {(selected.status === "PENDING_ADMIN_CANCELLATION" || selected.status === "CANCELLED") && (
+                      <HistoryItem
+                        title="Quản lý kho đã duyệt yêu cầu hủy"
+                        detail="Đã chuyển đến Admin để hủy cuối cùng."
+                        complete
                       />
                     )}
                     {selected.cancelledAt && (
                       <HistoryItem
-                        title="Quản lý kho đã hủy hợp đồng"
+                        title="Admin đã hủy hợp đồng lần cuối"
                         detail={`${selected.cancellationReason ?? "Không có lý do"} · ${formatDateTime(selected.cancelledAt)}`}
                         complete
-                        rejected
                       />
                     )}
                   </section>
 
+                  {error && (
+                    <p
+                      className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700"
+                      role="alert"
+                    >
+                      {error}
+                    </p>
+                  )}
+                  {message && (
+                    <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700" role="status">
+                      {message}
+                    </p>
+                  )}
+
                   {((mode === "supplier" && selected.status === "PENDING_SUPPLIER") ||
                     (mode === "admin" && selected.status === "PENDING_ADMIN")) && (
-                    <section className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/60 p-5">
+                    <section className="sticky bottom-0 z-20 space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-[0_-8px_20px_rgba(15,23,42,0.08)]">
                       <div>
                         <h3 className="font-bold text-slate-900">
                           {mode === "supplier"
@@ -1093,8 +1226,8 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                   )}
 
                   {mode === "supplier" &&
-                    (selected.status === "APPROVED" || selected.status === "PENDING_ADMIN") && (
-                      <section className="space-y-4 rounded-xl border border-orange-200 bg-orange-50/60 p-5">
+                    (selected.status === "APPROVED" || selected.status === "PENDING_ADMIN" || selected.status === "CANCELLATION_REJECTED") && (
+                      <section className="sticky bottom-0 z-20 space-y-4 rounded-xl border border-orange-200 bg-orange-50 p-5 shadow-[0_-8px_20px_rgba(15,23,42,0.08)]">
                         <div>
                           <h3 className="font-bold text-slate-900">Yêu cầu hủy hợp đồng</h3>
                           <p className="mt-1 text-sm text-slate-600">
@@ -1125,16 +1258,16 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                       </section>
                     )}
 
-                  {mode === "warehouse" && selected.status !== "CANCELLED" && (
-                    <section className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-5">
+                  {mode === "warehouse" && selected.status === "CANCELLATION_REQUESTED" && (
+                    <section className="sticky bottom-0 z-20 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-[0_-8px_20px_rgba(15,23,42,0.08)]">
                       <div>
-                        <h3 className="font-bold text-slate-900">Quản lý hợp đồng</h3>
+                        <h3 className="font-bold text-slate-900">Xử lý yêu cầu hủy</h3>
                         <p className="mt-1 text-sm text-slate-600">
-                          Khi cập nhật, hợp đồng tự động quay về bước Supplier xác nhận, sau đó Admin duyệt cuối cùng.
+                          Supplier đã yêu cầu hủy hợp đồng. Quản lý kho kiểm tra và duyệt trước khi chuyển Admin hủy cuối cùng.
                         </p>
                       </div>
                       <label className="block space-y-1.5 text-sm font-semibold text-slate-700">
-                        Lý do nếu hủy <span className="text-rose-600">*</span>
+                        Ghi chú xử lý <span className="text-rose-600">*</span>
                         <textarea
                           rows={3}
                           maxLength={1000}
@@ -1148,10 +1281,17 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                         <button
                           type="button"
                           disabled={actionBusy}
-                          onClick={openEdit}
-                          className="rounded-lg border border-emerald-300 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                          onClick={() => {
+                            if (rejectionReason.trim().length < 5) {
+                              setError("Lý do không duyệt yêu cầu hủy phải có ít nhất 5 ký tự.");
+                              return;
+                            }
+                            setError("");
+                            setShowRejectCancellationConfirmation(true);
+                          }}
+                          className="rounded-lg border border-rose-300 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
                         >
-                          Cập nhật hợp đồng
+                          Không duyệt yêu cầu hủy
                         </button>
                         <button
                           type="button"
@@ -1166,9 +1306,24 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                           }}
                           className="rounded-lg bg-rose-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-800 disabled:opacity-50"
                         >
-                          Hủy hợp đồng
+                          Duyệt yêu cầu hủy
                         </button>
                       </div>
+                    </section>
+                  )}
+
+                  {mode === "admin" && selected.status === "PENDING_ADMIN_CANCELLATION" && (
+                    <section className="sticky bottom-0 z-20 space-y-4 rounded-xl border border-rose-200 bg-rose-50 p-5 shadow-[0_-8px_20px_rgba(15,23,42,0.08)]">
+                      <h3 className="font-bold text-slate-900">Hủy hợp đồng lần cuối</h3>
+                      <p className="text-sm text-slate-600">Quản lý kho đã duyệt yêu cầu hủy. Admin kiểm tra lần cuối trước khi hủy chính thức.</p>
+                      <button
+                        type="button"
+                        disabled={actionBusy}
+                        onClick={() => setShowCancelConfirmation(true)}
+                        className="rounded-lg bg-rose-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        {actionBusy ? "Đang xử lý..." : "Admin hủy hợp đồng"}
+                      </button>
                     </section>
                   )}
                 </div>
@@ -1226,7 +1381,9 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
         </div>
       )}
 
-      {showCancelConfirmation && selected && mode === "warehouse" && (
+      {showCancelConfirmation && selected &&
+        ((mode === "warehouse" && selected.status === "CANCELLATION_REQUESTED") ||
+          (mode === "admin" && selected.status === "PENDING_ADMIN_CANCELLATION")) && (
         <div
           className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-4"
           role="dialog"
@@ -1238,14 +1395,24 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
               <AppIcon name="alert" className="size-5" />
             </div>
             <h2 id="cancel-contract-title" className="mt-4 text-xl font-bold text-slate-950">
-              Xác nhận hủy hợp đồng?
+              {mode === "warehouse"
+                ? "Xác nhận duyệt yêu cầu hủy?"
+                : "Xác nhận hủy hợp đồng lần cuối?"}
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Hợp đồng <strong>{selected.contractCode}</strong> sẽ chuyển sang trạng thái đã hủy và
-              Supplier không thể dùng hợp đồng này để tạo lô hàng mới.
+              {mode === "warehouse" ? (
+                <>Bạn xác nhận duyệt yêu cầu hủy của Supplier đối với hợp đồng <strong>{selected.contractCode}</strong>.
+                  Sau bước này, hợp đồng sẽ chuyển đến Admin hủy lần cuối.</>
+              ) : (
+                <>Hợp đồng <strong>{selected.contractCode}</strong> sẽ được hủy chính thức.
+                  Supplier không thể dùng hợp đồng này để tạo lô hàng mới.</>
+              )}
             </p>
             <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-              <span className="font-semibold">Lý do:</span> {rejectionReason.trim()}
+              <span className="font-semibold">Lý do:</span>{" "}
+              {mode === "admin"
+                ? selected.cancellationReason ?? selected.cancellationRequestReason ?? "Không có lý do"
+                : rejectionReason.trim()}
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -1259,12 +1426,33 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                 type="button"
                 onClick={() => {
                   setShowCancelConfirmation(false);
-                  void cancelByWarehouse();
+                  void (mode === "warehouse" ? cancelByWarehouse() : cancelByAdmin());
                 }}
                 className="rounded-lg bg-rose-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-800"
               >
-                Xác nhận hủy
+                {mode === "warehouse" ? "Duyệt yêu cầu hủy" : "Xác nhận hủy cuối cùng"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRejectCancellationConfirmation && selected && mode === "warehouse" && selected.status === "CANCELLATION_REQUESTED" && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="reject-cancellation-title">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex size-11 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <AppIcon name="alert" className="size-5" />
+            </div>
+            <h2 id="reject-cancellation-title" className="mt-4 text-xl font-bold text-slate-950">Không duyệt yêu cầu hủy?</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Hợp đồng <strong>{selected.contractCode}</strong> sẽ tiếp tục được duy trì và Supplier vẫn có thể dùng hợp đồng này để tạo lô hàng.
+            </p>
+            <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+              <span className="font-semibold">Lý do:</span> {rejectionReason.trim()}
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setShowRejectCancellationConfirmation(false)} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700">Quay lại</button>
+              <button type="button" disabled={actionBusy} onClick={() => { setShowRejectCancellationConfirmation(false); void rejectCancellationByWarehouse(); }} className="rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50">Không duyệt yêu cầu hủy</button>
             </div>
           </div>
         </div>
