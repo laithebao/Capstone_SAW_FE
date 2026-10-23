@@ -38,6 +38,13 @@ const money = new Intl.NumberFormat('vi-VN', {
 });
 const weight = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 });
 const formatDate = (value: string) => new Intl.DateTimeFormat('vi-VN').format(new Date(`${value}T00:00:00`));
+const daysUntilDate = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  const today = new Date();
+  const dueDay = Date.UTC(year, month - 1, day);
+  const todayDay = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.round((dueDay - todayDay) / 86_400_000);
+};
 const periodLabel = (period: 'WEEK' | 'MONTH') => period === 'MONTH' ? 'tháng' : 'tuần';
 const toWeightKg = (
   unit: DeclareBatchFormValues['unit'],
@@ -211,6 +218,9 @@ export const DeclareBatchPage: React.FC = () => {
     () => eligibleContracts.find((contract) => contract.id === Number(currentSupplyContractId)) ?? null,
     [currentSupplyContractId, eligibleContracts],
   );
+  const selectedQuotaDaysLeft = selectedContract
+    ? daysUntilDate(selectedContract.quotaPeriodEndDate)
+    : null;
   const hasAvailableContract = eligibleContracts.some((contract) => contract.remainingQuantityKg > 0);
 
   const currentWeightKg = useMemo(
@@ -346,13 +356,18 @@ export const DeclareBatchPage: React.FC = () => {
               </option>
               {eligibleContracts.map((contract) => (
                 <option key={contract.id} value={contract.id} disabled={contract.remainingQuantityKg <= 0}>
-                  {contract.contractCode} — {contract.cropTypeName} hạng {contract.qualityGrade} — còn {weight.format(contract.remainingQuantityKg)} kg
+                  {contract.contractCode} — {contract.cropTypeName} — còn {weight.format(contract.remainingQuantityKg)} kg
                 </option>
               ))}
             </select>
             <input type="hidden" {...register('supplyContractId', { valueAsNumber: true })} />
             {errors.supplyContractId && (
               <p className="text-[11px] text-red-500 mt-1">{errors.supplyContractId.message}</p>
+            )}
+            {eligibleContracts.length > 0 && (
+              <p className="mt-2 text-xs text-slate-500">
+                Chỉ hiển thị hợp đồng mới nhất đang có hiệu lực cho từng loại nông sản.
+              </p>
             )}
 
             {!isLoadingContracts && eligibleContracts.length === 0 && !initialDataError && (
@@ -376,9 +391,24 @@ export const DeclareBatchPage: React.FC = () => {
 
             {selectedContract && (
               <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-emerald-50 p-4 text-xs md:grid-cols-5">
-                <div><p className="text-gray-500">Rau củ</p><p className="font-bold text-gray-900">{selectedContract.cropTypeName} · Hạng {selectedContract.qualityGrade}</p></div>
+                <div><p className="text-gray-500">Rau củ</p><p className="font-bold text-gray-900">{selectedContract.cropTypeName}</p></div>
                 <div><p className="text-gray-500">Sản lượng cam kết</p><p className="font-bold text-gray-900">{weight.format(selectedContract.deliveryQuantityKg)} kg/{periodLabel(selectedContract.deliveryPeriod)}</p></div>
-                <div><p className="text-gray-500">Đã khai báo / Còn lại</p><p className="font-bold text-gray-900">{weight.format(selectedContract.usedQuantityKg)} / <span className="text-emerald-700">{weight.format(selectedContract.remainingQuantityKg)} kg</span></p><p className="mt-1 text-[10px] text-gray-500">{formatDate(selectedContract.quotaPeriodStartDate)} – {formatDate(selectedContract.quotaPeriodEndDate)}</p></div>
+                <div>
+                  <p className="text-gray-500">Đã khai báo / Còn lại</p>
+                  <p className="font-bold text-gray-900">{weight.format(selectedContract.usedQuantityKg)} / <span className="text-emerald-700">{weight.format(selectedContract.remainingQuantityKg)} kg</span></p>
+                  <p className="mt-1 text-[10px] text-gray-500">Kỳ giao: {formatDate(selectedContract.quotaPeriodStartDate)} – {formatDate(selectedContract.quotaPeriodEndDate)}</p>
+                  {selectedContract.remainingQuantityKg <= 0 ? (
+                    <p className="mt-1 text-[11px] font-semibold text-emerald-700">Đã giao đủ sản lượng kỳ này</p>
+                  ) : selectedQuotaDaysLeft !== null && (
+                    <p className={`mt-1 text-[11px] font-semibold ${selectedQuotaDaysLeft < 0 ? 'text-rose-700' : selectedQuotaDaysLeft <= 1 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                      {selectedQuotaDaysLeft < 0
+                        ? `Đã quá hạn ${Math.abs(selectedQuotaDaysLeft)} ngày`
+                        : selectedQuotaDaysLeft === 0
+                          ? 'Đến hạn giao hôm nay'
+                          : `Còn ${selectedQuotaDaysLeft} ngày để giao đủ sản lượng`}
+                    </p>
+                  )}
+                </div>
                 <div><p className="text-gray-500">Đơn giá</p><p className="font-bold text-emerald-700">{money.format(selectedContract.unitPriceVndPerKg)}/kg</p></div>
                 <div><p className="text-gray-500">Hiệu lực đến</p><p className="font-bold text-gray-900">{formatDate(selectedContract.endDate)}</p></div>
               </div>
