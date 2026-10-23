@@ -16,7 +16,6 @@ export interface SupplyContractSummary {
   contractCode: string;
   supplierName: string;
   cropTypeName: string;
-  qualityGrade: string;
   deliveryQuantityKg: number;
   deliveryPeriod: DeliveryPeriod;
   unitPriceVndPerKg: number;
@@ -25,6 +24,7 @@ export interface SupplyContractSummary {
   status: SupplyContractStatus;
   revision: number;
   createdAt: string;
+  isEffective: boolean;
 }
 
 export interface SupplyContractDetail extends SupplyContractSummary {
@@ -41,6 +41,11 @@ export interface SupplyContractDetail extends SupplyContractSummary {
   cancellationRequestReason: string | null;
   cancelledAt: string | null;
   cancellationReason: string | null;
+  attachmentFileName: string | null;
+  attachmentContentType: string | null;
+  attachmentUploadedAt: string | null;
+  hasOverdueDelivery: boolean;
+  overdueDeliveryDueDate: string | null;
 }
 
 export interface SupplyContractPage {
@@ -67,7 +72,6 @@ export interface SupplyContractCropTypeOption {
 export interface SupplyContractOptions {
   suppliers: SupplyContractSupplierOption[];
   cropTypes: SupplyContractCropTypeOption[];
-  qualityGrades: string[];
 }
 
 export interface SupplyContractBatchOption {
@@ -76,7 +80,6 @@ export interface SupplyContractBatchOption {
   cropTypeId: number;
   cropTypeName: string;
   categoryName: string;
-  qualityGrade: string;
   deliveryQuantityKg: number;
   usedQuantityKg: number;
   remainingQuantityKg: number;
@@ -91,7 +94,6 @@ export interface SupplyContractBatchOption {
 export interface CreateSupplyContractRequest {
   supplierId: number;
   cropTypeId: number;
-  qualityGrade: string;
   deliveryQuantityKg: number;
   deliveryPeriod: DeliveryPeriod;
   unitPriceVndPerKg: number;

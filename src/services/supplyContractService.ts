@@ -27,12 +27,21 @@ export async function getSupplyContracts(
   search: string,
   status: SupplyContractStatus | "",
   page: number,
+  sortBy: "createdAt" | "endDate" | "unitPrice" | "deliveryQuantity",
+  sortDirection: "asc" | "desc",
   signal?: AbortSignal,
 ) {
   const response = await apiClient.get<ApiResponse<SupplyContractPage>>(
     "/supply-contracts",
     {
-      params: { search: search || undefined, status: status || undefined, page, pageSize: 20 },
+      params: {
+        search: search || undefined,
+        status: status || undefined,
+        page,
+        pageSize: 20,
+        sortBy,
+        sortDirection,
+      },
       signal,
     },
   );
@@ -60,6 +69,30 @@ export async function createSupplyContract(request: CreateSupplyContractRequest)
     request,
   );
   return response.data.data;
+}
+
+export async function uploadSupplyContractAttachment(id: number, file: File) {
+  const body = new FormData();
+  body.append("file", file);
+  const response = await apiClient.post<ApiResponse<SupplyContractDetail>>(
+    `/supply-contracts/${id}/attachment`, body,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+  return response.data.data;
+}
+
+export function supplyContractAttachmentUrl(id: number) {
+  return `${apiClient.defaults.baseURL ?? ""}/supply-contracts/${id}/attachment`;
+}
+
+export async function downloadSupplyContractAttachment(id: number) {
+  const response = await apiClient.get<Blob>(`/supply-contracts/${id}/attachment`, { responseType: "blob" });
+  return URL.createObjectURL(response.data);
+}
+
+export async function downloadSupplyContractAttachmentBlob(id: number) {
+  const response = await apiClient.get<Blob>(`/supply-contracts/${id}/attachment`, { responseType: "blob" });
+  return response.data;
 }
 
 export async function updateSupplyContract(
