@@ -66,6 +66,7 @@ import EditBatchPage from "@/pages/supplier/EditBatchPage";
 import SupplierBatchListPage from "@/pages/supplier/SupplierBatchListPage";
 import BatchStatusDetailPage from "@/pages/supplier/BatchStatusDetailPage";
 import { SupplierGuard } from "@/routes/SupplierGuard";
+import SupplyContractsPage from "@/pages/contracts/SupplyContractsPage";
 
 export default function AppRoutes() {
   const { user, isAuthenticated } = useAuth();
@@ -136,6 +137,10 @@ export default function AppRoutes() {
               path={ROUTES.ADMIN_AUDIT_DETAIL}
               element={<AuditLogDetailPage />}
             />
+            <Route
+              path={ROUTES.ADMIN_CONTRACTS}
+              element={<SupplyContractsPage mode="admin" />}
+            />
           </Route>
           <Route
             element={<RoleRoute allowedRoles={[ROLES.WAREHOUSE_MANAGER]} />}
@@ -166,6 +171,10 @@ export default function AppRoutes() {
             />
             <Route path={ROUTES.WAREHOUSE_STOCK_ADJUSTMENTS} element={<StockAdjustmentManagementPage manager />} />
             <Route path={ROUTES.WAREHOUSE_STOCK_ADJUSTMENT_DETAIL} element={<WarehouseStockAdjustmentDetailPage />} />
+            <Route
+              path={ROUTES.WAREHOUSE_CONTRACTS}
+              element={<SupplyContractsPage mode="warehouse" />}
+            />
           </Route>
           {/* QC – Đọc: danh sách + chi tiết (WAREHOUSE_MANAGER chỉ xem) */}
           <Route
@@ -281,6 +290,10 @@ export default function AppRoutes() {
               <Route
                 path={ROUTES.SUPPLIER_BATCH_DETAIL}
                 element={<BatchProcessDetailPage />}
+              />
+              <Route
+                path={ROUTES.SUPPLIER_CONTRACTS}
+                element={<SupplyContractsPage mode="supplier" />}
               />
             </Route>
           </Route>
