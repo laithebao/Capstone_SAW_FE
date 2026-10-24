@@ -1,7 +1,7 @@
 import { SupplierBatchBreadcrumb } from '@/features/supplier/components/SupplierBatchBreadcrumb';
 import { SupplierDocumentEditor } from '@/features/supplier/components/SupplierDocuments';
 import type { SupplierDocumentDto } from '@/types/supplier';
-import { optionalNumericInput, type DeclareBatchFormInput } from '@/features/supplier/schemas/supplierBatchSchema';
+import { optionalNumericInput, type UpdateBatchFormInput } from '@/features/supplier/schemas/supplierBatchSchema';
 import { getAuthErrorMessage } from '@/services/authService';
 import { uploadSupplierFile } from '@/features/supplier/supplierFiles';
 import React, { useEffect, useState, useMemo } from 'react';
@@ -58,7 +58,7 @@ export const EditBatchPage: React.FC = () => {
     reset,
     setValue,
     formState: { errors },
-  } = useForm<DeclareBatchFormInput, unknown, UpdateBatchFormValues>({
+  } = useForm<UpdateBatchFormInput, unknown, UpdateBatchFormValues>({
     resolver: zodResolver(updateBatchSchema),
   });
 

@@ -67,6 +67,11 @@ export const roleDashboardConfigs: Record<
         route: ROUTES.WAREHOUSE_ORDERS,
       },
       { label: "Duyệt điều chỉnh tồn", icon: "clipboard", route: ROUTES.WAREHOUSE_STOCK_ADJUSTMENTS },
+      {
+        label: "Hợp đồng nhà cung cấp",
+        icon: "clipboard",
+        route: ROUTES.WAREHOUSE_CONTRACTS,
+      },
       { label: "Cảnh báo", icon: "alert" },
       { label: "Báo cáo", icon: "download" },
     ],
@@ -209,6 +214,11 @@ export const roleDashboardConfigs: Record<
       commonDashboard,
       { label: "Lô hàng của tôi", icon: "package" },
       { label: "Khai báo lô", icon: "plus" },
+      {
+        label: "Hợp đồng thu mua",
+        icon: "clipboard",
+        route: ROUTES.SUPPLIER_CONTRACTS,
+      },
       { label: "Chứng nhận", icon: "shield" },
       { label: "Thông báo", icon: "bell" },
       { label: "Hồ sơ doanh nghiệp", icon: "users" },
@@ -291,6 +301,7 @@ export const adminMenu = [
   { label: "Người dùng", icon: "users" },
   { label: "Loại nông sản", icon: "package" },
   { label: "Tiêu chuẩn kiểm định", icon: "clipboard" },
+  { label: "Duyệt hợp đồng", icon: "clipboard", route: ROUTES.ADMIN_CONTRACTS },
   { label: "Nhật ký hệ thống", icon: "scan" },
   { label: "Cài đặt", icon: "settings" },
 ] as const;

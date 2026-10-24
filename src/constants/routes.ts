@@ -22,6 +22,7 @@ export const ROUTES = {
   ADMIN_AUDIT_LOGS: "/admin/audit-logs",
   ADMIN_AUDIT_CHANGES: "/admin/audit-logs/changes",
   ADMIN_AUDIT_DETAIL: "/admin/audit-logs/:id",
+  ADMIN_CONTRACTS: "/admin/contracts",
   WAREHOUSE_MANAGER: "/warehouse-manager",
   WAREHOUSE_INVENTORY: "/warehouse-manager/inventory",
   WAREHOUSE_CAPACITY: "/warehouse-manager/capacity",
@@ -30,6 +31,7 @@ export const ROUTES = {
   WAREHOUSE_SALE_OFFERS: "/warehouse-manager/sale-offers",
   WAREHOUSE_STOCK_ADJUSTMENTS: "/warehouse-manager/stock-adjustments",
   WAREHOUSE_STOCK_ADJUSTMENT_DETAIL: "/warehouse-manager/stock-adjustments/:id",
+  WAREHOUSE_CONTRACTS: "/warehouse-manager/contracts",
   QC: "/qc",
   QC_INSPECTIONS: "/qc/inspections",
   QC_INSPECTION_NEW: "/qc/inspections/new",
@@ -62,6 +64,7 @@ export const ROUTES = {
   SUPPLIER_BATCH_STATUS: "/supplier/batches/:id/status",
   SUPPLIER_BATCH_NEW: "/supplier/batches/new",
   SUPPLIER_BATCH_EDIT: "/supplier/batches/:id/edit",
+  SUPPLIER_CONTRACTS: "/supplier/contracts",
 
   DISTRIBUTOR: "/distributor",
   DISTRIBUTOR_CATALOG: "/distributor/catalog",
