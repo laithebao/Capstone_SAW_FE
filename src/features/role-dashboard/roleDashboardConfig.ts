@@ -57,6 +57,11 @@ export const roleDashboardConfigs: Record<
         route: ROUTES.WAREHOUSE_QUALITY,
       },
       {
+        label: "Quản lý lô hàng",
+        icon: "package",
+        route: ROUTES.OPERATION_PRODUCT_BATCHES,
+      },
+      {
         label: "Công bố lô bán",
         icon: "package",
         route: ROUTES.WAREHOUSE_SALE_OFFERS,

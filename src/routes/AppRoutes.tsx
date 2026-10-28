@@ -236,20 +236,34 @@ export default function AppRoutes() {
               element={<GoodsReceiptDetailPage />}
             />
             <Route
-              path={ROUTES.OPERATION_PRODUCT_BATCHES}
-              element={<ProductBatchManagementPage />}
-            />
-            <Route
-              path={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL}
-              element={<ProductBatchDetailPage />}
-            />
-            <Route
               path={ROUTES.OPERATION_PRODUCT_BATCH_CREATE}
               element={<CreateProductBatchPage />}
             />
             <Route
               path={ROUTES.OPERATION_PRODUCT_BATCH_UPDATE}
               element={<UpdateProductBatchPage />}
+            />
+          </Route>
+
+          {/* Xem danh sách và chi tiết lô hàng (Hỗ trợ Vận hành, Quản lý kho, Quản trị viên) */}
+          <Route
+            element={
+              <RoleRoute
+                allowedRoles={[
+                  ROLES.OPERATION_STAFF,
+                  ROLES.WAREHOUSE_MANAGER,
+                  ROLES.ADMINISTRATOR,
+                ]}
+              />
+            }
+          >
+            <Route
+              path={ROUTES.OPERATION_PRODUCT_BATCHES}
+              element={<ProductBatchManagementPage />}
+            />
+            <Route
+              path={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL}
+              element={<ProductBatchDetailPage />}
             />
           </Route>
 

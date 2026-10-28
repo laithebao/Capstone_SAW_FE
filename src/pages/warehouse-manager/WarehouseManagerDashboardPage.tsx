@@ -12,6 +12,7 @@ import type {
   WarehouseCapacityChart,
   WarehouseInventoryLevelChart,
 } from "@/types/inventory";
+import { HighRiskBatchesWidget } from "@/features/operation/components/spoilage-forecast";
 
 const kg = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 });
 const time = new Intl.DateTimeFormat("vi-VN", {
@@ -321,6 +322,7 @@ export default function WarehouseManagerDashboardPage({
               </span>
             </a>
           </div>
+          <HighRiskBatchesWidget />
         </section>
       )}
 
