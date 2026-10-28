@@ -67,6 +67,7 @@ import SupplierBatchListPage from "@/pages/supplier/SupplierBatchListPage";
 import BatchStatusDetailPage from "@/pages/supplier/BatchStatusDetailPage";
 import { SupplierGuard } from "@/routes/SupplierGuard";
 import SupplyContractsPage from "@/pages/contracts/SupplyContractsPage";
+import DistributorLayout from "@/layouts/DistributorLayout";
 
 export default function AppRoutes() {
   const { user, isAuthenticated } = useAuth();
@@ -299,30 +300,32 @@ export default function AppRoutes() {
           </Route>
 
           <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
-            <Route
-              path={ROUTES.DISTRIBUTOR}
-              element={<DistributorDashboardPage />}
-            />
-            <Route
-              path={ROUTES.DISTRIBUTOR_CATALOG}
-              element={<DistributorCatalogPage />}
-            />
-            <Route
-              path={ROUTES.DISTRIBUTOR_LOT_DETAIL}
-              element={<DistributorLotDetailPage />}
-            />
-            <Route
-              path={ROUTES.DISTRIBUTOR_ORDERS}
-              element={<DistributorOrderListPage />}
-            />
-            <Route
-              path={ROUTES.DISTRIBUTOR_ORDER_CREATE}
-              element={<CreateDistributorOrderPage />}
-            />
-            <Route
-              path={ROUTES.DISTRIBUTOR_ORDER_DETAIL}
-              element={<DistributorOrderDetailPage />}
-            />
+            <Route element={<DistributorLayout />}>
+              <Route
+                path={ROUTES.DISTRIBUTOR}
+                element={<DistributorDashboardPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_CATALOG}
+                element={<DistributorCatalogPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_LOT_DETAIL}
+                element={<DistributorLotDetailPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_ORDERS}
+                element={<DistributorOrderListPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_ORDER_CREATE}
+                element={<CreateDistributorOrderPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_ORDER_DETAIL}
+                element={<DistributorOrderDetailPage />}
+              />
+            </Route>
           </Route>
         </Route>
       </Route>

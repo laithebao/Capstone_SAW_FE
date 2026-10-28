@@ -1,5 +1,5 @@
-import { useCallback } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router'
+import { useCallback, useEffect } from 'react'
+import { Link, useLocation, useNavigate, useOutletContext, useParams } from 'react-router'
 import { ROUTES } from '@/constants/routes'
 import { getDistributorLot } from '@/services/orderService'
 import type { CatalogLot } from '@/types/order'
@@ -8,6 +8,7 @@ import { date, money, panel, primary, timestamp, weight } from '@/features/distr
 import { useDistributorResource } from '@/features/distributor-orders/useDistributorResource'
 import ProductBatchQrCodeCard from '@/features/operation/components/ProductBatchQrCodeCard'
 import { getDistributorLotQrCode } from '@/services/qrCodeService'
+import type { DistributorOutletContext } from '@/layouts/DistributorLayout'
 
 const batchLabels: Record<string, string> = { IN_STOCK: 'Trong kho', RESERVED: 'Đã giữ hàng', ISSUED: 'Đã xuất kho', PARTIALLY_ISSUED: 'Đã xuất một phần', REJECTED: 'Bị từ chối', QUARANTINE: 'Cách ly', CANCELLED: 'Đã hủy' }
 const range = (min: number | null, max: number | null, unit: string) => min == null && max == null ? 'Chưa có thông tin' : `${min ?? '—'} đến ${max ?? '—'} ${unit}`
@@ -16,9 +17,20 @@ export default function DistributorLotDetailPage() {
   const id = Number(useParams().id)
   const navigate = useNavigate()
   const location = useLocation()
+  const outletCtx = useOutletContext<DistributorOutletContext | null>()
   const selected = (location.state as { selectedLots?: CatalogLot[] } | null)?.selectedLots ?? []
   const result = useDistributorResource(useCallback((signal: AbortSignal) => getDistributorLot(id, signal), [id]))
   const lot = result.data
+
+  useEffect(() => {
+    if (lot?.batchCode) {
+      outletCtx?.setBatchContext({ batchId: lot.batchId, batchCode: lot.batchCode })
+    }
+    return () => {
+      outletCtx?.setBatchContext({ batchId: null, batchCode: null })
+    }
+  }, [lot?.batchId, lot?.batchCode, outletCtx])
+
   function choose() {
     if (!lot?.canPurchase || lot.wholeLotPrice == null) return
     const chosen: CatalogLot = { ...lot, wholeLotPrice: lot.wholeLotPrice }
