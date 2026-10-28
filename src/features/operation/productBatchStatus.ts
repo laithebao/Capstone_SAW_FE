@@ -19,8 +19,12 @@ const statuses: Record<string, { label: string; tone: ProductBatchStatusTone }> 
   IN_STOCK: { label: 'Đã nhập kho', tone: 'green' },
   RESERVED: { label: 'Đang giữ hàng', tone: 'blue' },
   PARTIALLY_ISSUED: { label: 'Đã xuất một phần', tone: 'blue' },
+  PARTIALLY_RELEASED: { label: 'Đã xuất một phần', tone: 'blue' },
   ISSUED: { label: 'Đã xuất kho', tone: 'green' },
+  RELEASED: { label: 'Đã xuất kho', tone: 'green' },
   STORED: { label: 'Đã nhập kho', tone: 'green' },
+  AVAILABLE: { label: 'Khả dụng', tone: 'green' },
+  EXPIRED: { label: 'Hết hạn', tone: 'red' },
   CANCELLED: { label: 'Đã hủy', tone: 'red' },
   CANCELED: { label: 'Đã hủy', tone: 'red' },
 }

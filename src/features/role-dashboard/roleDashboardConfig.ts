@@ -77,6 +77,11 @@ export const roleDashboardConfigs: Record<
         icon: "clipboard",
         route: ROUTES.WAREHOUSE_CONTRACTS,
       },
+      {
+        label: "Giám sát nhiệt ẩm kho",
+        icon: "shield",
+        route: ROUTES.QC_STORAGE_MONITORING,
+      },
       { label: "Cảnh báo", icon: "alert" },
       { label: "Báo cáo", icon: "download" },
     ],
@@ -99,6 +104,11 @@ export const roleDashboardConfigs: Record<
         route: ROUTES.QC_INSPECTIONS,
       },
       { label: "Tạo phiếu mới", icon: "plus", route: ROUTES.QC_INSPECTION_NEW },
+      {
+        label: "Theo dõi nhiệt ẩm kho",
+        icon: "shield",
+        route: ROUTES.QC_STORAGE_MONITORING,
+      },
     ],
     stats: [
       {
@@ -142,6 +152,12 @@ export const roleDashboardConfigs: Record<
         description: "Chọn lô hàng PENDING_QC",
         status: "Thực hiện",
         route: ROUTES.QC_INSPECTION_NEW,
+      },
+      {
+        title: "Giám sát nhiệt ẩm lô lưu kho",
+        description: "Kiểm tra và ghi nhận định kỳ chuỗi lạnh",
+        status: "Thực hiện",
+        route: ROUTES.QC_STORAGE_MONITORING,
       },
     ],
   },
