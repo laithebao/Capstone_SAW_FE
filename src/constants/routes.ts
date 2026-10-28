@@ -36,6 +36,7 @@ export const ROUTES = {
   QC_INSPECTIONS: "/qc/inspections",
   QC_INSPECTION_NEW: "/qc/inspections/new",
   QC_INSPECTION_DETAIL: "/qc/inspections/:id",
+  QC_STORAGE_MONITORING: "/qc/storage-monitoring",
   OPERATION: "/operation",
   OPERATION_GOODS_ISSUES: "/operation/goods-issues",
   OPERATION_STOCK_ADJUSTMENTS: "/operation/stock-adjustments",

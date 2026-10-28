@@ -47,6 +47,7 @@ import QCDashboardPage from "@/pages/qc/QCDashboardPage";
 import QCInspectionListPage from "@/pages/qc/QCInspectionListPage";
 import QCInspectionCreatePage from "@/pages/qc/QCInspectionCreatePage";
 import QCInspectionDetailPage from "@/pages/qc/QCInspectionDetailPage";
+import StorageEnvironmentMonitoringPage from "@/pages/qc/StorageEnvironmentMonitoringPage";
 import SupplierDashboardPage from "@/pages/supplier/SupplierDashboardPage";
 import SupplierProfilePage from "@/pages/supplier/SupplierProfilePage";
 import { DeclareSupplierProfilePage } from "@/pages/supplier/DeclareSupplierProfilePage"; // <-- IMPORT THÊM Ở ĐÂY
@@ -198,6 +199,10 @@ export default function AppRoutes() {
               path={ROUTES.QC_INSPECTION_DETAIL}
               element={<QCInspectionDetailPage />}
             />
+            <Route
+              path={ROUTES.QC_STORAGE_MONITORING}
+              element={<StorageEnvironmentMonitoringPage />}
+            />
           </Route>
           {/* QC – Ghi: tạo phiếu mới (WAREHOUSE_MANAGER bị chặn) */}
           <Route
@@ -224,16 +229,8 @@ export default function AppRoutes() {
               element={<OperationDashboardPage />}
             />
             <Route
-              path={ROUTES.OPERATION_GOODS_RECEIPTS}
-              element={<GoodsReceiptManagementPage />}
-            />
-            <Route
               path={ROUTES.OPERATION_GOODS_RECEIPT_CREATE}
               element={<CreateGoodsReceiptPage />}
-            />
-            <Route
-              path={ROUTES.OPERATION_GOODS_RECEIPT_DETAIL}
-              element={<GoodsReceiptDetailPage />}
             />
             <Route
               path={ROUTES.OPERATION_PRODUCT_BATCH_CREATE}
@@ -245,7 +242,7 @@ export default function AppRoutes() {
             />
           </Route>
 
-          {/* Xem danh sách và chi tiết lô hàng (Hỗ trợ Vận hành, Quản lý kho, Quản trị viên) */}
+          {/* Xem danh sách, chi tiết lô hàng và phiếu nhập kho (Hỗ trợ Vận hành, Quản lý kho, Quản trị viên) */}
           <Route
             element={
               <RoleRoute
@@ -264,6 +261,14 @@ export default function AppRoutes() {
             <Route
               path={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL}
               element={<ProductBatchDetailPage />}
+            />
+            <Route
+              path={ROUTES.OPERATION_GOODS_RECEIPTS}
+              element={<GoodsReceiptManagementPage />}
+            />
+            <Route
+              path={ROUTES.OPERATION_GOODS_RECEIPT_DETAIL}
+              element={<GoodsReceiptDetailPage />}
             />
           </Route>
 

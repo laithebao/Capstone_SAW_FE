@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router'
+import { useLocation, useNavigate, useParams } from 'react-router'
 import { ROUTES } from '@/constants/routes'
 import { confirmGoodsReceipt, getGoodsReceipt } from '@/services/goodsReceiptService'
 import { getAuthErrorMessage } from '@/services/authService'
@@ -7,13 +7,20 @@ import { useGoodsReceiptResource } from '@/features/operation/hooks/useGoodsRece
 import GoodsReceiptStatusBadge from '@/features/operation/components/GoodsReceiptStatusBadge'
 import EditGoodsReceiptDraftForm from '@/features/operation/components/EditGoodsReceiptDraftForm'
 import type { GoodsReceipt } from '@/types/goodsReceipt'
+import { useAuth } from '@/hooks/useAuth'
+import { ROLES } from '@/constants/roles'
 
 export default function GoodsReceiptDetailPage() {
   const { id } = useParams()
   return <ReceiptDetail key={id} id={Number(id)} />
 }
 function ReceiptDetail({ id }: { id: number }) {
+  const navigate = useNavigate()
   const location = useLocation()
+  const { user } = useAuth()
+  const isManagerOrAdmin = user?.role === ROLES.WAREHOUSE_MANAGER || user?.role === ROLES.ADMINISTRATOR
+  const isOperationStaff = user?.role === ROLES.OPERATION_STAFF
+
   const resource = useGoodsReceiptResource(useCallback((signal: AbortSignal) => getGoodsReceipt(id, signal), [id]), true)
   const [modal, setModal] = useState<GoodsReceipt | null>(null)
   const [editing, setEditing] = useState<GoodsReceipt | null>(null)
@@ -29,7 +36,27 @@ function ReceiptDetail({ id }: { id: number }) {
     finally { setSaving(false); setModal(null) }
   }
   return <div className="mx-auto max-w-5xl space-y-5">
-    <header className="flex flex-wrap justify-between gap-3"><div><p className="text-xs font-bold text-emerald-700">VẬN HÀNH · NHẬP KHO</p><h1 className="mt-1 text-2xl font-bold">CHI TIẾT PHIẾU NHẬP</h1></div><Link className="text-sm text-emerald-700" to={ROUTES.OPERATION_GOODS_RECEIPTS}>← Quay lại danh sách</Link></header>
+    <header className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+          {isManagerOrAdmin ? 'Điều hành kho · Chi tiết phiếu nhập' : 'Vận hành · Nhập kho'}
+        </p>
+        <h1 className="mt-1 text-2xl font-bold text-slate-900">CHI TIẾT PHIẾU NHẬP</h1>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          if (window.history.length > 1) {
+            navigate(-1)
+          } else {
+            navigate(isManagerOrAdmin ? ROUTES.OPERATION_PRODUCT_BATCHES : ROUTES.OPERATION_GOODS_RECEIPTS)
+          }
+        }}
+        className="inline-flex items-center text-sm font-semibold text-emerald-700 hover:text-emerald-900 transition"
+      >
+        ← Quay lại
+      </button>
+    </header>
     {message && <p role="status" className="rounded-lg bg-emerald-50 p-4 text-emerald-700">{message}</p>}
     {(resource.error || error) && <div role="alert" className="rounded-lg bg-rose-50 p-4 text-rose-700">{error || resource.error} <button className="underline" onClick={resource.reload}>Tải lại phiếu</button></div>}
     {resource.loading ? <p>Đang tải phiếu nhập...</p> : receipt && <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -40,7 +67,15 @@ function ReceiptDetail({ id }: { id: number }) {
         ['Ngày nhận', receipt.receivedDate.split('-').reverse().join('/')], ['Người lập', receipt.operationStaffName], ['Thời điểm xác nhận', receipt.committedAt ? new Date(`${receipt.committedAt}Z`.replace('ZZ', 'Z')).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa xác nhận'],
       ].map(([label, value]) => <div key={label}><dt className="text-slate-500">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>)}</dl>
       <div className="mt-5 border-t border-slate-100 pt-4"><h3 className="text-sm text-slate-500">Ghi chú</h3><p className="mt-1 whitespace-pre-wrap text-sm">{receipt.note || 'Không có ghi chú.'}</p></div>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-500">{receipt.receiptStatus === 'DRAFT' ? 'Phiếu nháp chưa tăng tồn kho. Kiểm tra lại trước khi xác nhận.' : 'Phiếu đã xác nhận, không thể sửa hoặc xóa.'}</p>{receipt.receiptStatus === 'DRAFT' && !editing && <div className="flex flex-wrap gap-3"><button disabled={saving} onClick={() => { setEditing(receipt); setError(null); setMessage('') }} className="rounded-lg border border-emerald-200 px-4 py-2 text-emerald-700">Chỉnh sửa phiếu nháp</button><button disabled={saving} onClick={() => setModal(receipt)} className="rounded-lg bg-emerald-700 px-5 py-2.5 font-semibold text-white disabled:opacity-50">Xác nhận nhập kho</button></div>}</div>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-500">{receipt.receiptStatus === 'DRAFT' ? 'Phiếu nháp chưa tăng tồn kho. Kiểm tra lại trước khi xác nhận.' : 'Phiếu đã xác nhận, không thể sửa hoặc xóa.'}</p>
+        {receipt.receiptStatus === 'DRAFT' && !editing && isOperationStaff && (
+          <div className="flex flex-wrap gap-3">
+            <button disabled={saving} onClick={() => { setEditing(receipt); setError(null); setMessage('') }} className="rounded-lg border border-emerald-200 px-4 py-2 text-emerald-700 hover:bg-emerald-50 transition">Chỉnh sửa phiếu nháp</button>
+            <button disabled={saving} onClick={() => setModal(receipt)} className="rounded-lg bg-emerald-700 px-5 py-2.5 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 transition">Xác nhận nhập kho</button>
+          </div>
+        )}
+      </div>
     </section>}
     {editing && <EditGoodsReceiptDraftForm receipt={editing} committed={receipt?.receiptStatus === 'COMMITTED'} onCancel={() => { setEditing(null); resource.reload() }} onSaved={() => { setEditing(null); setMessage('Đã lưu thay đổi phiếu nháp'); resource.reload() }} />}
     {modal && <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/50 p-4" onKeyDown={e => { if (e.key === 'Escape' && !saving) setModal(null) }}><section role="dialog" aria-modal="true" aria-labelledby="confirm-receipt-title" className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">

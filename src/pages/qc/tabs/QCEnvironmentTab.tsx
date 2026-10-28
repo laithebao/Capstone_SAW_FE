@@ -1,5 +1,11 @@
 import { useId, useState } from 'react'
 import { getAuthErrorMessage } from '@/services/authService'
+import {
+  getVietnamDateTimeLocal,
+  toVietnamIsoString,
+  isFutureVietnamTime,
+  formatVietnamDateTime,
+} from '@/utils/vietnamTime'
 import type { QcInspectionDetailDto, CreateEnvironmentLogRequest, EnvironmentLogDto } from '@/types/inspection'
 
 interface Props {
@@ -10,7 +16,7 @@ interface Props {
 
 const SOURCE_OPTS = [
   { value: 'MANUAL',     label: 'Nhập tay' },
-  { value: 'IOT_SENSOR', label: 'Cảm biến IoT' },
+  { value: 'IOT_SENSOR', label: 'Cảm biến' },
   { value: 'IMPORT',     label: 'Import dữ liệu' },
 ] as const
 
@@ -21,7 +27,7 @@ export default function QCEnvironmentTab({ inspection, onSaved, createEnvironmen
   const [humidityPct,  setHumidityPct]  = useState('')
   const [sourceType,   setSourceType]   = useState<'MANUAL' | 'IOT_SENSOR' | 'IMPORT'>('MANUAL')
   const [sensorId,     setSensorId]     = useState('')
-  const [recordedAt,   setRecordedAt]   = useState(() => new Date().toISOString().slice(0, 16))
+  const [recordedAt,   setRecordedAt]   = useState(() => getVietnamDateTimeLocal())
   const [note,         setNote]         = useState('')
   const [saving,       setSaving]       = useState(false)
   const [error,        setError]        = useState('')
@@ -47,6 +53,11 @@ export default function QCEnvironmentTab({ inspection, onSaved, createEnvironmen
   async function handleSave() {
     if (!temperatureC) { setError('Nhiệt độ là bắt buộc.'); return }
 
+    if (isFutureVietnamTime(recordedAt)) {
+      setError(`Thời điểm đo không được là thời gian trong tương lai (Hiện tại ở Việt Nam: ${formatVietnamDateTime(new Date())}).`)
+      return
+    }
+
     setSaving(true); setError(''); setSuccessMsg('')
     try {
       const result = await createEnvironmentLog({
@@ -57,7 +68,7 @@ export default function QCEnvironmentTab({ inspection, onSaved, createEnvironmen
         humidityPct:         humidityPct ? Number(humidityPct) : undefined,
         sourceType,
         sensorIdentifier:    sensorId.trim() || undefined,
-        recordedAt:          new Date(recordedAt).toISOString(),
+        recordedAt:          toVietnamIsoString(recordedAt),
         note:                note.trim() || undefined,
       })
 
@@ -187,11 +198,13 @@ export default function QCEnvironmentTab({ inspection, onSaved, createEnvironmen
 
           <label className="block space-y-1">
             <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-              Thời điểm đo <span className="text-rose-500">*</span>
+              Thời điểm đo (Giờ VN) <span className="text-rose-500">*</span>
             </span>
             <input
               id={`${formId}-recordedAt`}
               type="datetime-local"
+              required
+              max={getVietnamDateTimeLocal()}
               value={recordedAt}
               onChange={e => setRecordedAt(e.target.value)}
               className={inputCls}
@@ -261,8 +274,14 @@ export default function QCEnvironmentTab({ inspection, onSaved, createEnvironmen
                       {log.humidityPct !== null ? `${log.humidityPct}%` : '—'}
                     </td>
                     <td className="px-3 py-3">
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
-                        {log.sourceType}
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
+                        {log.sourceType === 'MANUAL'
+                          ? 'Nhập tay'
+                          : log.sourceType === 'IOT_SENSOR'
+                          ? 'Cảm biến'
+                          : log.sourceType === 'IMPORT'
+                          ? 'Import dữ liệu'
+                          : log.sourceType}
                       </span>
                     </td>
                     <td className="px-3 py-3 text-xs text-slate-500">{log.note ?? '—'}</td>

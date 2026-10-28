@@ -7,33 +7,33 @@ import { QcStatusBadge, QcResultBadge, GradeEvaluationBadge } from '@/components
 import type { QcInspectionListItem, QcInspectionListQuery, PagedResult } from '@/types/inspection'
 
 const STATUS_OPTIONS = [
-  { value: '',            label: 'Tất cả trạng thái' },
-  { value: 'DRAFT',       label: 'Nháp' },
+  { value: '', label: 'Tất cả trạng thái' },
+  { value: 'DRAFT', label: 'Nháp' },
   { value: 'IN_PROGRESS', label: 'Đang kiểm định' },
-  { value: 'COMPLETED',   label: 'Đã hoàn thành' },
+  { value: 'COMPLETED', label: 'Đã hoàn thành' },
 ]
 
 const QC_RESULT_OPTIONS = [
-  { value: '',     label: 'Tất cả kết quả' },
+  { value: '', label: 'Tất cả kết quả' },
   { value: 'PASS', label: 'Đạt' },
   { value: 'FAIL', label: 'Bị từ chối' },
 ]
 
 export default function QCInspectionListPage() {
   const navigate = useNavigate()
-  const formId   = useId()
+  const formId = useId()
 
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState('')
-  const [result,  setResult]  = useState<PagedResult<QcInspectionListItem> | null>(null)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState<PagedResult<QcInspectionListItem> | null>(null)
 
-  const [batchCode,      setBatchCode]      = useState('')
+  const [batchCode, setBatchCode] = useState('')
   const [inspectionCode, setInspectionCode] = useState('')
-  const [status,         setStatus]         = useState('')
-  const [qcResult,       setQcResult]       = useState('')
-  const [fromDate,       setFromDate]       = useState('')
-  const [toDate,         setToDate]         = useState('')
-  const [page,           setPage]           = useState(1)
+  const [status, setStatus] = useState('')
+  const [qcResult, setQcResult] = useState('')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [page, setPage] = useState(1)
   const pageSize = 20
 
   async function fetchList(override?: Partial<QcInspectionListQuery>) {
@@ -41,12 +41,12 @@ export default function QCInspectionListPage() {
     setError('')
     try {
       const q: QcInspectionListQuery = {
-        batchCode:      batchCode      || undefined,
+        batchCode: batchCode || undefined,
         inspectionCode: inspectionCode || undefined,
-        status:         status         || undefined,
-        qcResult:       qcResult       || undefined,
-        fromDate:       fromDate       || undefined,
-        toDate:         toDate         || undefined,
+        status: status || undefined,
+        qcResult: qcResult || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
         page,
         pageSize,
         ...override,
@@ -208,7 +208,7 @@ export default function QCInspectionListPage() {
                   <th className="px-5 py-3 text-left">Mã phiếu</th>
                   <th className="px-3 py-3 text-left">Lô hàng</th>
                   <th className="px-3 py-3 text-left">Nông sản</th>
-                  <th className="px-3 py-3 text-left">KTV kiểm định</th>
+                  <th className="px-3 py-3 text-left">Nhân viên kiểm định</th>
                   <th className="px-3 py-3 text-left">Trạng thái</th>
                   <th className="px-3 py-3 text-left">Kết quả</th>
                   <th className="px-3 py-3 text-left">Hạng</th>
