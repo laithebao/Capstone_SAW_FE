@@ -7,8 +7,10 @@ import { getAuthErrorMessage } from '@/services/authService'
 import ProductBatchStatusBadge from '@/features/operation/components/ProductBatchStatusBadge'
 import ProductBatchQrCodeCard from '@/features/operation/components/ProductBatchQrCodeCard'
 import ProductBatchRelatedInformation from '@/features/operation/components/ProductBatchRelatedInformation'
+import { SpoilageForecastPanel } from '@/features/operation/components/spoilage-forecast'
 import type { ProductBatchDetail } from '@/types/batch'
 import { useAuth } from '@/hooks/useAuth'
+import { ROLES } from '@/constants/roles'
 
 const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 const dateOnly = (value: string | null) => value ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`)) : '—'
@@ -63,10 +65,15 @@ export default function ProductBatchDetailPage() {
 
   return <div className="mx-auto max-w-[1200px] space-y-5">
     <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-      <div><p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Vận hành · Quản lý lô hàng · Chi tiết</p><h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">CHI TIẾT LÔ HÀNG</h1></div>
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+          {user?.role === ROLES.WAREHOUSE_MANAGER ? 'Điều hành kho · Quản lý lô hàng · Chi tiết (Chỉ xem)' : 'Vận hành · Quản lý lô hàng · Chi tiết'}
+        </p>
+        <h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">CHI TIẾT LÔ HÀNG</h1>
+      </div>
       <div className="flex flex-wrap gap-2">
-        {!loading && !error && batch && user?.role === 'OPERATION_STAFF' && <Link to={`${ROUTES.OPERATION_STOCK_ADJUSTMENT_CREATE}?batchId=${batchId}&kind=DISPOSAL`} className="inline-flex h-10 items-center rounded-lg border border-rose-300 bg-white px-4 text-sm font-semibold text-rose-700">Yêu cầu loại bỏ lô</Link>}
-        {!loading && !error && batch?.canUpdateReceivingInformation && <Link to={ROUTES.OPERATION_PRODUCT_BATCH_UPDATE.replace(':id', String(batchId))} className="inline-flex h-10 items-center rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800">Chỉnh sửa kiểm nhận</Link>}
+        {!loading && !error && batch && user?.role === ROLES.OPERATION_STAFF && <Link to={`${ROUTES.OPERATION_STOCK_ADJUSTMENT_CREATE}?batchId=${batchId}&kind=DISPOSAL`} className="inline-flex h-10 items-center rounded-lg border border-rose-300 bg-white px-4 text-sm font-semibold text-rose-700">Yêu cầu loại bỏ lô</Link>}
+        {!loading && !error && user?.role === ROLES.OPERATION_STAFF && batch?.canUpdateReceivingInformation && <Link to={ROUTES.OPERATION_PRODUCT_BATCH_UPDATE.replace(':id', String(batchId))} className="inline-flex h-10 items-center rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800">Chỉnh sửa kiểm nhận</Link>}
         <Link to={ROUTES.OPERATION_PRODUCT_BATCHES} className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">← Quay lại danh sách</Link>
       </div>
     </header>
@@ -126,6 +133,14 @@ export default function ProductBatchDetailPage() {
             </div>
           </section>}
     {validId && !loading && !error && batch && <>
+      {(user?.role === ROLES.WAREHOUSE_MANAGER || user?.role === ROLES.ADMINISTRATOR) && (
+        <SpoilageForecastPanel
+          productBatchId={batchId}
+          batchCode={batch.batchCode}
+          productName={batch.productName}
+          batchStatus={batch.batchStatus}
+        />
+      )}
       <ProductBatchRelatedInformation batch={batch} />
       <ProductBatchQrCodeCard key={batchId} batchId={batchId} />
     </>}

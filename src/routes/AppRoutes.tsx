@@ -47,6 +47,7 @@ import QCDashboardPage from "@/pages/qc/QCDashboardPage";
 import QCInspectionListPage from "@/pages/qc/QCInspectionListPage";
 import QCInspectionCreatePage from "@/pages/qc/QCInspectionCreatePage";
 import QCInspectionDetailPage from "@/pages/qc/QCInspectionDetailPage";
+import StorageEnvironmentMonitoringPage from "@/pages/qc/StorageEnvironmentMonitoringPage";
 import SupplierDashboardPage from "@/pages/supplier/SupplierDashboardPage";
 import SupplierProfilePage from "@/pages/supplier/SupplierProfilePage";
 import { DeclareSupplierProfilePage } from "@/pages/supplier/DeclareSupplierProfilePage"; // <-- IMPORT THÊM Ở ĐÂY
@@ -67,6 +68,7 @@ import SupplierBatchListPage from "@/pages/supplier/SupplierBatchListPage";
 import BatchStatusDetailPage from "@/pages/supplier/BatchStatusDetailPage";
 import { SupplierGuard } from "@/routes/SupplierGuard";
 import SupplyContractsPage from "@/pages/contracts/SupplyContractsPage";
+import DistributorLayout from "@/layouts/DistributorLayout";
 
 export default function AppRoutes() {
   const { user, isAuthenticated } = useAuth();
@@ -197,6 +199,10 @@ export default function AppRoutes() {
               path={ROUTES.QC_INSPECTION_DETAIL}
               element={<QCInspectionDetailPage />}
             />
+            <Route
+              path={ROUTES.QC_STORAGE_MONITORING}
+              element={<StorageEnvironmentMonitoringPage />}
+            />
           </Route>
           {/* QC – Ghi: tạo phiếu mới (WAREHOUSE_MANAGER bị chặn) */}
           <Route
@@ -223,17 +229,31 @@ export default function AppRoutes() {
               element={<OperationDashboardPage />}
             />
             <Route
-              path={ROUTES.OPERATION_GOODS_RECEIPTS}
-              element={<GoodsReceiptManagementPage />}
-            />
-            <Route
               path={ROUTES.OPERATION_GOODS_RECEIPT_CREATE}
               element={<CreateGoodsReceiptPage />}
             />
             <Route
-              path={ROUTES.OPERATION_GOODS_RECEIPT_DETAIL}
-              element={<GoodsReceiptDetailPage />}
+              path={ROUTES.OPERATION_PRODUCT_BATCH_CREATE}
+              element={<CreateProductBatchPage />}
             />
+            <Route
+              path={ROUTES.OPERATION_PRODUCT_BATCH_UPDATE}
+              element={<UpdateProductBatchPage />}
+            />
+          </Route>
+
+          {/* Xem danh sách, chi tiết lô hàng và phiếu nhập kho (Hỗ trợ Vận hành, Quản lý kho, Quản trị viên) */}
+          <Route
+            element={
+              <RoleRoute
+                allowedRoles={[
+                  ROLES.OPERATION_STAFF,
+                  ROLES.WAREHOUSE_MANAGER,
+                  ROLES.ADMINISTRATOR,
+                ]}
+              />
+            }
+          >
             <Route
               path={ROUTES.OPERATION_PRODUCT_BATCHES}
               element={<ProductBatchManagementPage />}
@@ -243,12 +263,12 @@ export default function AppRoutes() {
               element={<ProductBatchDetailPage />}
             />
             <Route
-              path={ROUTES.OPERATION_PRODUCT_BATCH_CREATE}
-              element={<CreateProductBatchPage />}
+              path={ROUTES.OPERATION_GOODS_RECEIPTS}
+              element={<GoodsReceiptManagementPage />}
             />
             <Route
-              path={ROUTES.OPERATION_PRODUCT_BATCH_UPDATE}
-              element={<UpdateProductBatchPage />}
+              path={ROUTES.OPERATION_GOODS_RECEIPT_DETAIL}
+              element={<GoodsReceiptDetailPage />}
             />
           </Route>
 
@@ -299,30 +319,32 @@ export default function AppRoutes() {
           </Route>
 
           <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
-            <Route
-              path={ROUTES.DISTRIBUTOR}
-              element={<DistributorDashboardPage />}
-            />
-            <Route
-              path={ROUTES.DISTRIBUTOR_CATALOG}
-              element={<DistributorCatalogPage />}
-            />
-            <Route
-              path={ROUTES.DISTRIBUTOR_LOT_DETAIL}
-              element={<DistributorLotDetailPage />}
-            />
-            <Route
-              path={ROUTES.DISTRIBUTOR_ORDERS}
-              element={<DistributorOrderListPage />}
-            />
-            <Route
-              path={ROUTES.DISTRIBUTOR_ORDER_CREATE}
-              element={<CreateDistributorOrderPage />}
-            />
-            <Route
-              path={ROUTES.DISTRIBUTOR_ORDER_DETAIL}
-              element={<DistributorOrderDetailPage />}
-            />
+            <Route element={<DistributorLayout />}>
+              <Route
+                path={ROUTES.DISTRIBUTOR}
+                element={<DistributorDashboardPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_CATALOG}
+                element={<DistributorCatalogPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_LOT_DETAIL}
+                element={<DistributorLotDetailPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_ORDERS}
+                element={<DistributorOrderListPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_ORDER_CREATE}
+                element={<CreateDistributorOrderPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_ORDER_DETAIL}
+                element={<DistributorOrderDetailPage />}
+              />
+            </Route>
           </Route>
         </Route>
       </Route>

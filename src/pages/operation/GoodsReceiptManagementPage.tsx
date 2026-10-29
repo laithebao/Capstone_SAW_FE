@@ -5,6 +5,8 @@ import { ROUTES } from '@/constants/routes'
 import { getGoodsReceiptOptions, getGoodsReceipts } from '@/services/goodsReceiptService'
 import { useGoodsReceiptResource } from '@/features/operation/hooks/useGoodsReceiptResource'
 import GoodsReceiptStatusBadge from '@/features/operation/components/GoodsReceiptStatusBadge'
+import { useAuth } from '@/hooks/useAuth'
+import { ROLES } from '@/constants/roles'
 import type { GoodsReceiptFilters } from '@/types/goodsReceipt'
 
 const defaults: GoodsReceiptFilters = { page: 1, pageSize: 10, sortBy: 'receivedAtDesc' }
@@ -12,6 +14,7 @@ const input = 'h-10 min-w-0 rounded-lg border border-slate-200 bg-white px-3 tex
 const number = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 3 })
 
 export default function GoodsReceiptManagementPage() {
+  const { user } = useAuth()
   const [draft, setDraft] = useState(defaults)
   const [filters, setFilters] = useState(defaults)
   const options = useGoodsReceiptResource(getGoodsReceiptOptions)
@@ -20,7 +23,24 @@ export default function GoodsReceiptManagementPage() {
   const total = result.data?.totalCount ?? 0
   const pages = Math.max(1, Math.ceil(total / filters.pageSize))
   return <div className="mx-auto max-w-[1600px] space-y-4">
-    <header className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold text-emerald-700">VẬN HÀNH</p><h1 className="mt-1 text-xl font-bold">QUẢN LÝ PHIẾU NHẬP</h1><p className="mt-1 text-sm text-slate-500">Lưu nháp và xác nhận nhập kho các lô đã được QC duyệt.</p></div><Link to={ROUTES.OPERATION_GOODS_RECEIPT_CREATE} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white"><Plus className="size-4" />Tạo phiếu nhập</Link></header>
+    <header className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p className="text-xs font-bold text-emerald-700">
+          {user?.role === ROLES.WAREHOUSE_MANAGER ? 'ĐIỀU HÀNH KHO' : 'VẬN HÀNH'}
+        </p>
+        <h1 className="mt-1 text-xl font-bold">QUẢN LÝ PHIẾU NHẬP</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {user?.role === ROLES.WAREHOUSE_MANAGER
+            ? 'Theo dõi danh sách và chi tiết phiếu nhập kho.'
+            : 'Lưu nháp và xác nhận nhập kho các lô đã được QC duyệt.'}
+        </p>
+      </div>
+      {user?.role === ROLES.OPERATION_STAFF && (
+        <Link to={ROUTES.OPERATION_GOODS_RECEIPT_CREATE} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 transition">
+          <Plus className="size-4" />Tạo phiếu nhập
+        </Link>
+      )}
+    </header>
     <form onSubmit={e => { e.preventDefault(); setFilters({ ...draft, page: 1 }); result.reload() }} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex justify-between"><h2 className="font-semibold">Tìm kiếm và bộ lọc</h2><button type="button" aria-label="Làm mới" onClick={() => { result.reload(); options.reload() }}><RotateCw className="size-4" /></button></div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

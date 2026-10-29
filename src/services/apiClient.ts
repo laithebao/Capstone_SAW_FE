@@ -31,7 +31,7 @@ export const apiClient = axios.create({
     Accept: 'application/json',
     'Content-Type': 'application/json',
   },
-  timeout: 15_000,
+  timeout: 30_000,  // 30s — đủ cho hầu hết requests
 })
 
 apiClient.interceptors.request.use((config) => {
