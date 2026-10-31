@@ -4,7 +4,7 @@ export function DistributorHeader({ title, description }: { title: string; descr
   return <header><p className="text-xs font-semibold text-emerald-700">CỔNG NHÀ PHÂN PHỐI</p><h1 className="mt-1 text-2xl font-bold">{title}</h1><p className="mt-1 text-sm text-slate-500">{description}</p></header>
 }
 export function StatusBadge({ status }: { status: string }) {
-  const color = status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-700' : ['CANCELLED', 'REJECTED'].includes(status) ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-800'
+  const color = status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-700' : status === 'RETURNED' ? 'bg-slate-100 text-slate-700' : ['CANCELLED', 'REJECTED'].includes(status) ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-800'
   return <span className={`inline-block whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${color}`}>{orderStatuses[status] ?? status}</span>
 }
 export function Pagination({ page, pageSize, total, busy, onPage, onSize }: { page: number; pageSize: number; total: number; busy: boolean; onPage: (value: number) => void; onSize: (value: number) => void }) {

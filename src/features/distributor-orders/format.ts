@@ -1,7 +1,7 @@
 export const orderStatuses: Record<string, string> = {
   PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', ISSUED: 'Đã xuất kho',
   RESERVED: 'Đã giữ hàng', PARTIALLY_PICKED: 'Đang soạn một phần', PICKED: 'Đã soạn đủ', PARTIALLY_ISSUED: 'Đã xuất một phần',
-  DELIVERED: 'Đã nhận hàng', REJECTED: 'Bị từ chối', CANCELLED: 'Đã hủy',
+  DELIVERED: 'Đã nhận hàng', REJECTED: 'Bị từ chối', CANCELLED: 'Đã hủy', RETURNED: 'Đã trả hàng',
 }
 export const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
 export const weight = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 3 })

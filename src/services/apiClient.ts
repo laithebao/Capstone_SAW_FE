@@ -48,6 +48,9 @@ apiClient.interceptors.response.use(
   (error: unknown) => {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status
+      // Authentication failures belong to the login/registration form. A pending
+      // email confirmation must not redirect to the permission-denied screen.
+      if (error.config?.url?.startsWith('/auth/')) return Promise.reject(error)
 
       // 401 – phiên hết hạn: chuyển về trang đăng nhập
       if (status === 401) {
