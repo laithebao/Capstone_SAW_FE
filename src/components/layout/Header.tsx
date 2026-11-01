@@ -6,6 +6,8 @@ import { Link, useNavigate } from 'react-router'
 import { ROUTES } from '@/constants/routes'
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from '@/services/notificationService'
 import type { NotificationItem } from '@/types/notification'
+import { watchNotificationUpdates } from '@/services/notificationEvents'
+import { isVisibleNotification, notificationMessage } from '@/services/notificationFormat'
 
 const notificationTime = (value: string) => new Date(/(?:Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}Z`).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
 
@@ -20,13 +22,19 @@ export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
   const notificationPanelRef = useRef<HTMLDivElement>(null)
   const notificationVersion = useRef(0)
   const markingAllRead = useRef(false)
+  const fetchingNotifications = useRef(false)
   const [notificationError, setNotificationError] = useState('')
+  const visibleNotifications = notifications.filter(isVisibleNotification)
 
   useEffect(() => {
-    if (!user) return
+    if (!user?.id) return
     const controller = new AbortController()
+    let inFlight = false
+    let pending = false
     const load = async () => {
-      if (markingAllRead.current) return
+      if (controller.signal.aborted || markingAllRead.current || fetchingNotifications.current) return
+      if (inFlight) { pending = true; return }
+      inFlight = true
       const version = notificationVersion.current
       try {
         const result = await getNotifications(controller.signal)
@@ -35,15 +43,18 @@ export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
         setUnreadCount(result.unreadCount)
       } catch {
         // Keep the rest of the dashboard usable when the notification service is unavailable.
+      } finally {
+        inFlight = false
+        if (pending) { pending = false; void load() }
       }
     }
     void load()
-    const intervalId = window.setInterval(() => void load(), 15_000)
+    const stopWatching = watchNotificationUpdates(() => void load())
     return () => {
       controller.abort()
-      window.clearInterval(intervalId)
+      stopWatching()
     }
-  }, [user])
+  }, [user?.id])
 
   useEffect(() => {
     if (!showNotifications) return
@@ -113,6 +124,8 @@ export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
     const type = item.relatedEntityType
     const id = item.relatedEntityId
     if (type === 'SUPPLY_CONTRACT') navigate(role === 'SUPPLIER' ? ROUTES.SUPPLIER_CONTRACTS : role === 'ADMINISTRATOR' ? ROUTES.ADMIN_CONTRACTS : ROUTES.WAREHOUSE_CONTRACTS)
+    else if (type === 'GOODS_RECEIPT') navigate(id ? ROUTES.OPERATION_GOODS_RECEIPT_DETAIL.replace(':id', id) : ROUTES.OPERATION_GOODS_RECEIPTS)
+    else if (type === 'GOODS_ISSUE') navigate(role === 'WAREHOUSE_MANAGER' ? ROUTES.WAREHOUSE_ORDERS : id ? ROUTES.OPERATION_GOODS_ISSUE_DETAIL.replace(':id', id) : ROUTES.OPERATION_GOODS_ISSUES)
     else if (type === 'QC_QUEUE') navigate(ROUTES.QC_INSPECTIONS)
     else if (type === 'SALE_OFFER') navigate(ROUTES.WAREHOUSE_SALE_OFFERS)
     else if (type === 'ORDER_RETURN') navigate(role === 'DISTRIBUTOR' && id ? ROUTES.DISTRIBUTOR_ORDER_DETAIL.replace(':id', id) : role === 'OPERATION_STAFF' ? ROUTES.OPERATION : ROUTES.WAREHOUSE_ORDERS)
@@ -124,12 +137,14 @@ export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
   }
 
   const refreshNotifications = async (older = false) => {
-    if (markingAllRead.current) return
-    const version = notificationVersion.current
+    if (markingAllRead.current || fetchingNotifications.current) return
+    fetchingNotifications.current = true
+    // An older poll must not overwrite the count returned by this newer read.
+    const version = ++notificationVersion.current
     setNotificationsLoading(true)
     setNotificationError('')
     try {
-      const result = await getNotifications(undefined, older && notifications.length ? Math.min(...notifications.map(n => n.id)) : undefined)
+      const result = await getNotifications(undefined, older && visibleNotifications.length ? Math.min(...visibleNotifications.map(n => n.id)) : undefined)
       if (version !== notificationVersion.current) return
       setNotifications(current => older ? [...current, ...result.items.filter(n => !current.some(old => old.id === n.id))] : result.items)
       setUnreadCount(result.unreadCount)
@@ -137,6 +152,7 @@ export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
     } catch {
       if (version === notificationVersion.current) setNotificationError('Không thể tải thông báo. Vui lòng thử lại.')
     } finally {
+      fetchingNotifications.current = false
       if (version === notificationVersion.current) setNotificationsLoading(false)
     }
   }
@@ -159,13 +175,13 @@ export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
               <div className="max-h-[min(65vh,28rem)] overflow-y-auto">
                 {notificationError && <p role="alert" className="px-4 py-3 text-xs text-rose-700">{notificationError}</p>}
                 {notificationsLoading && <p className="px-4 py-3 text-xs text-slate-500">Đang tải thông báo...</p>}
-                {!notificationsLoading && notifications.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-500">Bạn chưa có thông báo nào.</p>}
-                {notifications.map((item) => (
+                {!notificationsLoading && visibleNotifications.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-500">Bạn chưa có thông báo nào.</p>}
+                {visibleNotifications.map((item) => (
                   <button key={item.id} type="button" onClick={() => void openNotification(item)} className={`block w-full border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${item.isRead ? 'bg-white' : 'bg-emerald-50/60'}`}>
-                    <span className="flex items-start gap-2"><span className={`mt-1.5 size-2 shrink-0 rounded-full ${item.isRead ? 'bg-transparent' : 'bg-emerald-600'}`} /><span className="min-w-0"><span className="block text-sm font-semibold text-slate-900">{item.title}</span><span className="mt-1 block text-xs leading-5 text-slate-600">{item.message}</span><span className="mt-1 block text-[11px] text-slate-400">{notificationTime(item.createdAt)}</span></span></span>
+                    <span className="flex items-start gap-2"><span className={`mt-1.5 size-2 shrink-0 rounded-full ${item.isRead ? 'bg-transparent' : 'bg-emerald-600'}`} /><span className="min-w-0"><span className="block text-sm font-semibold text-slate-900">{item.title}</span><span className="mt-1 block text-xs leading-5 text-slate-600">{notificationMessage(item)}</span><span className="mt-1 block text-[11px] text-slate-400">{notificationTime(item.createdAt)}</span></span></span>
                   </button>
                 ))}
-                {hasMore && notifications.length >= 20 && <button type="button" disabled={notificationsLoading} className="w-full p-3 text-sm font-semibold text-emerald-700" onClick={() => void refreshNotifications(true)}>Xem thông báo cũ hơn</button>}
+                {hasMore && visibleNotifications.length >= 20 && <button type="button" disabled={notificationsLoading} className="w-full p-3 text-sm font-semibold text-emerald-700" onClick={() => void refreshNotifications(true)}>Xem thông báo cũ hơn</button>}
               </div>
             </section>
           )}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getAuthErrorMessage } from '@/services/authService'
 
-export function useDistributorResource<T>(load: (signal: AbortSignal) => Promise<T>) {
+export function useDistributorResource<T>(load: (signal: AbortSignal) => Promise<T>, { refreshOnFocus = true }: { refreshOnFocus?: boolean } = {}) {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -17,9 +17,10 @@ export function useDistributorResource<T>(load: (signal: AbortSignal) => Promise
     return () => { controller.abort(); window.clearTimeout(timer) }
   }, [load, version])
   useEffect(() => {
+    if (!refreshOnFocus) return
     const refresh = () => setVersion(v => v + 1)
     window.addEventListener('focus', refresh)
     return () => window.removeEventListener('focus', refresh)
-  }, [])
+  }, [refreshOnFocus])
   return { data, loading, error, reload: () => setVersion(v => v + 1) }
 }

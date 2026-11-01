@@ -52,8 +52,8 @@ export async function refreshSession(refreshToken: string): Promise<AuthSession>
   return response.data.data
 }
 
-export async function logoutSession(refreshToken: string): Promise<void> {
-  await apiClient.post('/auth/logout', { refreshToken })
+export async function logoutSession(refreshToken: string, accessToken?: string): Promise<void> {
+  await apiClient.post('/auth/logout', { refreshToken }, accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined)
 }
 
 export async function verifyEmail(token: string): Promise<void> {
