@@ -17,19 +17,19 @@ export default function DistributorLotDetailPage() {
   const id = Number(useParams().id)
   const navigate = useNavigate()
   const location = useLocation()
-  const outletCtx = useOutletContext<DistributorOutletContext | null>()
+  const setBatchContext = useOutletContext<DistributorOutletContext | null>()?.setBatchContext
   const selected = (location.state as { selectedLots?: CatalogLot[] } | null)?.selectedLots ?? []
   const result = useDistributorResource(useCallback((signal: AbortSignal) => getDistributorLot(id, signal), [id]))
   const lot = result.data
+  const batchId = lot?.batchId ?? null
+  const batchCode = lot?.batchCode ?? null
 
   useEffect(() => {
-    if (lot?.batchCode) {
-      outletCtx?.setBatchContext({ batchId: lot.batchId, batchCode: lot.batchCode })
-    }
+    setBatchContext?.({ batchId, batchCode })
     return () => {
-      outletCtx?.setBatchContext({ batchId: null, batchCode: null })
+      setBatchContext?.({ batchId: null, batchCode: null })
     }
-  }, [lot?.batchId, lot?.batchCode, outletCtx])
+  }, [batchId, batchCode, setBatchContext])
 
   function choose() {
     if (!lot?.canPurchase || lot.wholeLotPrice == null) return

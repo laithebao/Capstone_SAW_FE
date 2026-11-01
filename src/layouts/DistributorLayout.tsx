@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Outlet } from 'react-router'
 import AiChatWidget from '@/components/AiChatWidget'
 
@@ -12,10 +12,11 @@ export interface DistributorOutletContext {
  */
 export default function DistributorLayout() {
   const [batchContext, setBatchContext] = useState<{ batchId?: number | null; batchCode?: string | null }>({})
+  const outletContext = useMemo<DistributorOutletContext>(() => ({ setBatchContext }), [setBatchContext])
 
   return (
     <>
-      <Outlet context={{ setBatchContext } satisfies DistributorOutletContext} />
+      <Outlet context={outletContext} />
       <AiChatWidget
         batchContextId={batchContext.batchId}
         batchContextCode={batchContext.batchCode}
