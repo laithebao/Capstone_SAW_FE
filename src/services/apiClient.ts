@@ -1,28 +1,14 @@
 import axios from 'axios'
 import { ROUTES } from '@/constants/routes'
+import { authSessionIdentity, readAuthSession, writeAuthSession } from '@/services/authSession'
+import type { AuthSession } from '@/types/auth'
+import { announceNotificationMutation } from '@/services/notificationEvents'
 
-// AuthContext là nơi quản lý phiên. Biến cục bộ giúp request thường nhanh hơn;
-// sessionStorage là nguồn khôi phục khi Vite hot-reload lại module trong lúc phát triển.
-let accessToken: string | null = null
-const sessionKey = 'saw.auth-session'
+let activeIdentity = authSessionIdentity(readAuthSession())
+const requestIdentities = new WeakMap<object, string | null>()
 
-function restoreAccessToken(): string | null {
-  try {
-    const rawSession = sessionStorage.getItem(sessionKey)
-    if (!rawSession) return null
-
-    const session = JSON.parse(rawSession) as { accessToken?: string; refreshTokenExpiresAt?: string }
-    if (!session.accessToken || !session.refreshTokenExpiresAt ||
-      new Date(session.refreshTokenExpiresAt).getTime() <= Date.now()) return null
-
-    return session.accessToken
-  } catch {
-    return null
-  }
-}
-
-export function setApiAccessToken(token: string | null) {
-  accessToken = token
+export function setApiSession(session: AuthSession | null) {
+  activeIdentity = authSessionIdentity(session)
 }
 
 export const apiClient = axios.create({
@@ -35,23 +21,42 @@ export const apiClient = axios.create({
 })
 
 apiClient.interceptors.request.use((config) => {
-  accessToken ??= restoreAccessToken()
-  if (accessToken) {
-    config.headers.set('Authorization', `Bearer ${accessToken}`)
+  const session = readAuthSession()
+  const identity = authSessionIdentity(session)
+  if (identity !== activeIdentity) throw new axios.CanceledError('Phiên đăng nhập đã thay đổi ở tab khác. Vui lòng chờ tải lại trang.')
+  requestIdentities.set(config, identity)
+  // Logout có thể cần token chụp lại trước khi phiên dùng chung được xóa.
+  if (config.url !== '/auth/logout' || !config.headers.has('Authorization')) {
+    if (session) config.headers.set('Authorization', `Bearer ${session.accessToken}`)
+    else config.headers.delete('Authorization')
   }
 
   return config
 })
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (!response.config.url?.startsWith('/auth/') && requestIdentities.get(response.config) !== authSessionIdentity(readAuthSession()))
+      throw new axios.CanceledError('Bỏ phản hồi từ phiên đăng nhập trước.')
+    announceNotificationMutation(response.config.method, response.config.url)
+    return response
+  },
   (error: unknown) => {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status
+      // Authentication failures belong to the login/registration form. A pending
+      // email confirmation must not redirect to the permission-denied screen.
+      if (error.config?.url?.startsWith('/auth/')) return Promise.reject(error)
+
+      const current = readAuthSession()
+      const requestToken = error.config?.headers.get('Authorization')
+      // Không để request cũ đăng xuất/điều hướng phiên mới sau khi đổi tài khoản hoặc gia hạn token.
+      if (requestToken !== (current ? `Bearer ${current.accessToken}` : undefined)) return Promise.reject(error)
 
       // 401 – phiên hết hạn: chuyển về trang đăng nhập
       if (status === 401) {
-        sessionStorage.removeItem(sessionKey)
+        writeAuthSession(null)
+        setApiSession(null)
         window.location.href = '/login'
         return Promise.reject(error)
       }

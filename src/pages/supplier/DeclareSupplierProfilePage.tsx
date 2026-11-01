@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getAuthErrorMessage } from '@/services/authService';
+import { readAuthSession } from '@/services/authSession';
 import { validateSupplierFile } from '@/features/supplier/supplierFiles';
 import { optionalNumericInput } from '@/features/supplier/schemas/supplierBatchSchema';
 import React, { useEffect, useState, useMemo } from 'react';
@@ -25,18 +26,7 @@ import { supplierService } from '../../services/suppliers/supplierService';
 import type { SupplierCropTypeDto, SupplierGrowingAreaDto } from '../../types/supplier';
 
 const getEmailFromToken = (): string => {
-  try {
-    const authSessionRaw = sessionStorage.getItem('saw.auth-session'); 
-    
-    if (!authSessionRaw) return '';
-
-    const authSession = JSON.parse(authSessionRaw);
-    
-    return authSession?.user?.email || '';
-  } catch (error) {
-    console.error('Lỗi khi lấy email từ auth session:', error);
-    return '';
-  }
+  return readAuthSession()?.user.email ?? '';
 };
 
 // Data Chứng nhận cố định

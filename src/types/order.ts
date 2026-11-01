@@ -72,7 +72,7 @@ export interface DistributorOrderDetail {
   receivedAt: string | null
   canCancel: boolean
   canConfirmReceipt: boolean
-  lines: { batchId: number; batchCode: string; productName: string; weightKg: number; wholeLotPrice: number; originalWeightKg?: number; originalWholeLotPrice?: number }[]
+  lines: { batchId: number; batchCode: string; productName: string; weightKg: number; wholeLotPrice: number; originalWeightKg?: number; originalWholeLotPrice?: number; isDeliveryRefused?: boolean }[]
   history: { oldStatus: string | null; newStatus: string; changedAt: string; reason: string | null }[]
 }
 export interface CreateDistributorOrderRequest {

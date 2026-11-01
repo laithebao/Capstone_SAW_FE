@@ -11,12 +11,14 @@ export default function GoogleLoginButton() {
   const [idToken, setIdToken] = useState<string | null>(null)
   const [roleId, setRoleId] = useState(5)
   const [error, setError] = useState<string | null>(null)
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
 
   const completeGoogleLogin = useCallback(async (token: string, selectedRoleId?: number) => {
     setError(null)
+    setVerificationMessage(null)
     setIsSubmitting(true)
     try {
       const result = await loginWithGoogle(token, selectedRoleId)
@@ -27,7 +29,9 @@ export default function GoogleLoginButton() {
       login(result.session)
       navigate(ROLE_HOME_ROUTES[result.session.user.role], { replace: true })
     } catch (requestError) {
-      setError(getAuthErrorMessage(requestError, 'Đăng nhập Google không thành công.'))
+      const message = getAuthErrorMessage(requestError, 'Đăng nhập Google không thành công.')
+      if (message.includes('xác nhận email')) { setVerificationMessage(message); setIdToken(null) }
+      else setError(message)
     } finally {
       setIsSubmitting(false)
     }
@@ -93,6 +97,7 @@ export default function GoogleLoginButton() {
         </div>
       )}
       {error && <p role="alert" className="text-xs font-medium text-rose-600">{error}</p>}
+      {verificationMessage && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{verificationMessage}</p>}
     </div>
   )
 }

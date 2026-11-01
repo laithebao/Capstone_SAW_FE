@@ -52,8 +52,8 @@ export async function refreshSession(refreshToken: string): Promise<AuthSession>
   return response.data.data
 }
 
-export async function logoutSession(refreshToken: string): Promise<void> {
-  await apiClient.post('/auth/logout', { refreshToken })
+export async function logoutSession(refreshToken: string, accessToken?: string): Promise<void> {
+  await apiClient.post('/auth/logout', { refreshToken }, accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined)
 }
 
 export async function verifyEmail(token: string): Promise<void> {
@@ -80,5 +80,7 @@ export function getAuthErrorMessage(error: unknown, fallback = 'Không thể th�
     return 'Không kết nối được Backend. Hãy kiểm tra API đang chạy ở cổng 5252.'
 
   const body = error.response.data as Partial<ApiResponse<unknown>> | undefined
+  if (body?.message === 'Your account is pending activation.')
+    return 'Tài khoản chưa xác nhận email. Vui lòng kiểm tra hộp thư và thư rác, xác nhận rồi đăng nhập lại.'
   return body?.message ?? fallback
 }
