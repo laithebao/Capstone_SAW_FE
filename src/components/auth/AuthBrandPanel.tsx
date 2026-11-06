@@ -9,7 +9,7 @@ const highlights = [
 
 export default function AuthBrandPanel() {
   return (
-    <aside className="relative hidden min-h-screen overflow-hidden bg-slate-950 lg:flex lg:w-[48%] lg:flex-col">
+    <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-slate-950 lg:flex lg:w-[48%] lg:flex-col">
       <img src={warehouseHero} alt="Kho nông sản hiện đại với hệ thống kệ lưu trữ" className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950/75 via-slate-950/20 to-slate-950/95" />
       <div className="absolute inset-0 bg-emerald-950/15" />
