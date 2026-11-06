@@ -1,7 +1,7 @@
-import { Navigate, Route, Routes } from "react-router";
+import { Route, Routes } from "react-router";
 import { ROLES } from "@/constants/roles";
-import { ROLE_HOME_ROUTES, ROUTES } from "@/constants/routes";
-import { useAuth } from "@/hooks/useAuth";
+import { ROUTES } from "@/constants/routes";
+import HomePage from "@/pages/HomePage";
 import AuthLayout from "@/layouts/AuthLayout";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import PublicLayout from "@/layouts/PublicLayout";
@@ -71,13 +71,9 @@ import SupplyContractsPage from "@/pages/contracts/SupplyContractsPage";
 import DistributorLayout from "@/layouts/DistributorLayout";
 
 export default function AppRoutes() {
-  const { user, isAuthenticated } = useAuth();
-  const homeRoute =
-    isAuthenticated && user ? ROLE_HOME_ROUTES[user.role] : ROUTES.LOGIN;
-
   return (
     <Routes>
-      <Route path={ROUTES.HOME} element={<Navigate to={homeRoute} replace />} />
+      <Route path={ROUTES.HOME} element={<HomePage />} />
 
       <Route element={<AuthLayout />}>
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
