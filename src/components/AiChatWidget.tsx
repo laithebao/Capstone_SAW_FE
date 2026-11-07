@@ -161,7 +161,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
       let errorMsg = 'Không thể kết nối đến máy chủ. Vui lòng thử lại.'
       if (axios.isAxiosError(err)) {
         if (err.code === 'ECONNABORTED') {
-          errorMsg = '⏱️ Yêu cầu mất quá nhiều thời gian. Gemini AI đang bận — vui lòng thử lại.'
+          errorMsg = 'Trợ lý AI phản hồi chậm. Vui lòng thử lại.'
         } else {
           const serverMsg =
             err.response?.data?.data?.reply ||
@@ -349,7 +349,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
             </button>
           </div>
           <p className="agri-chat-footer">
-            Powered by Google Gemini · Chỉ trả lời về nông sản &amp; chất lượng
+            SAW Agri-Copilot · Chỉ trả lời về nông sản &amp; chất lượng
           </p>
         </div>
       )}
