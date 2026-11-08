@@ -1,0 +1,75 @@
+export interface SupplierGrowingAreaInputDto {
+  growingAreaId: number;
+  areaInHectares?: number;
+}
+
+export interface SupplierGrowingAreaDto {
+  growingAreaId: number;
+  areaName: string;
+  province: string;
+  district: string;
+  ward: string;
+  areaInHectares?: number;
+}
+
+export interface SupplierCropTypeDto {
+  cropTypeId: number;
+  cropCode: string;
+  cropName: string;
+  categoryName: string;
+}
+
+export interface SupplierCertificationDto {
+  supplierCertificationId: number;
+  certificationName: string;
+  certificateNumber?: string;
+  issuingOrganization?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  evidenceFileUrl?: string;
+  isActive: boolean;
+}
+
+export interface SupplierDocumentDto {
+  fileName: string;
+  fileUrl: string;
+  fileType?: string;
+  fileSizeMb?: number;
+}
+
+export interface SupplierProfileResponse {
+  supplierId: number;
+  accountId: number;
+  supplierCode: string;
+  supplierName: string;
+  taxCode: string;
+  address: string;
+  growingAreas: SupplierGrowingAreaDto[];
+  profileStatus: string;
+  logoUrl?: string;
+  supplierType?: string;
+  contactPerson: string;
+  legalRepresentative?: string;
+  phoneNumber?: string;
+  email?: string;
+  detailedPlantingArea?: string;
+  cropTypes: SupplierCropTypeDto[];
+  certifications: SupplierCertificationDto[];
+  documents: SupplierDocumentDto[];
+}
+
+export interface DeclareSupplierProfileRequest {
+  supplierName: string;
+  taxCode: string;
+  supplierType?: string;
+  legalRepresentative: string;
+  contactPerson: string;
+  phoneNumber?: string;
+  email?: string;
+  logoUrl?: string;
+  address: string;
+  growingAreas: SupplierGrowingAreaInputDto[];
+  cropTypeIds: number[];
+  certifications: string[];
+  evidenceDocumentUrls?: string[];
+}

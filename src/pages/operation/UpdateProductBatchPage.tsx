@@ -1,0 +1,155 @@
+import SupplierDeclarationSummary from '@/features/operation/components/SupplierDeclarationSummary'
+import axios from 'axios'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link, useNavigate, useParams } from 'react-router'
+import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ROUTES } from '@/constants/routes'
+import ReceivingDetailsFields from '@/features/operation/components/ReceivingDetailsFields'
+import { emptyReceivingDetails, parseReceivingDetails, savedReceivingDetails } from '@/features/operation/receivingDetails'
+import { getAuthErrorMessage } from '@/services/authService'
+import { getProductBatch, QC_RECEIVING_LOCK_MESSAGE, updateProductBatchReceivingDetails } from '@/services/batchService'
+import type { ProductBatchDetail } from '@/types/batch'
+
+
+export default function UpdateProductBatchPage() {
+  const { id } = useParams()
+  const batchId = Number(id)
+  const validId = Number.isSafeInteger(batchId) && batchId > 0
+  const navigate = useNavigate()
+  const savingRef = useRef(false)
+  const availabilityRequest = useRef<AbortController | null>(null)
+  const [batch, setBatch] = useState<ProductBatchDetail | null>(null)
+  const [receiving, setReceiving] = useState(emptyReceivingDetails)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [requiresReload, setRequiresReload] = useState(false)
+  const [checkingAvailability, setCheckingAvailability] = useState(false)
+
+  useEffect(() => {
+    if (!validId) return
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      setLoading(true)
+      setCheckingAvailability(false)
+      setError(null)
+      try {
+        const data = await getProductBatch(batchId, controller.signal)
+        if (!controller.signal.aborted) {
+          setBatch(data)
+          setReceiving(savedReceivingDetails(data))
+          setRequiresReload(false)
+        }
+      } catch (requestError) {
+        if (!controller.signal.aborted) {
+          setBatch(null)
+          setError(getAuthErrorMessage(requestError, 'Không thể tải lô hàng.'))
+        }
+      } finally { if (!controller.signal.aborted) setLoading(false) }
+    }, 0)
+    return () => { window.clearTimeout(timer); controller.abort() }
+  }, [batchId, validId, reloadKey])
+
+  useEffect(() => {
+    if (!validId) return
+    const refreshAvailability = async () => {
+      if (document.visibilityState !== 'visible' || savingRef.current) return
+      availabilityRequest.current?.abort()
+      const controller = new AbortController()
+      availabilityRequest.current = controller
+      setCheckingAvailability(true)
+      try {
+        const data = await getProductBatch(batchId, controller.signal)
+        if (controller.signal.aborted) return
+        // Refresh permission only. Keep the original version and unsaved input so another
+        // staff member's update cannot silently become the version used by this form.
+        setBatch((current) => current?.id === data.id ? {
+          ...current,
+          canUpdateReceivingInformation: data.canUpdateReceivingInformation,
+          receivingUpdateLockReason: data.receivingUpdateLockReason,
+        } : current)
+      } catch (requestError) {
+        if (!controller.signal.aborted) {
+          setRequiresReload(true)
+          setError(getAuthErrorMessage(requestError, 'Không thể kiểm tra quyền cập nhật. Hãy tải lại trang.'))
+        }
+      } finally { if (!controller.signal.aborted) setCheckingAvailability(false) }
+    }
+    const onFocus = () => { void refreshAvailability() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      availabilityRequest.current?.abort()
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [batchId, validId, reloadKey])
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (savingRef.current || !batch?.canUpdateReceivingInformation || requiresReload || checkingAvailability || loading) return
+    const parsed = parseReceivingDetails(receiving, batch.unit)
+    if (!parsed.data) { setError(parsed.error); return }
+    savingRef.current = true
+    availabilityRequest.current?.abort()
+    setSaving(true)
+    setError(null)
+    try {
+      await updateProductBatchReceivingDetails(batch.id, {
+        ...parsed.data, expectedUpdatedAt: batch.updatedAt, expectedCreatedAt: batch.createdAt,
+      })
+      navigate(ROUTES.OPERATION_PRODUCT_BATCH_DETAIL.replace(':id', String(batch.id)),
+        { replace: true, state: { receivingUpdated: true } })
+    } catch (requestError) {
+      const message = getAuthErrorMessage(requestError, 'Không thể cập nhật thông tin kiểm nhận.')
+      if (axios.isAxiosError(requestError) && requestError.response?.status === 409) {
+        setRequiresReload(true)
+        if (message === QC_RECEIVING_LOCK_MESSAGE) {
+          setBatch((current) => current && ({ ...current, canUpdateReceivingInformation: false, receivingUpdateLockReason: message }))
+          setError(null)
+        } else {
+          setError('Lô hàng đã được người khác thay đổi hoặc không còn chờ QC. Hãy tải lại trước khi sửa tiếp.')
+          // A read may discover a QC lock after a version conflict; never retry the write.
+          try {
+            const current = await getProductBatch(batch.id)
+            if (!current.canUpdateReceivingInformation) {
+              setBatch((previous) => previous && ({ ...previous, canUpdateReceivingInformation: false, receivingUpdateLockReason: current.receivingUpdateLockReason }))
+              setError(null)
+            }
+          } catch { /* Keep the conflict and require an explicit reload. */ }
+        }
+      } else setError(message)
+    } finally {
+      savingRef.current = false
+      setSaving(false)
+    }
+  }
+
+  const detailPath = ROUTES.OPERATION_PRODUCT_BATCH_DETAIL.replace(':id', String(batchId))
+  return <div className="mx-auto max-w-[1200px] space-y-5">
+    <header className="flex flex-wrap items-end justify-between gap-3">
+      <div><p className="text-xs font-bold uppercase tracking-wider text-emerald-700">VẬN HÀNH · QUẢN LÝ LÔ HÀNG</p><h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">CẬP NHẬT THÔNG TIN LÔ HÀNG</h1></div>
+      <Link to={validId ? detailPath : ROUTES.OPERATION_PRODUCT_BATCHES} className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700"><ArrowLeft className="size-4" />Quay lại chi tiết</Link>
+    </header>
+    {!validId && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-700">Mã lô hàng không hợp lệ.</p>}
+    {error && <div role="alert" className="flex justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><span>{error}</span><button type="button" onClick={() => setReloadKey((key) => key + 1)} className="font-semibold underline">Tải lại</button></div>}
+    {validId && loading && <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Đang tải thông tin lô hàng...</p>}
+    {batch && !loading && !batch.canUpdateReceivingInformation && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">{batch.receivingUpdateLockReason ?? 'Không thể cập nhật thông tin kiểm nhận của lô hàng này.'}</p>}
+    {batch && !loading && batch.canUpdateReceivingInformation && <form noValidate onSubmit={(event) => void save(event)} className="space-y-5">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-semibold">Nhà cung cấp khai báo · chỉ đọc</h2>
+        <SupplierDeclarationSummary declaration={{ ...batch, declaredQuantity: batch.quantity }} />
+      </section>
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-semibold">Staff kiểm nhận · có thể sửa</h2>
+        <p className="mt-1 text-xs text-slate-500">Trường chưa ghi nhận sẽ để trống. Để trống trường tùy chọn để xóa giá trị đã lưu.</p>
+        <div className="mt-4"><ReceivingDetailsFields value={receiving} onChange={(next) => { setReceiving(next); if (!requiresReload) setError(null) }} unit={batch.unit} declaredQuantity={batch.quantity} declaredWeight={batch.weightInKg} disabled={saving} /></div>
+      </section>
+      <div className="flex justify-end gap-3">
+        <Link to={detailPath} className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700">Hủy</Link>
+        <button type="submit" disabled={saving || requiresReload || checkingAvailability} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white disabled:opacity-50">{(saving || checkingAvailability) && <Loader2 className="size-4 animate-spin" />}{saving ? 'Đang lưu...' : checkingAvailability ? 'Đang kiểm tra...' : 'Lưu thay đổi'}</button>
+      </div>
+    </form>}
+  </div>
+}

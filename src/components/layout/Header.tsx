@@ -1,0 +1,193 @@
+import { useEffect, useRef, useState } from 'react'
+import { useAuth } from '@/hooks/useAuth'
+import AppIcon from '@/components/common/AppIcon'
+import { roleLabels } from '@/features/role-dashboard/roleDashboardConfig'
+import { Link, useNavigate } from 'react-router'
+import { ROUTES } from '@/constants/routes'
+import { getNotifications, markAllNotificationsRead, markNotificationRead } from '@/services/notificationService'
+import type { NotificationItem } from '@/types/notification'
+import { watchNotificationUpdates } from '@/services/notificationEvents'
+import { isVisibleNotification, notificationMessage } from '@/services/notificationFormat'
+
+const notificationTime = (value: string) => new Date(/(?:Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}Z`).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+
+export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [notificationsLoading, setNotificationsLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const notificationPanelRef = useRef<HTMLDivElement>(null)
+  const notificationVersion = useRef(0)
+  const markingAllRead = useRef(false)
+  const fetchingNotifications = useRef(false)
+  const [notificationError, setNotificationError] = useState('')
+  const visibleNotifications = notifications.filter(isVisibleNotification)
+
+  useEffect(() => {
+    if (!user?.id) return
+    const controller = new AbortController()
+    let inFlight = false
+    let pending = false
+    const load = async () => {
+      if (controller.signal.aborted || markingAllRead.current || fetchingNotifications.current) return
+      if (inFlight) { pending = true; return }
+      inFlight = true
+      const version = notificationVersion.current
+      try {
+        const result = await getNotifications(controller.signal)
+        if (controller.signal.aborted || version !== notificationVersion.current) return
+        setNotifications(current => [...result.items, ...current.filter(n => !result.items.some(fresh => fresh.id === n.id))])
+        setUnreadCount(result.unreadCount)
+      } catch {
+        // Keep the rest of the dashboard usable when the notification service is unavailable.
+      } finally {
+        inFlight = false
+        if (pending) { pending = false; void load() }
+      }
+    }
+    void load()
+    const stopWatching = watchNotificationUpdates(() => void load())
+    return () => {
+      controller.abort()
+      stopWatching()
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!showNotifications) return
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!notificationPanelRef.current?.contains(event.target as Node)) setShowNotifications(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutsideClick)
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick)
+  }, [showNotifications])
+
+  const toggleNotifications = async () => {
+    if (showNotifications) { setShowNotifications(false); return }
+    setShowNotifications(true)
+    if (markingAllRead.current) return
+    markingAllRead.current = true
+    const version = ++notificationVersion.current
+    const previousCount = unreadCount
+    setUnreadCount(0)
+    setNotificationError('')
+    setNotificationsLoading(true)
+    let acknowledged = false
+    try {
+      const receipt = await markAllNotificationsRead()
+      acknowledged = true
+      if (version !== notificationVersion.current) return
+      setNotifications(current => current.map(n => n.id <= receipt.readThroughId ? { ...n, isRead: true } : n))
+      setUnreadCount(receipt.unreadCount)
+      const result = await getNotifications()
+      if (version !== notificationVersion.current) return
+      setNotifications(current => [...result.items, ...current.filter(n => !result.items.some(fresh => fresh.id === n.id))])
+      setUnreadCount(result.unreadCount)
+      setHasMore(result.items.length === 20)
+    } catch {
+      if (version === notificationVersion.current) {
+        if (!acknowledged) setUnreadCount(previousCount)
+        setNotificationError('Không thể cập nhật thông báo. Vui lòng đóng và mở lại chuông để thử lại.')
+      }
+    } finally {
+      markingAllRead.current = false
+      if (version === notificationVersion.current) setNotificationsLoading(false)
+    }
+  }
+
+  const openNotification = async (item: NotificationItem) => {
+    if (!item.isRead && !markingAllRead.current) {
+      try {
+        await markNotificationRead(item.id)
+        notificationVersion.current++
+        setNotifications((current) => current.map((notification) =>
+          notification.id === item.id ? { ...notification, isRead: true } : notification))
+        setUnreadCount((count) => Math.max(0, count - 1))
+      } catch {
+        // Navigation can proceed even if updating the read receipt fails.
+      }
+    }
+    setShowNotifications(false)
+    if (item.relatedEntityType?.startsWith('SUPPLY_CONTRACT_DELIVERY_')) {
+      const contractsRoute = user?.role === 'SUPPLIER'
+        ? ROUTES.SUPPLIER_CONTRACTS
+        : user?.role === 'ADMINISTRATOR'
+          ? ROUTES.ADMIN_CONTRACTS
+          : ROUTES.WAREHOUSE_CONTRACTS
+      navigate(contractsRoute)
+      return
+    }
+    const role = user?.role
+    const type = item.relatedEntityType
+    const id = item.relatedEntityId
+    if (type === 'SUPPLY_CONTRACT') navigate(role === 'SUPPLIER' ? ROUTES.SUPPLIER_CONTRACTS : role === 'ADMINISTRATOR' ? ROUTES.ADMIN_CONTRACTS : ROUTES.WAREHOUSE_CONTRACTS)
+    else if (type === 'GOODS_RECEIPT') navigate(id ? ROUTES.OPERATION_GOODS_RECEIPT_DETAIL.replace(':id', id) : ROUTES.OPERATION_GOODS_RECEIPTS)
+    else if (type === 'GOODS_ISSUE') navigate(role === 'WAREHOUSE_MANAGER' ? ROUTES.WAREHOUSE_ORDERS : id ? ROUTES.OPERATION_GOODS_ISSUE_DETAIL.replace(':id', id) : ROUTES.OPERATION_GOODS_ISSUES)
+    else if (type === 'QC_QUEUE') navigate(ROUTES.QC_INSPECTIONS)
+    else if (type === 'SALE_OFFER') navigate(ROUTES.WAREHOUSE_SALE_OFFERS)
+    else if (type === 'ORDER_RETURN') navigate(role === 'DISTRIBUTOR' && id ? ROUTES.DISTRIBUTOR_ORDER_DETAIL.replace(':id', id) : role === 'OPERATION_STAFF' ? ROUTES.OPERATION : ROUTES.WAREHOUSE_ORDERS)
+    else if (type === 'CUSTOMER_ORDERS') navigate(ROUTES.DISTRIBUTOR_ORDERS)
+    else if (type === 'PURCHASE_ORDER') navigate(role === 'DISTRIBUTOR' ? id ? ROUTES.DISTRIBUTOR_ORDER_DETAIL.replace(':id', id) : ROUTES.DISTRIBUTOR_ORDERS : ROUTES.WAREHOUSE_ORDERS)
+    else if (type === 'PICKING_ORDER') navigate(id ? ROUTES.OPERATION_PICKING_ORDER_DETAIL.replace(':id', id) : ROUTES.OPERATION_PICKING_ORDERS)
+    else if (type === 'STOCK_ADJUSTMENT') navigate(role === 'WAREHOUSE_MANAGER' ? id ? ROUTES.WAREHOUSE_STOCK_ADJUSTMENT_DETAIL.replace(':id', id) : ROUTES.WAREHOUSE_STOCK_ADJUSTMENTS : id ? ROUTES.OPERATION_STOCK_ADJUSTMENT_DETAIL.replace(':id', id) : ROUTES.OPERATION_STOCK_ADJUSTMENTS)
+    else if (type === 'PRODUCT_BATCH') navigate(role === 'SUPPLIER' ? ROUTES.SUPPLIER_BATCHES : id ? ROUTES.OPERATION_PRODUCT_BATCH_DETAIL.replace(':id', id) : ROUTES.OPERATION_PRODUCT_BATCHES)
+  }
+
+  const refreshNotifications = async (older = false) => {
+    if (markingAllRead.current || fetchingNotifications.current) return
+    fetchingNotifications.current = true
+    // An older poll must not overwrite the count returned by this newer read.
+    const version = ++notificationVersion.current
+    setNotificationsLoading(true)
+    setNotificationError('')
+    try {
+      const result = await getNotifications(undefined, older && visibleNotifications.length ? Math.min(...visibleNotifications.map(n => n.id)) : undefined)
+      if (version !== notificationVersion.current) return
+      setNotifications(current => older ? [...current, ...result.items.filter(n => !current.some(old => old.id === n.id))] : result.items)
+      setUnreadCount(result.unreadCount)
+      setHasMore(result.items.length === 20)
+    } catch {
+      if (version === notificationVersion.current) setNotificationError('Không thể tải thông báo. Vui lòng thử lại.')
+    } finally {
+      fetchingNotifications.current = false
+      if (version === notificationVersion.current) setNotificationsLoading(false)
+    }
+  }
+
+  return (
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+      <button type="button" onClick={onOpenMenu} className="grid size-10 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Mở menu"><AppIcon name="menu" className="size-5" /></button>
+      <div className="ml-auto flex items-center gap-3">
+        <div className="relative" ref={notificationPanelRef}>
+          <button type="button" onClick={() => void toggleNotifications()} className="relative grid size-10 place-items-center rounded-full text-slate-600 hover:bg-slate-100" aria-label={unreadCount > 0 ? `${unreadCount} thông báo mới` : 'Thông báo'} aria-expanded={showNotifications}>
+            <AppIcon name="bell" className="size-5"/>
+            {unreadCount > 0 && <span aria-live="polite" className="absolute -right-0.5 -top-0.5 grid min-h-4 min-w-4 place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-bold leading-4 text-white ring-2 ring-white">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+          </button>
+          {showNotifications && (
+            <section className="absolute right-0 top-12 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl" aria-label="Danh sách thông báo">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <div><h2 className="text-sm font-bold text-slate-900">Thông báo</h2><p className="text-xs text-slate-500">{unreadCount} thông báo chưa đọc</p></div>
+                <button type="button" disabled={notificationsLoading} onClick={() => void refreshNotifications()} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">Làm mới</button>
+              </div>
+              <div className="max-h-[min(65vh,28rem)] overflow-y-auto">
+                {notificationError && <p role="alert" className="px-4 py-3 text-xs text-rose-700">{notificationError}</p>}
+                {notificationsLoading && <p className="px-4 py-3 text-xs text-slate-500">Đang tải thông báo...</p>}
+                {!notificationsLoading && visibleNotifications.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-500">Bạn chưa có thông báo nào.</p>}
+                {visibleNotifications.map((item) => (
+                  <button key={item.id} type="button" onClick={() => void openNotification(item)} className={`block w-full border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${item.isRead ? 'bg-white' : 'bg-emerald-50/60'}`}>
+                    <span className="flex items-start gap-2"><span className={`mt-1.5 size-2 shrink-0 rounded-full ${item.isRead ? 'bg-transparent' : 'bg-emerald-600'}`} /><span className="min-w-0"><span className="block text-sm font-semibold text-slate-900">{item.title}</span><span className="mt-1 block text-xs leading-5 text-slate-600">{notificationMessage(item)}</span><span className="mt-1 block text-[11px] text-slate-400">{notificationTime(item.createdAt)}</span></span></span>
+                  </button>
+                ))}
+                {hasMore && visibleNotifications.length >= 20 && <button type="button" disabled={notificationsLoading} className="w-full p-3 text-sm font-semibold text-emerald-700" onClick={() => void refreshNotifications(true)}>Xem thông báo cũ hơn</button>}
+              </div>
+            </section>
+          )}
+        </div>
+        <Link to={ROUTES.CHANGE_PASSWORD} className="hidden text-right sm:block" title="Đổi mật khẩu"><p className="text-sm font-semibold">{user?.name}</p><p className="text-xs text-slate-500">{user ? roleLabels[user.role] : ''}</p></Link><Link to={ROUTES.CHANGE_PASSWORD} className="grid size-10 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-700" title="Đổi mật khẩu">{user?.name?.charAt(0).toUpperCase()||'A'}</Link>
+      </div>
+    </header>
+  )
+}

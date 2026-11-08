@@ -1,0 +1,101 @@
+import { apiClient } from "@/services/apiClient";
+import type { ApiResponse } from "@/types/api";
+import type {
+  ProductQualityDistributionChart,
+  WarehouseCapacityChart,
+  WarehouseInventoryLevelChart,
+} from "@/types/inventory";
+import type {
+  WarehouseDistributorOrderDetail,
+  WarehouseDistributorOrderPage,
+} from "@/types/warehouseOrder";
+import type {
+  WarehouseSaleOfferItem,
+  WarehouseSaleOfferPage,
+  WarehouseSaleOfferUpdateRequest,
+} from "@/types/warehouseSaleOffer";
+
+export async function getWarehouseDistributorOrders(
+  status = "PENDING",
+  page = 1,
+  pageSize = 20,
+  signal?: AbortSignal,
+) {
+  const response = await apiClient.get<
+    ApiResponse<WarehouseDistributorOrderPage>
+  >("/warehouse-manager/orders", {
+    params: { status, page, pageSize },
+    signal,
+  });
+  return response.data.data;
+}
+export async function getWarehouseDistributorOrder(id: number) {
+  const response = await apiClient.get<
+    ApiResponse<WarehouseDistributorOrderDetail>
+  >(`/warehouse-manager/orders/${id}`);
+  return response.data.data;
+}
+export async function approveWarehouseDistributorOrder(id: number) {
+  const response = await apiClient.post<
+    ApiResponse<WarehouseDistributorOrderDetail>
+  >(`/warehouse-manager/orders/${id}/approve`);
+  return response.data.data;
+}
+export async function rejectWarehouseDistributorOrder(
+  id: number,
+  reason: string,
+) {
+  const response = await apiClient.post<
+    ApiResponse<WarehouseDistributorOrderDetail>
+  >(`/warehouse-manager/orders/${id}/reject`, reason);
+  return response.data.data;
+}
+
+export async function reserveWarehouseDistributorOrder(id: number) {
+  return (await apiClient.post<ApiResponse<WarehouseDistributorOrderDetail>>(`/warehouse-manager/orders/${id}/reserve`)).data.data;
+}
+
+export async function getWarehouseInventoryLevels(signal?: AbortSignal) {
+  const response = await apiClient.get<
+    ApiResponse<WarehouseInventoryLevelChart>
+  >("/warehouse-manager/inventory/levels", { signal });
+  return response.data.data;
+}
+
+export async function getWarehouseCapacity(signal?: AbortSignal) {
+  const response = await apiClient.get<ApiResponse<WarehouseCapacityChart>>(
+    "/warehouse-manager/inventory/capacity",
+    { signal },
+  );
+  return response.data.data;
+}
+
+export async function getProductQualityDistribution(signal?: AbortSignal) {
+  const response = await apiClient.get<
+    ApiResponse<ProductQualityDistributionChart>
+  >("/warehouse-manager/inventory/quality-distribution", { signal });
+  return response.data.data;
+}
+
+export async function getWarehouseSaleOffers(
+  search: string,
+  page: number,
+  signal?: AbortSignal,
+) {
+  const response = await apiClient.get<ApiResponse<WarehouseSaleOfferPage>>(
+    "/warehouse-manager/inventory/sale-offers",
+    { params: { search: search || undefined, page, pageSize: 20 }, signal },
+  );
+  return response.data.data;
+}
+
+export async function updateWarehouseSaleOffer(
+  batchId: number,
+  request: WarehouseSaleOfferUpdateRequest,
+) {
+  const response = await apiClient.put<ApiResponse<WarehouseSaleOfferItem>>(
+    `/warehouse-manager/inventory/sale-offers/${batchId}`,
+    request,
+  );
+  return response.data.data;
+}
