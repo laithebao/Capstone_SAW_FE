@@ -46,12 +46,9 @@ export default function BatchEnvironmentHistoryModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/70">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">📋</span>
-              <h3 className="text-base font-bold text-slate-800">
-                Lịch Sử Biến Thiên Chuỗi Lạnh
-              </h3>
-            </div>
+            <h3 className="text-base font-bold text-slate-800">
+              Lịch Sử Biến Thiên Chuỗi Lạnh
+            </h3>
             <p className="mt-0.5 text-xs text-slate-500">
               Lô: <strong className="font-semibold text-emerald-700">{batch.batchCode}</strong> — {batch.productName}
               {batch.locationCode && ` (Vị trí: ${batch.locationCode})`}
@@ -121,7 +118,7 @@ export default function BatchEnvironmentHistoryModal({
                           {log.temperatureC}°C
                           {log.isTempOutOfRange && (
                             <span className="text-[10px] bg-amber-200/70 text-amber-900 px-1 rounded font-semibold">
-                              ⚠ Lệch
+                              Lệch
                             </span>
                           )}
                         </span>

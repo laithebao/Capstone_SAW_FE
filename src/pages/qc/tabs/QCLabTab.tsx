@@ -71,8 +71,7 @@ export default function QCLabTab({
   if (labCriteria.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <span className="text-4xl">🧪</span>
-        <p className="mt-3 text-sm font-semibold text-slate-600">
+        <p className="text-sm font-semibold text-slate-600">
           Phiên bản tiêu chuẩn này không có tiêu chí phòng lab (LAB).
         </p>
         <p className="mt-1 text-xs text-slate-400">
@@ -88,7 +87,7 @@ export default function QCLabTab({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-bold text-slate-800">
-            🧪 Tiêu chí phòng lab
+            Tiêu chí phòng lab
           </h2>
           <p className="mt-0.5 text-xs text-slate-500">
             {labCriteria.length} tiêu chí · từ tiêu chuẩn{' '}
@@ -113,7 +112,7 @@ export default function QCLabTab({
       )}
       {saved && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-          ✓ Đã lưu kết quả phòng lab.
+          Đã lưu kết quả phòng lab.
         </div>
       )}
 

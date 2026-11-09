@@ -55,7 +55,7 @@ export function QcResultBadge({ result }: { result: QcResult }) {
         ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
         : 'bg-rose-100 text-rose-800 border-rose-200'
     }`}>
-      {result === 'PASS' ? '✓ ĐẠT' : '✕ BỊ TỪ CHỐI'}
+      {result === 'PASS' ? 'ĐẠT' : 'BỊ TỪ CHỐI'}
     </span>
   )
 }
@@ -109,7 +109,7 @@ export function CriterionResultInput({
               onChange={() => onChange(criterion.criterionId, 'booleanValue', true)}
               className="accent-emerald-600"
             />
-            <span className="text-sm text-emerald-700 font-semibold">✓ Đạt (Detected/Compliant)</span>
+            <span className="text-sm text-emerald-700 font-semibold">Đạt (Detected/Compliant)</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -120,10 +120,10 @@ export function CriterionResultInput({
               onChange={() => onChange(criterion.criterionId, 'booleanValue', false)}
               className="accent-rose-600"
             />
-            <span className="text-sm text-rose-700 font-semibold">✕ Không đạt (Not Detected/Fail)</span>
+            <span className="text-sm text-rose-700 font-semibold">Không đạt (Not Detected/Fail)</span>
           </label>
           <span className="text-[10px] text-slate-400 italic ml-2">
-            ⚠ Cổng Pass/Fail — không tham gia xếp hạng A-E
+            Cổng Pass/Fail — không tham gia xếp hạng A-E
           </span>
         </div>
       )}
