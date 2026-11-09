@@ -70,12 +70,9 @@ export default function StorageEnvironmentMonitoringPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
-            <span className="text-2xl">🌡️</span>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Giám Sát & Nhập Liệu Nhiệt Ẩm Lưu Kho
-            </h1>
-          </div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            Giám Sát & Nhập Liệu Nhiệt Ẩm Lưu Kho
+          </h1>
           <p className="mt-1 text-xs text-slate-500">
             Theo dõi điều kiện bảo quản chuỗi lạnh định kỳ cho các lô hàng đang lưu kho do nhân viên QC đảm nhiệm.
           </p>
@@ -85,46 +82,34 @@ export default function StorageEnvironmentMonitoringPage() {
           type="button"
           onClick={() => void fetchBatches()}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
         >
-          <span className={loading ? 'animate-spin' : ''}>🔄</span> Làm mới danh sách
+          Làm mới danh sách
         </button>
       </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lô đang lưu kho</span>
-            <span className="text-lg">📦</span>
-          </div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lô đang lưu kho</p>
           <p className="mt-2 text-2xl font-black text-slate-900">{stats.total}</p>
           <p className="text-[11px] text-slate-400 mt-0.5">Toàn bộ kho vận</p>
         </div>
 
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Nhiệt ẩm chuẩn</span>
-            <span className="text-lg">🟢</span>
-          </div>
+          <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Nhiệt ẩm chuẩn</p>
           <p className="mt-2 text-2xl font-black text-emerald-800">{stats.normal}</p>
           <p className="text-[11px] text-emerald-600 mt-0.5">Trong dải an toàn</p>
         </div>
 
         <div className="rounded-2xl border border-rose-100 bg-rose-50/60 p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">Lệch nhiệt độ</span>
-            <span className="text-lg">⚠️</span>
-          </div>
+          <p className="text-xs font-bold text-rose-800 uppercase tracking-wider">Lệch nhiệt độ</p>
           <p className="mt-2 text-2xl font-black text-rose-700">{stats.outOfRange}</p>
           <p className="text-[11px] text-rose-600 mt-0.5">Cần kiểm tra quạt/kho</p>
         </div>
 
         <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Cần đo định kỳ</span>
-            <span className="text-lg">⏰</span>
-          </div>
+          <p className="text-xs font-bold text-amber-800 uppercase tracking-wider">Cần đo định kỳ</p>
           <p className="mt-2 text-2xl font-black text-amber-800">{stats.overdue}</p>
           <p className="text-[11px] text-amber-700 mt-0.5">&gt; 24h chưa có số đo</p>
         </div>
@@ -132,15 +117,14 @@ export default function StorageEnvironmentMonitoringPage() {
 
       {/* Filter bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-        <div className="relative w-full sm:w-80">
+        <div className="w-full sm:w-80">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm theo mã lô, tên nông sản, vị trí..."
-            className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs outline-none focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 transition"
+            className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs outline-none focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 transition"
           />
-          <span className="absolute left-3 top-2.5 text-xs text-slate-400">🔍</span>
         </div>
 
         {/* Status tabs */}
@@ -165,7 +149,7 @@ export default function StorageEnvironmentMonitoringPage() {
                 : 'text-rose-700 hover:bg-rose-50'
             }`}
           >
-            ⚠️ Đang lệch ngưỡng ({stats.outOfRange})
+            Đang lệch ngưỡng ({stats.outOfRange})
           </button>
           <button
             type="button"
@@ -176,7 +160,7 @@ export default function StorageEnvironmentMonitoringPage() {
                 : 'text-amber-700 hover:bg-amber-50'
             }`}
           >
-            ⏰ Cần đo (&gt; 24h) ({stats.overdue})
+            Cần đo (&gt; 24h) ({stats.overdue})
           </button>
         </div>
       </div>
@@ -249,10 +233,10 @@ export default function StorageEnvironmentMonitoringPage() {
                       {/* Ngưỡng chuẩn */}
                       <td className="px-4 py-4">
                         <div className="text-emerald-700 font-bold">
-                          🌡️ {b.expectedMinTempC ?? '—'}°C – {b.expectedMaxTempC ?? '—'}°C
+                          {b.expectedMinTempC ?? '—'}°C – {b.expectedMaxTempC ?? '—'}°C
                         </div>
                         <div className="text-sky-700 font-medium text-[11px] mt-0.5">
-                          💧 {b.expectedMinHumidityPct ?? '—'}% – {b.expectedMaxHumidityPct ?? '—'}%
+                          {b.expectedMinHumidityPct ?? '—'}% – {b.expectedMaxHumidityPct ?? '—'}%
                         </div>
                       </td>
 
@@ -294,16 +278,16 @@ export default function StorageEnvironmentMonitoringPage() {
                       {/* Trạng thái chuỗi lạnh */}
                       <td className="px-4 py-4">
                         {isOutOfRange ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200">
-                            <span>⚠</span> Lệch nhiệt độ
+                          <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200">
+                            Lệch nhiệt độ
                           </span>
                         ) : isOverdue ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200">
-                            <span>⏰</span> Cần đo (&gt; 24h)
+                          <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200">
+                            Cần đo (&gt; 24h)
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200">
-                            <span>✓</span> Ổn định
+                          <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200">
+                            Ổn định
                           </span>
                         )}
                         <span className="block text-[10px] text-slate-400 mt-1">
@@ -320,7 +304,7 @@ export default function StorageEnvironmentMonitoringPage() {
                             className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
                             title="Xem lịch sử và biểu đồ biến thiên"
                           >
-                            📈 Lịch sử
+                            Lịch sử
                           </button>
                           <button
                             type="button"
@@ -328,7 +312,7 @@ export default function StorageEnvironmentMonitoringPage() {
                             className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 transition shadow-sm"
                             title="Nhập nhiệt độ và độ ẩm cho lô hàng"
                           >
-                            + Ghi nhận
+                            Ghi nhận
                           </button>
                         </div>
                       </td>

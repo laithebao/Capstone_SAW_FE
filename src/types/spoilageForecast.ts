@@ -106,12 +106,12 @@ export const ACTION_PRIORITY_CONFIG: Record<ActionPriority, {
   }
 };
 
-export const ACTION_CATEGORY_LABELS: Record<ActionCategory, { label: string; icon: string }> = {
-  TEMPERATURE: { label: 'Nhiệt độ', icon: '🌡️' },
-  HUMIDITY: { label: 'Độ ẩm', icon: '💧' },
-  ROTATION: { label: 'Xuất kho / Luân chuyển', icon: '🔄' },
-  DISPOSAL: { label: 'Loại bỏ / Thanh lý', icon: '🗑️' },
-  INSPECTION: { label: 'Kiểm định lại QC', icon: '🔍' },
-  TRANSFER: { label: 'Chuyển vị trí kho', icon: '📦' },
-  OTHER: { label: 'Khác', icon: '📌' }
+export const ACTION_CATEGORY_LABELS: Record<ActionCategory, string> = {
+  TEMPERATURE: 'Nhiệt độ',
+  HUMIDITY: 'Độ ẩm',
+  ROTATION: 'Xuất kho / Luân chuyển',
+  DISPOSAL: 'Loại bỏ / Thanh lý',
+  INSPECTION: 'Kiểm định lại QC',
+  TRANSFER: 'Chuyển vị trí kho',
+  OTHER: 'Khác'
 };

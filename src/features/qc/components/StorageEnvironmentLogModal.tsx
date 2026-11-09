@@ -7,7 +7,7 @@ import {
   isFutureVietnamTime,
   formatVietnamDateTime,
 } from '@/utils/vietnamTime'
-import type { InStorageBatchEnvDto } from '@/types/storageEnvironment'
+import type { InStorageBatchEnvDto, StorageEnvironmentLogItem } from '@/types/storageEnvironment'
 
 interface Props {
   batch: InStorageBatchEnvDto | null
@@ -38,7 +38,7 @@ export default function StorageEnvironmentLogModal({
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
+  const [savedLog, setSavedLog] = useState<StorageEnvironmentLogItem | null>(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -49,7 +49,7 @@ export default function StorageEnvironmentLogModal({
       setRecordedAt(getVietnamDateTimeLocal())
       setNote('')
       setError('')
-      setSuccessMsg('')
+      setSavedLog(null)
     }
   }, [isOpen, batch])
 
@@ -91,7 +91,7 @@ export default function StorageEnvironmentLogModal({
 
     setSaving(true)
     setError('')
-    setSuccessMsg('')
+    setSavedLog(null)
 
     try {
       const result = await createStorageEnvironmentLog({
@@ -105,11 +105,7 @@ export default function StorageEnvironmentLogModal({
         note: note.trim() || undefined,
       })
 
-      if (result.isTempOutOfRange) {
-        setSuccessMsg(`⚠ Đã lưu — Nhiệt độ ${result.temperatureC}°C lệch ngưỡng bảo quản!`)
-      } else {
-        setSuccessMsg('✓ Ghi nhận nhiệt độ & độ ẩm bảo quản thành công.')
-      }
+      setSavedLog(result)
 
       setTimeout(() => {
         onSuccess()
@@ -131,12 +127,9 @@ export default function StorageEnvironmentLogModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/70">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🌡️</span>
-              <h3 className="text-base font-bold text-slate-800">
-                Ghi Nhận Nhiệt Ẩm Lưu Kho
-              </h3>
-            </div>
+            <h3 className="text-base font-bold text-slate-800">
+              Ghi Nhận Nhiệt Ẩm Lưu Kho
+            </h3>
             <p className="mt-0.5 text-xs text-slate-500">
               Lô: <strong className="font-semibold text-emerald-700">{batch.batchCode}</strong> — {batch.productName}
             </p>
@@ -155,7 +148,7 @@ export default function StorageEnvironmentLogModal({
           {/* Vị trí lưu kho & Ngưỡng bảo quản chuẩn */}
           <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 space-y-2 text-xs">
             <div className="flex justify-between items-center text-slate-600">
-              <span>📍 Vị trí kho hiện tại:</span>
+              <span>Vị trí kho hiện tại:</span>
               <span className="font-bold text-slate-800">
                 {batch.locationCode ? `${batch.locationCode} (${batch.zoneName ?? 'Khu lưu trữ'})` : 'Chưa xếp vị trí cụ thể'}
               </span>
@@ -186,15 +179,17 @@ export default function StorageEnvironmentLogModal({
             </div>
           )}
 
-          {successMsg && (
+          {savedLog && (
             <div
               className={`rounded-lg border px-3.5 py-2.5 text-xs font-semibold ${
-                successMsg.startsWith('⚠')
+                savedLog.isTempOutOfRange
                   ? 'border-amber-300 bg-amber-50 text-amber-800'
                   : 'border-emerald-300 bg-emerald-50 text-emerald-800'
               }`}
             >
-              {successMsg}
+              {savedLog.isTempOutOfRange
+                ? `Đã lưu — Nhiệt độ ${savedLog.temperatureC}°C lệch ngưỡng bảo quản!`
+                : 'Ghi nhận nhiệt độ & độ ẩm bảo quản thành công.'}
             </div>
           )}
 
@@ -222,7 +217,7 @@ export default function StorageEnvironmentLogModal({
               />
               {isTempOutOfRange && (
                 <p className="text-[10px] text-amber-600 font-bold leading-tight">
-                  ⚠ Lệch dải chuẩn ({expectedMinTempC}–{expectedMaxTempC}°C)
+                  Lệch dải chuẩn ({expectedMinTempC}–{expectedMaxTempC}°C)
                 </p>
               )}
             </div>
@@ -250,7 +245,7 @@ export default function StorageEnvironmentLogModal({
               />
               {isHumidityOutOfRange && (
                 <p className="text-[10px] text-amber-600 font-bold leading-tight">
-                  ⚠ Lệch dải chuẩn ({expectedMinHumidityPct}–{expectedMaxHumidityPct}%)
+                  Lệch dải chuẩn ({expectedMinHumidityPct}–{expectedMaxHumidityPct}%)
                 </p>
               )}
             </div>
