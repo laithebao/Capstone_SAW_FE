@@ -12,7 +12,7 @@ import type {
   WarehouseCapacityChart,
   WarehouseInventoryLevelChart,
 } from "@/types/inventory";
-import { HighRiskBatchesWidget } from "@/features/operation/components/spoilage-forecast";
+import { WarehouseSpoilageForecast } from "@/features/operation/components/spoilage-forecast/WarehouseSpoilageForecast";
 
 const kg = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 });
 const time = new Intl.DateTimeFormat("vi-VN", {
@@ -322,9 +322,10 @@ export default function WarehouseManagerDashboardPage({
               </span>
             </a>
           </div>
-          <HighRiskBatchesWidget />
         </section>
       )}
+
+      {view === "dashboard" && <WarehouseSpoilageForecast />}
 
       {view === "inventory" && inventory && (
         <section id="inventory-levels" className="scroll-mt-24 space-y-5">
