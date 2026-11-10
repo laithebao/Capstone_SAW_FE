@@ -86,7 +86,7 @@ export default function QCInspectionDetailPage() {
     setSavingSampling(true); setError(''); setActionMsg('')
     try {
       await updateSamplingRatio(inspId, { samplingRatio: ratio })
-      setActionMsg('✓ Đã lưu tỷ lệ lấy mẫu.')
+      setActionMsg('Đã lưu tỷ lệ lấy mẫu.')
       await reload()
     } catch (e) {
       setError(getAuthErrorMessage(e, 'Không thể lưu tỷ lệ lấy mẫu.'))
@@ -115,7 +115,7 @@ export default function QCInspectionDetailPage() {
     setRejecting(true); setError('')
     try {
       await rejectBatch(inspId, { rejectionReason: rejectReason.trim() })
-      setActionMsg('✓ Đã từ chối lô hàng.')
+      setActionMsg('Đã từ chối lô hàng.')
       setShowRejectForm(false)
       await reload()
     } catch (e) {
@@ -215,7 +215,7 @@ export default function QCInspectionDetailPage() {
                 onClick={() => void handleFinalize()}
                 className="h-9 rounded-lg bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60"
               >
-                {finalizing ? 'Đang đánh giá...' : '✓ Hoàn thành & Đánh giá'}
+                {finalizing ? 'Đang đánh giá...' : 'Hoàn thành & Đánh giá'}
               </button>
             )}
             {canEdit && isInProgress && showFinalizeConfirm && (
@@ -240,7 +240,7 @@ export default function QCInspectionDetailPage() {
         {/* Read-only badge cho WAREHOUSE_MANAGER */}
         {isWarehouse && (
           <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
-            👁️ Chế độ xem
+            Chế độ xem
           </span>
         )}
       </div>
@@ -257,7 +257,7 @@ export default function QCInspectionDetailPage() {
             : 'border-rose-200 bg-rose-50'
         }`}>
           <p className={`text-sm font-bold ${finalizeResult.qcResult === 'PASS' ? 'text-emerald-800' : 'text-rose-800'}`}>
-            {finalizeResult.qcResult === 'PASS' ? '✓ LÔ HÀNG ĐẠT' : '✕ LÔ HÀNG BỊ TỪ CHỐI'}
+            {finalizeResult.qcResult === 'PASS' ? 'LÔ HÀNG ĐẠT' : 'LÔ HÀNG BỊ TỪ CHỐI'}
           </p>
           <p className="mt-1 text-xs text-slate-600">{finalizeResult.summary}</p>
         </div>
@@ -326,7 +326,7 @@ export default function QCInspectionDetailPage() {
             </div>
             {inspection.sampleSize && (
               <span className="flex h-9 items-center text-sm text-slate-600">
-                → Cỡ mẫu: <b className="ml-1">{inspection.sampleSize.toFixed(2)} kg</b>
+                Cỡ mẫu: <b className="ml-1">{inspection.sampleSize.toFixed(2)} kg</b>
               </span>
             )}
             <button
@@ -339,7 +339,7 @@ export default function QCInspectionDetailPage() {
           </div>
           {isDraft && (
             <p className="text-xs text-amber-600">
-              ⚠ Phiếu đang ở DRAFT — khai báo tỷ lệ lấy mẫu để chuyển sang IN_PROGRESS.
+              Phiếu đang ở DRAFT — khai báo tỷ lệ lấy mẫu để chuyển sang IN_PROGRESS.
             </p>
           )}
         </div>
@@ -474,7 +474,7 @@ function OverviewTab({ inspection }: { inspection: QcInspectionDetailDto }) {
       {boolCriteria.length > 0 && (
         <div>
           <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-rose-600">
-            🔴 Tiêu chí cổng Pass/Fail (BOOLEAN) — không tham gia xếp hạng A-E
+            Tiêu chí cổng Pass/Fail (BOOLEAN) — không tham gia xếp hạng A-E
           </h3>
           <div className="space-y-2">
           {boolCriteria.map(c => (
@@ -490,7 +490,7 @@ function OverviewTab({ inspection }: { inspection: QcInspectionDetailDto }) {
                   {/* Hiện rõ nguyên nhân từ chối lô */}
                   {c.booleanValue === false && c.isCritical && (
                     <span className="ml-2 rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      🔴 Gây từ chối lô
+                      Gây từ chối lô
                     </span>
                   )}
                 </div>
@@ -498,10 +498,10 @@ function OverviewTab({ inspection }: { inspection: QcInspectionDetailDto }) {
                   {c.booleanValue === null ? (
                     <span className="text-xs text-slate-400">Chưa nhập</span>
                   ) : c.booleanValue ? (
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">✓ Đạt</span>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">Đạt</span>
                   ) : (
                     <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-700">
-                      {c.isCritical ? '✕ Bị từ chối' : '✕ Không đạt'}
+                      {c.isCritical ? 'Bị từ chối' : 'Không đạt'}
                     </span>
                   )}
                 </div>
@@ -515,7 +515,7 @@ function OverviewTab({ inspection }: { inspection: QcInspectionDetailDto }) {
       {gradedCriteria.length > 0 && (
         <div>
           <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-            📊 Tiêu chí xếp hạng A-E
+            Tiêu chí xếp hạng A-E
           </h3>
           <div className="space-y-2">
             {gradedCriteria.map(c => {
@@ -536,7 +536,7 @@ function OverviewTab({ inspection }: { inspection: QcInspectionDetailDto }) {
                     {/* Hiện rõ nguyên nhân từ chối lô */}
                     {causesRejection && (
                       <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                        🔴 Gây từ chối lô
+                        Gây từ chối lô
                       </span>
                     )}
                   </div>
@@ -546,7 +546,7 @@ function OverviewTab({ inspection }: { inspection: QcInspectionDetailDto }) {
                     <GradeEvaluationBadge grade={c.evaluatedGrade} />
                     {c.evaluatedGrade && (
                       <span className={`text-[10px] font-bold ${c.isPassed ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {c.isPassed ? '✓' : causesRejection ? '🔴' : '✕'}
+                        {c.isPassed ? 'Đạt' : 'Không đạt'}
                       </span>
                     )}
                   </div>
