@@ -1,11 +1,15 @@
 import { SupplierDocumentEditor } from '@/features/supplier/components/SupplierDocuments';
 import { optionalNumericInput } from '@/features/supplier/schemas/supplierBatchSchema';
+import { updateSupplierProfileSchema } from '@/features/supplier/schemas/supplierProfileSchema';
+import FormNotification from '@/components/common/FormNotification';
+import { getApiFieldErrors, getHookFormFieldErrors, getValidationFieldErrors, type FormFieldErrors } from '@/utils/formErrors';
+import { ROUTES } from '@/constants/routes';
 import { supplierAssetUrl, validateSupplierFile } from '@/features/supplier/supplierFiles';
 import type { SupplierDocumentDto } from '@/types/supplier';
 import { getAuthErrorMessage } from '@/services/authService';
 import React, { useEffect, useState, useMemo } from 'react';
-import { useForm, useWatch, useFieldArray, type SubmitHandler } from 'react-hook-form';
-import { useNavigate } from 'react-router';
+import { useForm, useWatch, useFieldArray, type FieldPath, type SubmitHandler } from 'react-hook-form';
+import { Link, useNavigate } from 'react-router';
 import { supplierService } from '../../services/suppliers/supplierService';
 import type {
   DeclareSupplierProfileRequest,
@@ -14,6 +18,16 @@ import type {
 } from '../../types/supplier';
 
 const CERTIFICATE_OPTIONS = ['VietGAP', 'GlobalGAP', 'Organic', 'HACCP', 'Không có chứng nhận'];
+const supplierFieldLabels = {
+  supplierName: 'Tên doanh nghiệp', taxCode: 'Mã số thuế', supplierType: 'Loại hình',
+  legalRepresentative: 'Người đại diện', contactPerson: 'Người liên hệ', phoneNumber: 'Số điện thoại',
+  email: 'Email', address: 'Địa chỉ', cropTypeIds: 'Danh mục', growingAreas: 'Vùng trồng',
+  logoUrl: 'Ảnh đại diện', evidenceDocumentUrls: 'Tài liệu',
+};
+const validateField = (field: keyof typeof updateSupplierProfileSchema.shape) => (value: unknown) => {
+  const result = updateSupplierProfileSchema.shape[field].safeParse(value);
+  return result.success || result.error.issues[0]?.message || 'Giá trị không hợp lệ.';
+};
 
 export const EditSupplierProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +35,8 @@ export const EditSupplierProfilePage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [growingAreaOptions, setGrowingAreaOptions] = useState<SupplierGrowingAreaDto[]>([]);
   const [cropTypeOptions, setCropTypeOptions] = useState<SupplierCropTypeDto[]>([]);
+  const [canCompleteTaxCode, setCanCompleteTaxCode] = useState(false);
+  const [notification, setNotification] = useState('');
 
   // File Upload States
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -42,8 +58,13 @@ export const EditSupplierProfilePage: React.FC = () => {
     handleSubmit,
     reset,
     setValue,
+    setError,
+    clearErrors,
+    getFieldState,
     control,
+    formState,
   } = useForm<DeclareSupplierProfileRequest>({
+    shouldFocusError: false,
     defaultValues: {
       supplierName: '',
       taxCode: '',
@@ -68,6 +89,26 @@ export const EditSupplierProfilePage: React.FC = () => {
 
   const selectedCrops = useWatch({ control, name: 'cropTypeIds' }) || [];
   const selectedCerts = useWatch({ control, name: 'certifications' }) || [];
+
+  const fieldProps = (name: FieldPath<DeclareSupplierProfileRequest>, base = inputStyle) => {
+    const error = getFieldState(name, formState).error;
+    return { id: `supplier-${name}`, 'aria-invalid': Boolean(error), 'aria-describedby': error ? `supplier-${name}-error` : undefined,
+      style: { ...base, ...(error ? { borderColor: '#e11d48', outlineColor: '#e11d48' } : {}) } };
+  };
+  const fieldError = (name: FieldPath<DeclareSupplierProfileRequest>) => {
+    const error = getFieldState(name, formState).error;
+    return error?.message && <p id={`supplier-${name}-error`} data-field-error={name} style={{ marginTop: '4px', fontSize: '12px', color: '#b91c1c' }}>{error.message}</p>;
+  };
+  const showFieldErrors = (fields: FormFieldErrors) => {
+    for (const [name, message] of Object.entries(fields)) setError(name as FieldPath<DeclareSupplierProfileRequest>, { type: 'validate', message });
+    const first = Object.values(fields)[0];
+    setNotification(first ? `${first} Vui lòng kiểm tra các ô được đánh dấu đỏ.` : 'Vui lòng kiểm tra các ô được đánh dấu đỏ.');
+  };
+  const focusFirstError = () => {
+    const input = document.getElementById('supplier-profile-form')?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    input?.focus({ preventScroll: true });
+    input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   // Gom nhóm danh sách cây trồng theo CategoryName
   const groupedCropTypes = useMemo(() => {
@@ -98,6 +139,7 @@ export const EditSupplierProfilePage: React.FC = () => {
         setCropTypeOptions(Array.isArray(crops) ? crops : []);
 
         if (profile) {
+          setCanCompleteTaxCode(profile.profileStatus === 'PENDING_REVIEW' && profile.taxCode.startsWith('GOOGLE-'));
           const cropTypeIds = profile.cropTypes ? profile.cropTypes.map((c) => Number(c.cropTypeId)) : [];
           const certificationsList = profile.certifications ? profile.certifications.map((c) => c.certificationName) : [];
           const docs = profile.documents ? profile.documents.map((d) => d.fileUrl) : [];
@@ -152,7 +194,8 @@ export const EditSupplierProfilePage: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const invalid = validateSupplierFile(file, true);
-      if (invalid) { alert(invalid); return; }
+      if (invalid) { setError('logoUrl', { type: 'validate', message: invalid }); setNotification(invalid); return; }
+      clearErrors('logoUrl');
       setAvatarFile(file);
       setAvatarPreview(URL.createObjectURL(file));
     }
@@ -168,6 +211,7 @@ export const EditSupplierProfilePage: React.FC = () => {
     else current.push(numericId);
     
     setValue('cropTypeIds', current);
+    if (current.length > 0) clearErrors('cropTypeIds');
   };
 
   const handleCertToggle = (cert: string) => {
@@ -184,11 +228,21 @@ export const EditSupplierProfilePage: React.FC = () => {
   };
 
   const onSubmit: SubmitHandler<DeclareSupplierProfileRequest> = async (values) => {
+    if (isSubmitting) return;
+    setNotification('');
+    clearErrors();
+    const validation = updateSupplierProfileSchema.safeParse(values);
+    if (!validation.success) {
+      showFieldErrors(getValidationFieldErrors(validation.error.issues));
+      return;
+    }
     const hasInvalidArea = values.growingAreas?.some(
       (ga) => !ga.growingAreaId || Number(ga.growingAreaId) === 0
     );
     if (hasInvalidArea) {
-      alert('Vui lòng chọn tên Vùng trồng hợp lệ cho tất cả các dòng đã thêm!');
+      showFieldErrors(Object.fromEntries(values.growingAreas.map((area, index) => [index, area] as const)
+        .filter(([, area]) => !area.growingAreaId || Number(area.growingAreaId) === 0)
+        .map(([index]) => [`growingAreas.${index}.growingAreaId`, 'Vui lòng chọn vùng trồng hợp lệ.'])));
       return;
     }
 
@@ -220,6 +274,7 @@ export const EditSupplierProfilePage: React.FC = () => {
 
       const payload: DeclareSupplierProfileRequest = {
         ...values,
+        ...validation.data,
         address: values.address.trim(),
         logoUrl: finalLogoUrl,
         growingAreas: validGrowingAreas,
@@ -232,8 +287,15 @@ export const EditSupplierProfilePage: React.FC = () => {
       alert('Cập nhật thông tin thành công!');
       navigate('/supplier/profile');
     } catch (err) {
-      console.error('Submit Error:', err);
-      alert(getAuthErrorMessage(err, 'Cập nhật thất bại.'));
+      const labels: Record<string, string> = { ...supplierFieldLabels };
+      values.growingAreas.forEach((_, index) => {
+        labels[`growingAreas.${index}.growingAreaId`] = 'Vùng trồng';
+        labels[`growingAreas.${index}.areaInHectares`] = 'Diện tích';
+      });
+      const fields = getApiFieldErrors(err, labels);
+      for (const [name, message] of Object.entries(fields)) setError(name as FieldPath<DeclareSupplierProfileRequest>, { type: 'server', message });
+      const first = Object.values(fields)[0];
+      setNotification(first ? `${first} Vui lòng kiểm tra các ô được đánh dấu đỏ.` : getAuthErrorMessage(err, 'Cập nhật thất bại. Vui lòng thử lại.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -245,7 +307,8 @@ export const EditSupplierProfilePage: React.FC = () => {
 
   return (
     <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', padding: '24px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <form onSubmit={handleSubmit(onSubmit)} style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <FormNotification message={notification} onDismiss={() => setNotification('')} onViewErrors={Object.keys(formState.errors).length ? focusFirstError : undefined} />
+      <form id="supplier-profile-form" noValidate onSubmit={handleSubmit(onSubmit, errors => showFieldErrors(getHookFormFieldErrors(errors)))} style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
         {/* HEADER TRANG */}
         <div style={{ marginBottom: '20px' }}>
@@ -280,43 +343,66 @@ export const EditSupplierProfilePage: React.FC = () => {
                   <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#374151', marginTop: '8px', letterSpacing: '0.5px' }}>
                     LOGO / Ảnh ĐẠI DIỆN
                   </span>
+                  {fieldError('logoUrl')}
                 </div>
 
                 {/* FORM INPUTS */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div>
                     <label style={labelStyle}>TÊN DOANH NGHIỆP / HỢP TÁC XÃ *</label>
-                    <input {...register('supplierName', { required: true })} style={inputStyle} />
+                    <input {...register('supplierName', { validate: validateField('supplierName') })} maxLength={200} {...fieldProps('supplierName')} />
+                    {fieldError('supplierName')}
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <div>
                       <label style={labelStyle}>MST / MÃ SỐ ĐĂNG KÝ *</label>
-                      <input {...register('taxCode', { required: true })} style={inputStyle} />
+                      <input {...register('taxCode', { validate: validateField('taxCode') })} maxLength={50} readOnly={!canCompleteTaxCode} aria-readonly={!canCompleteTaxCode} {...fieldProps('taxCode', { ...inputStyle, ...(!canCompleteTaxCode ? { backgroundColor: '#f1f5f9', color: '#64748b' } : {}) })} />
+                      {fieldError('taxCode')}
+                      {!canCompleteTaxCode && <p style={{ marginTop: '4px', fontSize: '12px', color: '#64748b' }}>Mã số thuế đã đăng ký không thể thay đổi.</p>}
                     </div>
                     <div>
                       <label style={labelStyle}>LOẠI HÌNH NHÀ CUNG CẤP *</label>
-                      <select {...register('supplierType')} style={selectStyle}>
+                      <select {...register('supplierType', { validate: validateField('supplierType') })} {...fieldProps('supplierType', selectStyle)}>
                         <option value="Hợp tác xã">Hợp tác xã</option>
                         <option value="Doanh nghiệp">Doanh nghiệp</option>
                         <option value="Hộ kinh doanh">Hộ kinh doanh</option>
                         <option value="Trang trại">Trang trại</option>
                       </select>
+                      {fieldError('supplierType')}
                     </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <div>
                       <label style={labelStyle}>NGƯỜI ĐẠI DIỆN PHÁP LÝ *</label>
-                      <input {...register('legalRepresentative')} placeholder="Họ và tên" style={inputStyle} />
+                      <input {...register('legalRepresentative', { validate: validateField('legalRepresentative') })} maxLength={100} placeholder="Họ và tên" {...fieldProps('legalRepresentative')} />
+                      {fieldError('legalRepresentative')}
                     </div>
                     <div>
                       <label style={labelStyle}>NGƯỜI LIÊN HỆ *</label>
-                      <input {...register('contactPerson')} placeholder="Họ và tên / SĐT" style={inputStyle} />
+                      <input {...register('contactPerson', { validate: validateField('contactPerson') })} maxLength={100} placeholder="Họ và tên / SĐT" {...fieldProps('contactPerson')} />
+                      {fieldError('contactPerson')}
                     </div>
                   </div>
                 </div>
 
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>Thông tin liên hệ</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', padding: '24px' }}>
+                <div>
+                  <label style={labelStyle}>SỐ ĐIỆN THOẠI LIÊN HỆ</label>
+                  <input {...register('phoneNumber', { validate: validateField('phoneNumber') })} type="tel" maxLength={20} placeholder="0901234567 hoặc +84901234567" {...fieldProps('phoneNumber')} />
+                  {fieldError('phoneNumber')}
+                </div>
+                <div>
+                  <label style={labelStyle}>EMAIL LIÊN HỆ</label>
+                  <input {...register('email', { validate: validateField('email') })} type="email" maxLength={150} {...fieldProps('email')} />
+                  {fieldError('email')}
+                </div>
               </div>
             </div>
 
@@ -350,11 +436,13 @@ export const EditSupplierProfilePage: React.FC = () => {
                 
                 <div>
                   <label style={labelStyle}>ĐỊA CHỈ TRỤ SỞ CHI TIẾT *</label>
-                  <input {...register('address', { required: true })} placeholder="Số nhà, đường, xã/phường, tỉnh/thành..." style={inputStyle} />
+                  <input {...register('address', { validate: validateField('address') })} maxLength={500} placeholder="Số nhà, đường, xã/phường, tỉnh/thành..." {...fieldProps('address')} />
+                  {fieldError('address')}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <label style={labelStyle}>DANH SÁCH VÙNG TRỒNG KHAI THÁC *</label>
+                  {fieldError('growingAreas')}
                   
                   {fields.length === 0 ? (
                     <div style={{ padding: '16px', border: '1px dashed #d1d5db', borderRadius: '6px', textAlign: 'center', fontSize: '13px', color: '#6b7280' }}>
@@ -380,8 +468,8 @@ export const EditSupplierProfilePage: React.FC = () => {
                             VÙNG TRỒNG #{index + 1}
                           </label>
                           <select
-                            {...register(`growingAreas.${index}.growingAreaId` as const, { valueAsNumber: true })}
-                            style={{ ...selectStyle, backgroundColor: '#ffffff' }}
+                            {...register(`growingAreas.${index}.growingAreaId` as const, { valueAsNumber: true, validate: value => value > 0 || 'Vui lòng chọn vùng trồng hợp lệ.' })}
+                            {...fieldProps(`growingAreas.${index}.growingAreaId`, { ...selectStyle, backgroundColor: '#ffffff' })}
                           >
                             <option value={0}>-- Chọn Vùng trồng --</option>
                             {growingAreaOptions.map((area) => (
@@ -390,6 +478,7 @@ export const EditSupplierProfilePage: React.FC = () => {
                               </option>
                             ))}
                           </select>
+                          {fieldError(`growingAreas.${index}.growingAreaId`)}
                         </div>
 
                         <div>
@@ -401,8 +490,9 @@ export const EditSupplierProfilePage: React.FC = () => {
                             step="0.1"
                             {...register(`growingAreas.${index}.areaInHectares` as const, { setValueAs: optionalNumericInput })}
                             placeholder="VD: 5.5"
-                            style={{ ...inputStyle, backgroundColor: '#ffffff' }}
+                            {...fieldProps(`growingAreas.${index}.areaInHectares`, { ...inputStyle, backgroundColor: '#ffffff' })}
                           />
+                          {fieldError(`growingAreas.${index}.areaInHectares`)}
                         </div>
 
                         <button
@@ -429,7 +519,7 @@ export const EditSupplierProfilePage: React.FC = () => {
             </div>
 
             {/* CARD 3: THÔNG TIN SẢN XUẤT */}
-            <div style={cardStyle}>
+            <div style={cardStyle} id="supplier-cropTypeIds" tabIndex={-1} aria-invalid={Boolean(getFieldState('cropTypeIds', formState).error)} aria-describedby={getFieldState('cropTypeIds', formState).error ? 'supplier-cropTypeIds-error' : undefined}>
               <div style={cardHeaderStyle}>🚜 Thông tin sản xuất</div>
               <div style={{ padding: '20px' }}>
                 <label style={{ ...labelStyle, marginBottom: '12px', display: 'block' }}>DANH MỤC NÔNG SẢN *</label>
@@ -465,7 +555,7 @@ export const EditSupplierProfilePage: React.FC = () => {
                     ))}
                   </div>
                 )}
-
+                {fieldError('cropTypeIds')}
               </div>
             </div>
 
@@ -515,6 +605,7 @@ export const EditSupplierProfilePage: React.FC = () => {
                 >
                   ✕ Hủy
                 </button>
+                <Link to={ROUTES.CHANGE_PASSWORD} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Đổi mật khẩu</Link>
               </div>
 
               {/* METADATA */}

@@ -8,6 +8,7 @@ export const ROUTES = {
   RESET_PASSWORD: "/reset-password",
   VERIFY_EMAIL: "/verify-email",
   CHANGE_PASSWORD: "/account/change-password",
+  PROFILE: "/account/profile",
   TRACEABILITY: "/trace/:qrCode",
   ADMIN: "/admin",
   ADMIN_USER_ACCESS: "/admin/user-access",

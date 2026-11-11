@@ -206,7 +206,7 @@ export default function StorageEnvironmentLogModal({
               <input
                 id={`${formId}-temp`}
                 type="number"
-                step="0.1"
+                step="any"
                 required
                 value={temperatureC}
                 onChange={(e) => setTemperatureC(e.target.value)}
@@ -233,7 +233,7 @@ export default function StorageEnvironmentLogModal({
               <input
                 id={`${formId}-humidity`}
                 type="number"
-                step="0.1"
+                step="any"
                 min="0"
                 max="100"
                 value={humidityPct}
