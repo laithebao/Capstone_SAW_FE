@@ -74,7 +74,7 @@ try {
   await until(() => evaluate('location.pathname === "/login"'), 'Guest route protection')
   const session = { user: { id: 1, name: 'Receipt test', email: 'receipt@test.invalid', role: 'OPERATION_STAFF' }, accessToken: process.env.SAW_TEST_TOKEN,
     refreshToken: 'isolated-unused', expiresAt: new Date(Date.now() + 3600000).toISOString(), refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-  await evaluate(`sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
+  await evaluate(`localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
   await navigate('/operation/goods-receipts')
   await until(async () => (await text()).includes('QUẢN LÝ PHIẾU NHẬP'), 'list')
   await click('Tạo phiếu nhập')
@@ -93,7 +93,7 @@ try {
   await click('Lưu nháp')
   await until(async () => (await text()).includes('Đã lưu phiếu nhập nháp'), 'draft saved')
   const detailPath = await evaluate('location.pathname')
-  await click('← Quay lại danh sách')
+  await click('← Quay lại')
   await until(async () => (await text()).includes('QUẢN LÝ PHIẾU NHẬP'), 'back list')
   await setValue('input[aria-label="Mã phiếu hoặc mã lô"]', batchCode)
   await click('Áp dụng bộ lọc')
@@ -174,7 +174,7 @@ try {
   await until(async () => (await text()).includes('Không có phiếu nhập phù hợp bộ lọc.') && !(await evaluate('!!document.querySelector("[role=alert]")')), 'retry')
   assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'mobile list overflow')
   session.user.role = 'SUPPLIER'
-  await evaluate(`sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
+  await evaluate(`localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
   await navigate('/operation/goods-receipts/create')
   await until(() => evaluate('location.pathname === "/403"'), 'role guard')
   assert.deepEqual(errors, [])
