@@ -135,7 +135,7 @@ export default function QCEnvironmentTab({ inspection, onSaved, createEnvironmen
             <input
               id={`${formId}-temp`}
               type="number"
-              step="0.1"
+              step="any"
               value={temperatureC}
               onChange={e => setTemperatureC(e.target.value)}
               placeholder="VD: 4.5"
@@ -153,7 +153,7 @@ export default function QCEnvironmentTab({ inspection, onSaved, createEnvironmen
             <input
               id={`${formId}-humidity`}
               type="number"
-              step="0.1"
+              step="any"
               min="0"
               max="100"
               value={humidityPct}
