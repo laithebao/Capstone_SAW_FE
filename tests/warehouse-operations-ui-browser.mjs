@@ -44,7 +44,7 @@ try {
   const authenticate = async role => {
     if (bootstrap) await page('Page.removeScriptToEvaluateOnNewDocument', { identifier: bootstrap })
     const session = { user: { id: 1, name: 'Nhân viên kiểm thử', email: 'ui@test.invalid', role }, accessToken: 'ui-fixture-token', refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(), refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-    bootstrap = (await page('Page.addScriptToEvaluateOnNewDocument', { source: `sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})` })).identifier
+    bootstrap = (await page('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})` })).identifier
   }
   await page('Page.enable'); await page('Runtime.enable')
   handlers.set('Runtime.exceptionThrown', e => errors.push(e.exceptionDetails.text))

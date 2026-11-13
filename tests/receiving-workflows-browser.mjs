@@ -76,7 +76,7 @@ try {
     refreshTokenExpiresAt: new Date(Date.now()+7200000).toISOString() })
   let role = 'OPERATION_STAFF'
   const auth = async () => {
-    await page('Page.addScriptToEvaluateOnNewDocument', { source: role==='GUEST'?"sessionStorage.removeItem('saw.auth-session');":`sessionStorage.setItem('saw.auth-session',${JSON.stringify(JSON.stringify(session(role)))});` })
+    await page('Page.addScriptToEvaluateOnNewDocument', { source: role==='GUEST'?"localStorage.removeItem('saw.auth-session');":`localStorage.setItem('saw.auth-session',${JSON.stringify(JSON.stringify(session(role)))});` })
   }
   await auth()
   const fields = { productName: 'Receiving test rice', supplierName: 'Supplier A', cropTypeName: 'Rice', categoryName: 'Grain',

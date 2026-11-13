@@ -60,7 +60,7 @@ try {
   }
   const until = async (test, name) => {
     for (let i = 0; i < 150; i++) { if (await test()) return; await delay(100) }
-    throw new Error(`Timed out: ${name}`)
+    throw new Error(`Timed out: ${name}; view=${(await evaluate("document.body.innerText")).slice(0,2500)}`)
   }
   const text = () => evaluate('document.body.innerText')
   const navigate = route => page('Page.navigate', { url: origin + route })
@@ -74,11 +74,12 @@ try {
   await until(() => evaluate('location.pathname === "/login"'), 'Guest route protection')
   const session = { user: { id: 1, name: 'Receipt test', email: 'receipt@test.invalid', role: 'OPERATION_STAFF' }, accessToken: process.env.SAW_TEST_TOKEN,
     refreshToken: 'isolated-unused', expiresAt: new Date(Date.now() + 3600000).toISOString(), refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-  await evaluate(`sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
+  await evaluate(`localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
   await navigate('/operation/goods-receipts')
   await until(async () => (await text()).includes('QUẢN LÝ PHIẾU NHẬP'), 'list')
   await click('Tạo phiếu nhập')
   await until(() => evaluate('location.pathname === "/operation/goods-receipts/create" && !!document.querySelector("form select")'), 'supplier form')
+  await until(() => evaluate(`!!document.querySelector('select option[value="${supplierId}"]')`), 'supplier option loaded')
   await setValue('select', supplierId)
   await until(() => evaluate(`!!document.querySelector('select[aria-label="Lô nhập kho"]')`), 'eligible list')
   await setValue('input[aria-label="Tìm lô đủ điều kiện"]', batchCode)
@@ -93,7 +94,7 @@ try {
   await click('Lưu nháp')
   await until(async () => (await text()).includes('Đã lưu phiếu nhập nháp'), 'draft saved')
   const detailPath = await evaluate('location.pathname')
-  await click('← Quay lại danh sách')
+  await click('← Quay lại')
   await until(async () => (await text()).includes('QUẢN LÝ PHIẾU NHẬP'), 'back list')
   await setValue('input[aria-label="Mã phiếu hoặc mã lô"]', batchCode)
   await click('Áp dụng bộ lọc')
@@ -174,7 +175,7 @@ try {
   await until(async () => (await text()).includes('Không có phiếu nhập phù hợp bộ lọc.') && !(await evaluate('!!document.querySelector("[role=alert]")')), 'retry')
   assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'mobile list overflow')
   session.user.role = 'SUPPLIER'
-  await evaluate(`sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
+  await evaluate(`localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
   await navigate('/operation/goods-receipts/create')
   await until(() => evaluate('location.pathname === "/403"'), 'role guard')
   assert.deepEqual(errors, [])

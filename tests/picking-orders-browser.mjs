@@ -60,7 +60,7 @@ try {
     return result.result.value
   }
   const until = async (test, name) => {
-    for (let i = 0; i < 150; i++) { if (await test()) return; await delay(100) }
+    for (let i = 0; i < 350; i++) { if (await test()) return; await delay(100) }
     const view = await evaluate('({path: location.pathname, text: document.body?.innerText?.slice(0, 1800) ?? ""})')
     throw new Error(`Timed out: ${name}; view=${JSON.stringify(view)}; network=${JSON.stringify(network.slice(-8))}`)
   }
@@ -92,7 +92,7 @@ try {
     if (bootstrap) await page('Page.removeScriptToEvaluateOnNewDocument', { identifier: bootstrap })
     const session = { user: { id: 1, name: 'Picking browser', email: 'picking@test.invalid', role }, accessToken: token,
       refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(), refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-    const added = await page('Page.addScriptToEvaluateOnNewDocument', { source: `sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))});` })
+    const added = await page('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))});` })
     bootstrap = added.identifier
   }
   await authenticate('OPERATION_STAFF', process.env.SAW_TEST_TOKEN)

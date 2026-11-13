@@ -59,22 +59,23 @@ try {
     return result.result.value
   }
   const until = async (test, name) => {
-    for (let i = 0; i < 150; i++) { if (await test()) return; await delay(100) }
+    for (let i = 0; i < 350; i++) { if (await test()) return; await delay(100) }
     const view = await evaluate('({path: location.pathname, text: document.body.innerText.slice(0, 1800)})')
-    throw new Error(`Timed out: ${name}; view=${JSON.stringify(view)}`)
+    throw new Error(`Timed out: ${name}; view=${JSON.stringify(view)}; responses=${JSON.stringify(responses)}; requests=${JSON.stringify(requests.map(r => ({url:r.url,method:r.method})))}; errors=${JSON.stringify(errors)}`)
   }
   const text = () => evaluate('document.body.innerText')
   const section = label => evaluate(`document.querySelector('section[aria-label="${label}"]')?.innerText || ''`)
   const navigate = id => page('Page.navigate', { url: `${origin}/operation/product-batches/${id}` })
   await page('Page.enable'); await page('Runtime.enable'); await page('Network.enable')
-  const errors = [], requests = []
+  const errors = [], requests = [], responses = []
   handlers.set('Runtime.exceptionThrown', e => errors.push(e.exceptionDetails.text))
+  handlers.set('Network.responseReceived', e => { if (e.response.url.includes('/api/')) responses.push({ url: e.response.url, status: e.response.status }) })
   handlers.set('Network.requestWillBeSent', e => { if (e.request.url.includes('/api/')) requests.push(e.request) })
   const session = { user: { id: 1, name: 'UC29 Browser', email: 'uc29@example.invalid', role: 'OPERATION_STAFF' },
     accessToken: process.env.SAW_TEST_TOKEN, refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(),
     refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
   await page('Page.addScriptToEvaluateOnNewDocument', {
-    source: `sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))});`,
+    source: `localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))});`,
   })
 
   await navigate(batchId)

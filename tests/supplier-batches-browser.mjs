@@ -124,7 +124,7 @@ try {
   const session = { user: { id: 1, name: 'Supplier test', email: 'supplier@test.invalid', role: 'SUPPLIER' },
     accessToken: 'isolated-test-token', refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(),
     refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-  await evaluate(`sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
+  await evaluate(`localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
   await navigate('/supplier/batches')
   await until(() => evaluate(`document.querySelectorAll('select[aria-label="Lọc vùng trồng"] option').length === 3`), 'area options')
   const options = await evaluate(`[...document.querySelector('select[aria-label="Lọc trạng thái lô hàng"]').options].map(e=>e.value)`)

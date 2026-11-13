@@ -46,7 +46,7 @@ try {
   const authenticate = async (role, token) => {
     if (bootstrap) await page('Page.removeScriptToEvaluateOnNewDocument', { identifier: bootstrap })
     const session = { user: { id: 1, name: 'Issue browser', email: 'issue@test.invalid', role }, accessToken: token, refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(), refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-    bootstrap = (await page('Page.addScriptToEvaluateOnNewDocument', { source: `sessionStorage.setItem('saw.auth-session',${JSON.stringify(JSON.stringify(session))})` })).identifier
+    bootstrap = (await page('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('saw.auth-session',${JSON.stringify(JSON.stringify(session))})` })).identifier
   }
   await page('Page.enable'); await page('Runtime.enable'); await page('Network.enable')
   const errors = [], requests = [], checks = []
@@ -61,7 +61,7 @@ try {
   await click('Áp dụng bộ lọc'); await until(async () => (await text()).includes('Chưa có phiếu điều chỉnh phù hợp.'), 'manager server search')
   checks.push('real Manager server list/search/empty state')
   await navigate(managerRoute(main)); await ready()
-  assert.match(await text(), /Tồn lúc lập/); assert.match(await text(), /Tồn hiện tại/)
+  assert.match(await text(), /Tồn hiện tại/); assert.match(await text(), /Thực đếm \/ đề nghị sau/)
   await fill('textarea[aria-label="Ghi chú quyết định"]', 'Manager count review')
   await click('Duyệt yêu cầu'); await until(async () => (await text()).includes('Duyệt kết quả kiểm đếm?'), 'count confirmation')
   await click('Quay lại')

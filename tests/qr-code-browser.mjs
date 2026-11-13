@@ -74,7 +74,7 @@ try {
     accessToken: 'isolated-browser-fixture', refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(),
     refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
   await page('Page.addScriptToEvaluateOnNewDocument', {
-    source: `sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))});`,
+    source: `localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))});`,
   })
   const batch = { id: 555, batchCode: 'UC55-TEST', productName: 'Gạo kiểm thử', supplierName: 'Nhà cung cấp kiểm thử',
     cropTypeName: 'Gạo', categoryName: 'Ngũ cốc', growingAreaName: 'Đà Lạt', quantity: 10, unit: 'Bao', weightInKg: 100,
