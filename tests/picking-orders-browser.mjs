@@ -92,7 +92,7 @@ try {
     if (bootstrap) await page('Page.removeScriptToEvaluateOnNewDocument', { identifier: bootstrap })
     const session = { user: { id: 1, name: 'Picking browser', email: 'picking@test.invalid', role }, accessToken: token,
       refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(), refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-    const added = await page('Page.addScriptToEvaluateOnNewDocument', { source: `sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))});` })
+    const added = await page('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))});` })
     bootstrap = added.identifier
   }
   await authenticate('OPERATION_STAFF', process.env.SAW_TEST_TOKEN)
