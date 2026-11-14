@@ -60,15 +60,27 @@ try {
   }
   const until = async (test, name) => {
     for (let i = 0; i < 150; i++) { if (await test()) return; await delay(100) }
-    throw new Error(`Timed out: ${name}`)
+    const view = await evaluate('({path: location.pathname, text: document.body?.innerText?.slice(0, 3000), selects: [...document.querySelectorAll("select")].map(e => ({label: e.getAttribute("aria-label"), value: e.value, options: [...e.options].map(o => ({value: o.value, text: o.textContent}))}))})')
+    throw new Error(`Timed out: ${name}; view=${JSON.stringify(view)}; errors=${JSON.stringify(errors)}; network=${JSON.stringify(network.slice(-25))}`)
   }
   const text = () => evaluate('document.body.innerText')
-  const navigate = route => page('Page.navigate', { url: origin + route })
+  const loadedDocuments = new Set()
+  handlers.set('Page.lifecycleEvent', e => { if (e.name === 'DOMContentLoaded') loadedDocuments.add(e.loaderId) })
+  const navigate = async route => {
+    const navigation = await page('Page.navigate', { url: origin + route })
+    assert.ok(!navigation.errorText, navigation.errorText)
+    // Page.navigate can return before the new document replaces the old DOM.
+    if (navigation.loaderId) await until(() => loadedDocuments.has(navigation.loaderId), `document loaded: ${route}`)
+  }
   const click = label => until(() => evaluate(`(() => { const e=[...document.querySelectorAll('button,a')].find(e=>e.textContent.trim()===${JSON.stringify(label)}); if(!e || e.disabled) return false; e.click(); return true; })()`), `click ready: ${label}`)
   const setValue = (selector, value) => until(() => evaluate(`(() => { const e=document.querySelector(${JSON.stringify(selector)}); if (!e) return false; Object.getOwnPropertyDescriptor(Object.getPrototypeOf(e),'value').set.call(e,${JSON.stringify(String(value))}); e.dispatchEvent(new Event(e.tagName==='SELECT'?'change':'input',{bubbles:true})); return true; })()`), `input available: ${selector}`)
-  await page('Page.enable'); await page('Runtime.enable')
-  const errors = []
-  handlers.set('Runtime.exceptionThrown', e => errors.push(e.exceptionDetails.text))
+  await page('Page.enable'); await page('Runtime.enable'); await page('Network.enable')
+  await page('Page.setLifecycleEventsEnabled', { enabled: true })
+  const errors = [], network = [], requestUrls = new Map()
+  handlers.set('Runtime.exceptionThrown', e => errors.push(e.exceptionDetails.exception?.description || e.exceptionDetails.text))
+  handlers.set('Network.requestWillBeSent', e => { requestUrls.set(e.requestId, e.request.url); if (e.request.url.includes('/api/')) network.push({url: e.request.url, method: e.request.method}) })
+  handlers.set('Network.responseReceived', e => { if (e.response.url.includes('/api/') || e.response.status >= 400) network.push({url: e.response.url, status: e.response.status}) })
+  handlers.set('Network.loadingFailed', e => network.push({url: requestUrls.get(e.requestId), error: e.errorText, canceled: e.canceled}))
   await page('Emulation.setDeviceMetricsOverride', { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false })
   await navigate('/operation/goods-receipts')
   await until(() => evaluate('location.pathname === "/login"'), 'Guest route protection')
@@ -78,8 +90,10 @@ try {
   await navigate('/operation/goods-receipts')
   await until(async () => (await text()).includes('QUẢN LÝ PHIẾU NHẬP'), 'list')
   await click('Tạo phiếu nhập')
-  await until(() => evaluate('location.pathname === "/operation/goods-receipts/create" && !!document.querySelector("form select")'), 'supplier form')
-  await setValue('select', supplierId)
+  // The list also has a supplier select. Wait for the create page to commit,
+  // rather than changing the old list filter after the URL has already changed.
+  await until(() => evaluate(`location.pathname === "/operation/goods-receipts/create" && document.querySelector('h1')?.textContent === 'TẠO PHIẾU NHẬP' && !!document.querySelector('form select[aria-label="Nhà cung cấp"] option[value="${supplierId}"]')`), 'supplier form')
+  await setValue('form select[aria-label="Nhà cung cấp"]', supplierId)
   await until(() => evaluate(`!!document.querySelector('select[aria-label="Lô nhập kho"]')`), 'eligible list')
   await setValue('input[aria-label="Tìm lô đủ điều kiện"]', batchCode)
   await delay(200) // Allow React to replace the prior unfiltered select during loading.
