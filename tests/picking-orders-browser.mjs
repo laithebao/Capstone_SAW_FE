@@ -62,7 +62,7 @@ try {
   const until = async (test, name) => {
     for (let i = 0; i < 150; i++) { if (await test()) return; await delay(100) }
     const view = await evaluate('({path: location.pathname, text: document.body?.innerText?.slice(0, 1800) ?? ""})')
-    throw new Error(`Timed out: ${name}; view=${JSON.stringify(view)}; network=${JSON.stringify(network.slice(-8))}`)
+    throw new Error(`Timed out: ${name}; view=${JSON.stringify(view)}; errors=${JSON.stringify(errors)}; network=${JSON.stringify(network.slice(-25))}`)
   }
   const text = () => evaluate('document.body?.innerText ?? ""')
   const screenshot = async name => {
@@ -72,7 +72,14 @@ try {
     const result = await page('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
     await writeFile(path.join(directory, name), Buffer.from(result.data, 'base64'))
   }
-  const navigate = value => page('Page.navigate', { url: `${origin}${value}` })
+  const loadedDocuments = new Set()
+  handlers.set('Page.lifecycleEvent', e => { if (e.name === 'DOMContentLoaded') loadedDocuments.add(e.loaderId) })
+  const navigate = async value => {
+    const navigation = await page('Page.navigate', { url: `${origin}${value}` })
+    assert.ok(!navigation.errorText, navigation.errorText)
+    // Observe this navigation's document before checking any page content.
+    if (navigation.loaderId) await until(() => loadedDocuments.has(navigation.loaderId), `document loaded: ${value}`)
+  }
   const click = async value => {
     await until(() => evaluate(`!![...(document.querySelector('[role="dialog"]') ?? document).querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(value)} && !b.disabled)`), `enabled button ${value}`)
     await evaluate(`[...(document.querySelector('[role="dialog"]') ?? document).querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(value)} && !b.disabled).click()`)
@@ -81,12 +88,13 @@ try {
     const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
     Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); })()`)
   await page('Page.enable'); await page('Runtime.enable'); await page('Network.enable')
-  const errors = [], requests = [], checks = [], network = []
-  handlers.set('Runtime.exceptionThrown', e => errors.push(e.exceptionDetails.text))
+  await page('Page.setLifecycleEventsEnabled', { enabled: true })
+  const errors = [], requests = [], checks = [], network = [], requestUrls = new Map()
+  handlers.set('Runtime.exceptionThrown', e => errors.push(e.exceptionDetails.exception?.description || e.exceptionDetails.text))
   handlers.set('Page.javascriptDialogOpening', () => { void page('Page.handleJavaScriptDialog', { accept: true }) })
-  handlers.set('Network.requestWillBeSent', e => { if (e.request.url.includes('/api/')) { requests.push(e.request); network.push({ url: e.request.url, method: e.request.method }) } })
-  handlers.set('Network.responseReceived', e => { if (e.response.url.includes('/api/')) network.push({ url: e.response.url, status: e.response.status }) })
-  handlers.set('Network.loadingFailed', e => network.push({ requestId: e.requestId, error: e.errorText }))
+  handlers.set('Network.requestWillBeSent', e => { requestUrls.set(e.requestId, e.request.url); if (e.request.url.includes('/api/')) { requests.push(e.request); network.push({ url: e.request.url, method: e.request.method }) } })
+  handlers.set('Network.responseReceived', e => { if (e.response.url.includes('/api/') || e.response.status >= 400) network.push({ url: e.response.url, status: e.response.status }) })
+  handlers.set('Network.loadingFailed', e => network.push({ url: requestUrls.get(e.requestId), error: e.errorText, canceled: e.canceled }))
   let bootstrap
   const authenticate = async (role, token) => {
     if (bootstrap) await page('Page.removeScriptToEvaluateOnNewDocument', { identifier: bootstrap })
