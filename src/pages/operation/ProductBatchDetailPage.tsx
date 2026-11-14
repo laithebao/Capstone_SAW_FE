@@ -7,7 +7,6 @@ import { getAuthErrorMessage } from '@/services/authService'
 import ProductBatchStatusBadge from '@/features/operation/components/ProductBatchStatusBadge'
 import ProductBatchQrCodeCard from '@/features/operation/components/ProductBatchQrCodeCard'
 import ProductBatchRelatedInformation from '@/features/operation/components/ProductBatchRelatedInformation'
-import { SpoilageForecastPanel } from '@/features/operation/components/spoilage-forecast'
 import type { ProductBatchDetail } from '@/types/batch'
 import { useAuth } from '@/hooks/useAuth'
 import { ROLES } from '@/constants/roles'
@@ -133,14 +132,6 @@ export default function ProductBatchDetailPage() {
             </div>
           </section>}
     {validId && !loading && !error && batch && <>
-      {(user?.role === ROLES.WAREHOUSE_MANAGER || user?.role === ROLES.ADMINISTRATOR) && (
-        <SpoilageForecastPanel
-          productBatchId={batchId}
-          batchCode={batch.batchCode}
-          productName={batch.productName}
-          batchStatus={batch.batchStatus}
-        />
-      )}
       <ProductBatchRelatedInformation batch={batch} />
       <ProductBatchQrCodeCard key={batchId} batchId={batchId} />
     </>}

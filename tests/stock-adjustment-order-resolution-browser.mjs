@@ -31,8 +31,16 @@ try {
   await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject })
   let sequence = 0, bootstrap
   const pending = new Map(), handlers = new Map()
-  const call = (method, params = {}, sessionId) => new Promise((resolve, reject) => { const id = ++sequence; pending.set(id, { resolve, reject }); socket.send(JSON.stringify({ id, method, params, sessionId })) })
+  const call = (method, params = {}, sessionId) => new Promise((resolve, reject) => { const id = ++sequence; pending.set(id, { method, resolve, reject }); socket.send(JSON.stringify({ id, method, params, sessionId })) })
   socket.onmessage = ({ data }) => { const m = JSON.parse(data); if (m.id) { const task = pending.get(m.id); pending.delete(m.id); if (m.error) task?.reject(new Error(m.error.message)); else task?.resolve(m.result) } else handlers.get(m.method)?.(m.params) }
+  socket.onclose = () => {
+    // Chrome may close its debugging socket before replying to Browser.close.
+    for (const task of pending.values()) {
+      if (task.method === 'Browser.close') task.resolve({})
+      else task.reject(new Error(`Browser disconnected while waiting for ${task.method}`))
+    }
+    pending.clear()
+  }
   const { targetId } = await call('Target.createTarget', { url: 'about:blank' })
   const { sessionId } = await call('Target.attachToTarget', { targetId, flatten: true })
   const page = (method, params = {}) => call(method, params, sessionId)
@@ -46,7 +54,7 @@ try {
   const authenticate = async (role, token) => {
     if (bootstrap) await page('Page.removeScriptToEvaluateOnNewDocument', { identifier: bootstrap })
     const session = { user: { id: 1, name: 'Issue browser', email: 'issue@test.invalid', role }, accessToken: token, refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(), refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-    bootstrap = (await page('Page.addScriptToEvaluateOnNewDocument', { source: `sessionStorage.setItem('saw.auth-session',${JSON.stringify(JSON.stringify(session))})` })).identifier
+    bootstrap = (await page('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('saw.auth-session',${JSON.stringify(JSON.stringify(session))})` })).identifier
   }
   await page('Page.enable'); await page('Runtime.enable'); await page('Network.enable')
   const errors = [], requests = [], checks = []

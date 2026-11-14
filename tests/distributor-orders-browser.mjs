@@ -76,7 +76,7 @@ try {
   await until(() => evaluate('location.pathname === "/login"'), 'guest protection')
   const session = { user: { id: 1, name: 'Distributor test', email: 'distributor@test.invalid', role: 'DISTRIBUTOR' }, accessToken: process.env.SAW_TEST_TOKEN,
     refreshToken: 'isolated-unused', expiresAt: new Date(Date.now() + 3600000).toISOString(), refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-  await evaluate(`sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
+  await evaluate(`localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
   await navigate('/distributor/catalog')
   await until(() => evaluate(`!!document.querySelector('input[aria-label="Tìm lô hàng"]')`), 'catalog')
   await setValue('input[aria-label="Tìm lô hàng"]', batchCode)
@@ -129,7 +129,7 @@ try {
   await click('Xem đơn')
   await until(() => evaluate(`location.pathname === ${JSON.stringify(detailPath)} && [...document.querySelectorAll('button')].some(b=>b.textContent==='Hủy đơn hàng')`), 'own detail')
   await click('Hủy đơn hàng')
-  await until(() => evaluate(`!!document.querySelector('[role="dialog"][aria-label="Xác nhận hủy đơn"]')`), 'cancel confirmation dialog')
+  await until(() => evaluate(`!!document.querySelector('[role="dialog"][aria-label="Xác nhận hủy đơn hàng?"]')`), 'cancel confirmation dialog')
   assert.equal(await evaluate('!!document.querySelector("[role=dialog] textarea")'), false, 'cancellation needs no reason')
   await click('Xác nhận')
   await until(async () => (await text()).includes('Đã hủy đơn hàng.') && !(await evaluate('!!document.querySelector("[role=dialog]")')), 'cancelled')
@@ -161,7 +161,7 @@ try {
   await until(async () => !(await evaluate('!!document.querySelector("[role=alert]")')) && (await text()).includes('Chưa có lô nguyên'), 'retry')
   assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'mobile catalog overflow')
   session.user.role = 'SUPPLIER'
-  await evaluate(`sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
+  await evaluate(`localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
   await navigate('/distributor/catalog')
   await until(() => evaluate('location.pathname === "/403"'), 'role protection')
   assert.deepEqual(errors, [])

@@ -85,6 +85,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function updateProfileName(accountId: number, name: string) {
+    const current = readAuthSession()
+    if (!current || current.user.id !== accountId || authSessionIdentity(current) !== authSessionIdentity(sessionRef.current)) return
+    const next = { ...current, user: { ...current.user, name } }
+    writeAuthSession(next)
+    applySession(next)
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -93,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: session !== null,
         login,
         logout,
+        updateProfileName,
       }}
     >
       {children}

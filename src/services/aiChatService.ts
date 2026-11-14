@@ -32,7 +32,7 @@ export async function sendAiChatMessage(
     request,
     {
       signal,
-      timeout: 180_000, // 180s (3 phút) — hỗ trợ trọn vẹn multi-round function calling (Gemini gọi tool + tổng hợp)
+      timeout: 180_000, // 180 giây, đủ cho nhiều vòng gọi công cụ và tổng hợp câu trả lời.
     },
   )
   return response.data.data

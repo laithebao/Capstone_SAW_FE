@@ -726,7 +726,7 @@ export const DeclareBatchPage: React.FC = () => {
                     <label className="block text-[10px] text-gray-500 mb-1">Tối thiểu (°C)</label>
                     <input
                       type="number"
-                      step="0.5"
+                      step="any"
                       {...register('expectedMinTempC', { setValueAs: optionalNumericInput })}
                       placeholder="Ví dụ: 2"
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
@@ -741,7 +741,7 @@ export const DeclareBatchPage: React.FC = () => {
                     <label className="block text-[10px] text-gray-500 mb-1">Tối đa (°C)</label>
                     <input
                       type="number"
-                      step="0.5"
+                      step="any"
                       {...register('expectedMaxTempC', { setValueAs: optionalNumericInput })}
                       placeholder="Ví dụ: 10"
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
@@ -766,7 +766,7 @@ export const DeclareBatchPage: React.FC = () => {
                     <label className="block text-[10px] text-gray-500 mb-1">Tối thiểu (%)</label>
                     <input
                       type="number"
-                      step="1"
+                      step="any"
                       min="0"
                       max="100"
                       {...register('expectedMinHumidityPct', { setValueAs: optionalNumericInput })}
@@ -783,7 +783,7 @@ export const DeclareBatchPage: React.FC = () => {
                     <label className="block text-[10px] text-gray-500 mb-1">Tối đa (%)</label>
                     <input
                       type="number"
-                      step="1"
+                      step="any"
                       min="0"
                       max="100"
                       {...register('expectedMaxHumidityPct', { setValueAs: optionalNumericInput })}

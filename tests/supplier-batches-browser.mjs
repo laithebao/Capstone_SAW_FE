@@ -124,7 +124,7 @@ try {
   const session = { user: { id: 1, name: 'Supplier test', email: 'supplier@test.invalid', role: 'SUPPLIER' },
     accessToken: 'isolated-test-token', refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(),
     refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-  await evaluate(`sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
+  await evaluate(`localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
   await navigate('/supplier/batches')
   await until(() => evaluate(`document.querySelectorAll('select[aria-label="Lọc vùng trồng"] option').length === 3`), 'area options')
   const options = await evaluate(`[...document.querySelector('select[aria-label="Lọc trạng thái lô hàng"]').options].map(e=>e.value)`)
@@ -225,7 +225,13 @@ try {
     ] }
   await navigate('/supplier/batches/1')
   await until(async () => (await text()).includes('Đã nhập kho'), 'stored detail')
-  assert.ok(!(await text()).includes('Đã xuất hết'))
+  assert.equal(await evaluate('document.querySelector("h1").parentElement.querySelector("p").textContent'), 'Đã nhập kho')
+  const progressText = await evaluate('document.querySelector("section[aria-labelledby=batch-progress-heading]").textContent')
+  assert.ok(progressText.includes('Đã nhập kho'))
+  assert.ok(!progressText.includes('Đã xuất hết'))
+  const historyText = await evaluate('document.querySelector("section[aria-labelledby=batch-status-history-heading]").textContent')
+  assert.ok(historyText.includes('Đã nhập kho'))
+  assert.ok(historyText.includes('Đã xuất hết'))
   assert.deepEqual(nativeDialogs, [])
   assert.deepEqual(errors, [])
   console.log('PASS: supplier filters, foreground refresh, pagination clamping, update/cancel popups, failure handling, mobile dialog, and warehouse progress boundary')

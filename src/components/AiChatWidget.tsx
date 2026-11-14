@@ -85,7 +85,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
     {
       id: 'welcome',
       role: 'model',
-      content: 'Xin chào! Tôi là **SAW Agri-Copilot** 🌾\n\nTôi có thể giúp bạn:\n- Tra cứu thông tin và kiểm định lô hàng theo **Mã lô (BatchCode)**\n- Giải thích kết quả kiểm định chất lượng (QC, dư lượng, vi sinh)\n- Tư vấn điều kiện bảo quản và vận chuyển\n- Tra cứu tiêu chuẩn TCVN/VietGAP\n\nBạn muốn hỏi gì về lô hàng hôm nay?',
+      content: 'Xin chào! Tôi là **SAW Agri-Copilot** 🌾\n\nTôi có thể giúp bạn:\n- Tìm và so sánh giá các **lô đang bán**, ví dụ “Lô nào bán xoài?” hoặc “Lô nào đắt nhất?”\n- Tra cứu thông tin và kiểm định lô hàng theo **Mã lô (BatchCode)**\n- Giải thích kết quả kiểm định chất lượng (QC, dư lượng, vi sinh)\n- Tư vấn điều kiện bảo quản và vận chuyển\n- Tra cứu tiêu chuẩn TCVN/VietGAP\n\nBạn muốn hỏi gì về lô hàng hôm nay?',
       timestamp: new Date(),
     },
   ])
@@ -161,7 +161,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
       let errorMsg = 'Không thể kết nối đến máy chủ. Vui lòng thử lại.'
       if (axios.isAxiosError(err)) {
         if (err.code === 'ECONNABORTED') {
-          errorMsg = '⏱️ Yêu cầu mất quá nhiều thời gian. Gemini AI đang bận — vui lòng thử lại.'
+          errorMsg = 'Trợ lý AI phản hồi chậm. Vui lòng thử lại.'
         } else {
           const serverMsg =
             err.response?.data?.data?.reply ||
@@ -349,7 +349,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
             </button>
           </div>
           <p className="agri-chat-footer">
-            Powered by Google Gemini · Chỉ trả lời về nông sản &amp; chất lượng
+            SAW Agri-Copilot · Chỉ trả lời về nông sản &amp; chất lượng
           </p>
         </div>
       )}

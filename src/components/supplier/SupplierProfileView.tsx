@@ -10,6 +10,8 @@ import {
   Paperclip
 } from 'lucide-react';
 import type { SupplierProfileResponse } from '../../types/supplier';
+import { Link } from 'react-router';
+import { ROUTES } from '@/constants/routes';
 
 interface SupplierProfileViewProps {
   profile: SupplierProfileResponse;
@@ -22,16 +24,19 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
       {/* Header Page */}
       <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">Hồ sơ Nhà cung cấp</h1>
-        {onEdit && (
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 cursor-pointer"
-          >
-            <Pencil className="w-4 h-4" />
-            Chỉnh sửa thông tin
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <Link to={ROUTES.CHANGE_PASSWORD} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Đổi mật khẩu</Link>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 cursor-pointer"
+            >
+              <Pencil className="w-4 h-4" />
+              Chỉnh sửa thông tin
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Block 1: Thông tin cơ bản */}

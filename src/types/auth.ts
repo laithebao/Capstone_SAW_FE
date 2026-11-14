@@ -23,4 +23,5 @@ export interface AuthContextValue {
   isAuthenticated: boolean
   login: (session: AuthSession) => void
   logout: () => Promise<void>
+  updateProfileName: (accountId: number, name: string) => void
 }

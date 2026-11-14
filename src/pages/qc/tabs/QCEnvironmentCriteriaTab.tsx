@@ -73,8 +73,7 @@ export default function QCEnvironmentCriteriaTab({
   if (envCriteria.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <span className="text-4xl">🌿</span>
-        <p className="mt-3 text-sm font-semibold text-slate-600">
+        <p className="text-sm font-semibold text-slate-600">
           Phiên bản tiêu chuẩn này không có tiêu chí môi trường (ENVIRONMENT).
         </p>
         <p className="mt-1 text-xs text-slate-400">
@@ -88,7 +87,7 @@ export default function QCEnvironmentCriteriaTab({
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-bold text-slate-800">🌿 Tiêu chí môi trường</h2>
+          <h2 className="text-sm font-bold text-slate-800">Tiêu chí môi trường</h2>
           <p className="mt-0.5 text-xs text-slate-500">
             {envCriteria.length} tiêu chí · từ tiêu chuẩn{' '}
             <span className="font-semibold">{inspection.standardCode}</span> v{inspection.versionNo}
@@ -112,7 +111,7 @@ export default function QCEnvironmentCriteriaTab({
       )}
       {saved && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-          ✓ Đã lưu kết quả môi trường.
+          Đã lưu kết quả môi trường.
         </div>
       )}
 

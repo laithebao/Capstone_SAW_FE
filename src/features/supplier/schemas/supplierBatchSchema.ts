@@ -7,6 +7,10 @@ const decimal = (scale: number, limit: number) => z.number().finite().refine(
   value => Math.abs(value) < limit && Math.abs(value * 10 ** scale - Math.round(value * 10 ** scale)) < 0.000001,
   `Giá trị phải nằm trong giới hạn cho phép và có tối đa ${scale} chữ số thập phân`,
 );
+const storageMeasurement = () => z.number().finite().refine(
+  value => Math.abs(value) < 9999.995,
+  'Giá trị sau khi làm tròn 2 chữ số thập phân phải nằm trong giới hạn decimal(6,2)',
+);
 const batchSchema = z.object({
   cropTypeId: z.number().int().positive('Vui lòng chọn nông sản'),
   growingAreaId: z.number().int().positive('Vui lòng chọn vùng trồng'),
@@ -19,10 +23,10 @@ const batchSchema = z.object({
   packagingType: z.string().max(100, 'Quy cách tối đa 100 ký tự').optional(),
   packageCount: optionalNumber(z.number().int().positive().max(2147483647)),
   packageUnitWeightKg: optionalNumber(decimal(3, 1e15).positive()),
-  expectedMinTempC: optionalNumber(decimal(2, 10000)),
-  expectedMaxTempC: optionalNumber(decimal(2, 10000)),
-  expectedMinHumidityPct: optionalNumber(decimal(2, 10000).min(0).max(100)),
-  expectedMaxHumidityPct: optionalNumber(decimal(2, 10000).min(0).max(100)),
+  expectedMinTempC: optionalNumber(storageMeasurement()),
+  expectedMaxTempC: optionalNumber(storageMeasurement()),
+  expectedMinHumidityPct: optionalNumber(storageMeasurement().min(0).max(100)),
+  expectedMaxHumidityPct: optionalNumber(storageMeasurement().min(0).max(100)),
   note: z.string().max(1000, 'Ghi chú tối đa 1000 ký tự').optional(),
 });
 

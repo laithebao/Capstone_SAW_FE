@@ -21,6 +21,7 @@ import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "@/pages/auth/VerifyEmailPage";
 import ChangePasswordPage from "@/pages/auth/ChangePasswordPage";
+import UserProfilePage from "@/pages/auth/UserProfilePage";
 import DistributorDashboardPage from "@/pages/distributor/DistributorDashboardPage";
 import DistributorCatalogPage from "@/pages/distributor/DistributorCatalogPage";
 import DistributorLotDetailPage from "@/pages/distributor/DistributorLotDetailPage";
@@ -91,6 +92,7 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
+          <Route path={ROUTES.PROFILE} element={<UserProfilePage />} />
           <Route
             path={ROUTES.CHANGE_PASSWORD}
             element={<ChangePasswordPage />}

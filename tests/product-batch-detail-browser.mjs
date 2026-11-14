@@ -74,7 +74,7 @@ try {
     accessToken: process.env.SAW_TEST_TOKEN, refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(),
     refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
   await page('Page.addScriptToEvaluateOnNewDocument', {
-    source: `sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))});`,
+    source: `localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))});`,
   })
 
   await navigate(batchId)

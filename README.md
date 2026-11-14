@@ -39,12 +39,15 @@ npm run dev
 Mở `http://localhost:5173` trên máy, hoặc địa chỉ Network Vite hiển thị trên điện thoại cùng Wi-Fi. `/` chuyển tới `/login` khi chưa đăng nhập; `/trace/{PublicToken}` truy cập trực tiếp không cần đăng nhập. Vite dev dùng cổng 5173 và nhận kết nối LAN; backend chạy cổng 5252.
 
 ```bash
+npm test
 npm run lint
 npm run build
 npm run preview
 ```
 
 `build` kiểm tra TypeScript trước khi tạo `dist/`. `preview` xem thử bản build trên máy. Khi triển khai lên hosting, cần cấu hình SPA fallback về `index.html` để mở trực tiếp các đường dẫn con.
+
+`npm test` chạy các file `tests/*.test.mjs` bằng Node.js. Các kịch bản `*-browser.mjs` cần môi trường tích hợp riêng.
 
 ## Cấu trúc chính
 

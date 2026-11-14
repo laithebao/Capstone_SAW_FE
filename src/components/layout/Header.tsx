@@ -13,6 +13,7 @@ const notificationTime = (value: string) => new Date(/(?:Z|[+-]\d\d:\d\d)$/.test
 
 export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
   const { user } = useAuth()
+  const profileRoute = user?.role === 'SUPPLIER' ? ROUTES.SUPPLIER_PROFILE : ROUTES.PROFILE
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -186,7 +187,7 @@ export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
             </section>
           )}
         </div>
-        <Link to={ROUTES.CHANGE_PASSWORD} className="hidden text-right sm:block" title="Đổi mật khẩu"><p className="text-sm font-semibold">{user?.name}</p><p className="text-xs text-slate-500">{user ? roleLabels[user.role] : ''}</p></Link><Link to={ROUTES.CHANGE_PASSWORD} className="grid size-10 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-700" title="Đổi mật khẩu">{user?.name?.charAt(0).toUpperCase()||'A'}</Link>
+        <Link to={profileRoute} className="hidden text-right sm:block" title="Hồ sơ cá nhân"><p className="text-sm font-semibold">{user?.name}</p><p className="text-xs text-slate-500">{user ? roleLabels[user.role] : ''}</p></Link><Link to={profileRoute} className="grid size-10 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-700" title="Hồ sơ cá nhân" aria-label="Mở hồ sơ cá nhân">{user?.name?.charAt(0).toUpperCase()||'A'}</Link>
       </div>
     </header>
   )

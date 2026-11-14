@@ -77,7 +77,7 @@ export default function QCImagesTab({ inspection, disabled, onSaved, addImage, d
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-slate-800">
-          📸 Ảnh bằng chứng chất lượng
+          Ảnh bằng chứng chất lượng
           <span className="ml-2 text-xs font-normal text-slate-400">({images.length}/20)</span>
         </h2>
         {canUpload && (
@@ -86,9 +86,9 @@ export default function QCImagesTab({ inspection, disabled, onSaved, addImage, d
               id="btn-upload-image"
               disabled={uploading}
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60"
+              className="h-9 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60"
             >
-              {uploading ? '⏳ Đang tải...' : '↑ Tải ảnh lên'}
+              {uploading ? 'Đang tải...' : 'Tải ảnh lên'}
             </button>
             <input
               ref={fileInputRef}
@@ -103,7 +103,7 @@ export default function QCImagesTab({ inspection, disabled, onSaved, addImage, d
 
       {/* Info */}
       <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2.5 text-xs text-blue-700">
-        💡 Ảnh được tải lên Cloudinary trực tiếp. Chỉ chấp nhận JPG, PNG, WEBP. Tối đa 10MB/ảnh, 20 ảnh/phiếu.
+        Ảnh được tải lên Cloudinary trực tiếp. Chỉ chấp nhận JPG, PNG, WEBP. Tối đa 10MB/ảnh, 20 ảnh/phiếu.
       </div>
 
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
@@ -132,8 +132,7 @@ export default function QCImagesTab({ inspection, disabled, onSaved, addImage, d
             canUpload ? 'cursor-pointer border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/30' : 'border-slate-200'
           }`}
         >
-          <span className="text-5xl">📷</span>
-          <p className="mt-3 text-sm font-semibold text-slate-600">
+          <p className="text-sm font-semibold text-slate-600">
             {canUpload ? 'Nhấn để tải ảnh bằng chứng lên' : 'Chưa có ảnh nào'}
           </p>
           {canUpload && <p className="text-xs text-slate-400 mt-1">JPG, PNG, WEBP · tối đa 10MB</p>}
@@ -160,12 +159,9 @@ export default function QCImagesTab({ inspection, disabled, onSaved, addImage, d
                 <button
                   disabled={deleting === img.id}
                   onClick={() => void handleDelete(img.id, img.fileName)}
-                  className="absolute right-2 top-2 rounded-full bg-rose-600 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-rose-700 disabled:opacity-50"
-                  title="Xóa ảnh"
+                  className="absolute right-2 top-2 rounded-full bg-rose-600 px-2 py-1 text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:bg-rose-700 disabled:opacity-50"
                 >
-                  <svg className="size-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  Xóa ảnh
                 </button>
               )}
             </div>
@@ -175,10 +171,9 @@ export default function QCImagesTab({ inspection, disabled, onSaved, addImage, d
           {canUpload && (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex h-44 flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 text-slate-400 transition-colors hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-600"
+              className="flex h-44 items-center justify-center rounded-xl border-2 border-dashed border-slate-300 text-xs font-semibold text-slate-400 transition-colors hover:border-emerald-400 hover:bg-emerald-50/30 hover:text-emerald-600"
             >
-              <span className="text-3xl">＋</span>
-              <span className="mt-2 text-xs font-semibold">Thêm ảnh</span>
+              Thêm ảnh
             </button>
           )}
         </div>

@@ -12,7 +12,7 @@ interface ActionItemCardProps {
 
 export const ActionItemCard: React.FC<ActionItemCardProps> = ({ action, index }) => {
   const priorityConfig = ACTION_PRIORITY_CONFIG[action.priority] ?? ACTION_PRIORITY_CONFIG.RECOMMENDED;
-  const categoryConfig = ACTION_CATEGORY_LABELS[action.category] ?? ACTION_CATEGORY_LABELS.OTHER;
+  const categoryLabel = ACTION_CATEGORY_LABELS[action.category] ?? ACTION_CATEGORY_LABELS.OTHER;
 
   return (
     <div className="group relative rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-slate-300 hover:shadow-md">
@@ -22,9 +22,8 @@ export const ActionItemCard: React.FC<ActionItemCardProps> = ({ action, index })
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
             {index + 1}
           </span>
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600">
-            <span>{categoryConfig.icon}</span>
-            <span>{categoryConfig.label}</span>
+          <span className="text-xs font-medium text-slate-600">
+            {categoryLabel}
           </span>
         </div>
 
@@ -51,10 +50,7 @@ export const ActionItemCard: React.FC<ActionItemCardProps> = ({ action, index })
 
       {/* Thời hạn hoàn thành */}
       {action.deadline && (
-        <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-rose-700">
-          <span className="inline-block">⏱️</span>
-          <span>Thời hạn: {action.deadline}</span>
-        </div>
+        <p className="mt-3 text-xs font-semibold text-rose-700">Thời hạn: {action.deadline}</p>
       )}
     </div>
   );
