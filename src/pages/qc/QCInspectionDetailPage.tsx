@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { LockKeyhole } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -96,8 +97,7 @@ export default function QCInspectionDetailPage() {
   }
 
   async function handleFinalize() {
-    if (!showFinalizeConfirm) { setShowFinalizeConfirm(true); return }
-    setShowFinalizeConfirm(false)
+    if (!showFinalizeConfirm || finalizing || !canEdit || !isInProgress) return
     setFinalizing(true); setError(''); setActionMsg('')
     try {
       const res = await finalizeInspection(inspId)
@@ -107,6 +107,7 @@ export default function QCInspectionDetailPage() {
       setError(getAuthErrorMessage(e, 'Không thể hoàn thành kiểm định.'))
     } finally {
       setFinalizing(false)
+      setShowFinalizeConfirm(false)
     }
   }
 
@@ -208,32 +209,15 @@ export default function QCInspectionDetailPage() {
                 Từ chối thủ công
               </button>
             )}
-            {canEdit && isInProgress && !showFinalizeConfirm && (
+            {canEdit && isInProgress && (
               <button
                 id="btn-finalize"
                 disabled={finalizing}
-                onClick={() => void handleFinalize()}
+                onClick={() => setShowFinalizeConfirm(true)}
                 className="h-9 rounded-lg bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60"
               >
                 {finalizing ? 'Đang đánh giá...' : 'Hoàn thành & Đánh giá'}
               </button>
-            )}
-            {canEdit && isInProgress && showFinalizeConfirm && (
-              <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
-                <span className="text-sm text-amber-800">Hoàn thành và khóa phiếu?</span>
-                <button
-                  onClick={() => void handleFinalize()}
-                  className="h-7 rounded-md bg-emerald-700 px-3 text-xs font-bold text-white hover:bg-emerald-800"
-                >
-                  Xác nhận
-                </button>
-                <button
-                  onClick={() => setShowFinalizeConfirm(false)}
-                  className="h-7 rounded-md border border-slate-300 px-3 text-xs font-semibold hover:bg-white"
-                >
-                  Hủy
-                </button>
-              </div>
             )}
           </div>
         )}
@@ -244,6 +228,15 @@ export default function QCInspectionDetailPage() {
           </span>
         )}
       </div>
+
+      {canEdit && isInProgress && showFinalizeConfirm && (
+        <FinalizeInspectionDialog
+          inspectionCode={inspection.inspectionCode}
+          busy={finalizing}
+          onClose={() => setShowFinalizeConfirm(false)}
+          onConfirm={() => void handleFinalize()}
+        />
+      )}
 
       {/* Messages */}
       {error      && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
@@ -428,6 +421,63 @@ export default function QCInspectionDetailPage() {
 }
 
 // ── Small helper components ───────────────────────────────────────────────────
+
+function FinalizeInspectionDialog({ inspectionCode, busy, onClose, onConfirm }: {
+  inspectionCode: string
+  busy: boolean
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    dialog?.showModal()
+    return () => { dialog?.close() }
+  }, [])
+
+  return (
+    <dialog
+      ref={dialogRef}
+      role="alertdialog"
+      aria-labelledby="finalize-inspection-title"
+      aria-describedby="finalize-inspection-description"
+      aria-busy={busy}
+      onCancel={event => { event.preventDefault(); if (!busy) onClose() }}
+      className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-md overflow-y-auto rounded-2xl border-0 bg-white p-6 text-slate-900 shadow-2xl backdrop:bg-slate-950/50"
+    >
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+        <LockKeyhole size={24} aria-hidden="true" />
+      </div>
+      <h2 id="finalize-inspection-title" className="text-lg font-bold">
+        Hoàn thành và khóa phiếu?
+      </h2>
+      <p id="finalize-inspection-description" className="mt-2 text-sm leading-relaxed text-slate-600">
+        Hệ thống sẽ đánh giá kết quả và hoàn thành phiếu kiểm định <strong>{inspectionCode}</strong>.
+        {' '}Sau khi hoàn thành, phiếu sẽ bị khóa và không thể chỉnh sửa kết quả kiểm định.
+      </p>
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          autoFocus
+          disabled={busy}
+          onClick={onClose}
+          className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-60"
+        >
+          Hủy
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onConfirm}
+          className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-60"
+        >
+          {busy ? 'Đang đánh giá...' : 'Xác nhận hoàn thành'}
+        </button>
+      </div>
+    </dialog>
+  )
+}
 
 function InfoCard({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
