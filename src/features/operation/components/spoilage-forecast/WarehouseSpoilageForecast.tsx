@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
+import { ROUTES } from '@/constants/routes';
 import { getAuthErrorMessage } from '@/services/authService';
 import { generateSpoilageForecasts, getLatestSpoilageForecasts } from '@/services/spoilageForecastService';
 import { RISK_LEVEL_CONFIG, type SpoilageForecastResponse } from '@/types/spoilageForecast';
@@ -92,29 +94,38 @@ export function WarehouseSpoilageForecast() {
           const horizon = forecast.forecastHorizonDays;
           const safeDays = forecast.safeStorageRemainingDays;
           return (
-            <details key={forecast.productBatchId} className="rounded-lg border border-slate-200 p-3">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-900">
-                <span className="font-mono text-emerald-700">{forecast.batchCode}</span>
-                {' · '}{forecast.productName}
-                <span className="ml-2 inline-block rounded-full px-2 py-0.5 text-xs"
-                  style={{ backgroundColor: risk.bgColor, color: risk.color }}>
-                  {risk.label}
-                </span>
-              </summary>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-                <span>Hao hụt dự kiến {loss === null ? '—' : `${number.format(loss)}%${horizon === null ? '' : ` trong ${horizon} ngày`}`}</span>
-                <span>Bảo quản an toàn còn {safeDays === null ? '—' : `${safeDays} ngày`}</span>
-              </div>
-              <div className="mt-3 space-y-3 border-t border-slate-100 pt-3 text-sm text-slate-700">
-                <p className="whitespace-pre-wrap break-words">{forecast.recommendation}</p>
-                {forecast.actions.length > 0 && (
-                  <div className="grid gap-2 lg:grid-cols-2">
-                    {forecast.actions.map((action, index) => <ActionItemCard key={index} action={action} index={index} />)}
-                  </div>
-                )}
-                <p className="text-xs text-slate-500">Thời điểm dự báo {timestamp.format(new Date(forecast.generatedAt))}</p>
-              </div>
-            </details>
+            <article key={forecast.productBatchId} className="flex flex-col gap-3 rounded-lg border border-slate-200 p-3 sm:flex-row sm:items-start">
+              <details className="min-w-0 flex-1">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+                  <span className="font-mono text-emerald-700">{forecast.batchCode}</span>
+                  {' · '}{forecast.productName}
+                  <span className="ml-2 inline-block rounded-full px-2 py-0.5 text-xs"
+                    style={{ backgroundColor: risk.bgColor, color: risk.color }}>
+                    {risk.label}
+                  </span>
+                </summary>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                  <span>Hao hụt dự kiến {loss === null ? '—' : `${number.format(loss)}%${horizon === null ? '' : ` trong ${horizon} ngày`}`}</span>
+                  <span>Bảo quản an toàn còn {safeDays === null ? '—' : `${safeDays} ngày`}</span>
+                </div>
+                <div className="mt-3 space-y-3 border-t border-slate-100 pt-3 text-sm text-slate-700">
+                  <p className="whitespace-pre-wrap break-words">{forecast.recommendation}</p>
+                  {forecast.actions.length > 0 && (
+                    <div className="grid gap-2 lg:grid-cols-2">
+                      {forecast.actions.map((action, index) => <ActionItemCard key={index} action={action} index={index} />)}
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500">Thời điểm dự báo {timestamp.format(new Date(forecast.generatedAt))}</p>
+                </div>
+              </details>
+              <Link
+                to={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL.replace(':id', String(forecast.productBatchId))}
+                aria-label={`Xem chi tiết lô hàng ${forecast.batchCode}`}
+                className="inline-flex shrink-0 items-center justify-center self-start rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+              >
+                Chi tiết lô hàng
+              </Link>
+            </article>
           );
         })}
       </div>
