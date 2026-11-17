@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  VERCEL_ORG_ID: team_OXDPdB8zkyAjkSnHG7G3IsrH
-  VERCEL_PROJECT_ID: prj_D1Y1J8RmUr9E8QIMJqeoHUKs7Uj4
+  VERCEL_ORG_ID: team_8kVSqMK8m68BvwkPPOyF7ujc
+  VERCEL_PROJECT_ID: prj_QSCUOaJ79o14ENCoBdEbeZ0WVtog
   VERCEL_CLI_VERSION: 65.15.0
 
 jobs:
