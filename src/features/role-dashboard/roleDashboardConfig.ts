@@ -324,7 +324,7 @@ export const adminMenu = [
   { label: "Tiêu chuẩn kiểm định", icon: "clipboard" },
   { label: "Duyệt hợp đồng", icon: "clipboard", route: ROUTES.ADMIN_CONTRACTS },
   { label: "Nhật ký hệ thống", icon: "scan" },
-  { label: "Cài đặt", icon: "settings" },
+  { label: "Sức chứa kho", icon: "settings", route: ROUTES.ADMIN_WAREHOUSE_CAPACITY },
 ] as const;
 export const roleLabels: Record<Role, string> = {
   [ROLES.ADMINISTRATOR]: "Quản trị viên",
