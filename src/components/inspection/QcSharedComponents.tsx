@@ -41,7 +41,7 @@ const STATUS_META: Record<InspectionStatus, { label: string; cls: string }> = {
 export function QcStatusBadge({ status }: { status: InspectionStatus }) {
   const meta = STATUS_META[status]
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${meta.cls}`}>
+    <span className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${meta.cls}`}>
       {meta.label}
     </span>
   )
