@@ -56,7 +56,7 @@ import ForbiddenPage from "@/pages/system/ForbiddenPage";
 import NotFoundPage from "@/pages/system/NotFoundPage";
 import TraceabilityPage from "@/pages/traceability/TraceabilityPage";
 import WarehouseManagerDashboardPage from "@/pages/warehouse-manager/WarehouseManagerDashboardPage";
-import WarehouseCapacitySettings from "@/features/warehouse/WarehouseCapacitySettings";
+import WarehouseManagement from "@/features/warehouse/WarehouseManagement";
 import WarehouseDistributorOrdersPage from "@/pages/warehouse-manager/WarehouseDistributorOrdersPage";
 import WarehouseSaleOffersPage from "@/pages/warehouse-manager/WarehouseSaleOffersPage";
 import WarehouseStockAdjustmentDetailPage from "@/pages/warehouse-manager/WarehouseStockAdjustmentDetailPage";
@@ -100,7 +100,7 @@ export default function AppRoutes() {
           />
           <Route element={<RoleRoute allowedRoles={[ROLES.ADMINISTRATOR]} />}>
             <Route path={ROUTES.ADMIN} element={<AdminDashboardPage />} />
-            <Route path={ROUTES.ADMIN_WAREHOUSE_CAPACITY} element={<div className="mx-auto max-w-5xl space-y-5"><h1 className="text-2xl font-bold">Cài đặt sức chứa kho</h1><WarehouseCapacitySettings /></div>} />
+            <Route path={ROUTES.ADMIN_WAREHOUSE_CAPACITY} element={<div className="mx-auto max-w-5xl space-y-5"><h1 className="text-2xl font-bold">Cài đặt sức chứa kho</h1><WarehouseManagement /></div>} />
             <Route
               path={ROUTES.ADMIN_USER_ACCESS}
               element={<UserAccessPage />}
