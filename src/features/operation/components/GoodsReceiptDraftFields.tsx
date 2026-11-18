@@ -9,6 +9,10 @@ export default function GoodsReceiptDraftFields({ values, onChange, locations, d
   incomingKg: number; onRefreshCapacity: () => void
 }) {
   const selected = locations.find(l => String(l.id) === values.location)
+  // Keep an existing draft's location visible when reopening it.
+  const selectableLocations = locations.filter(location =>
+    location === selected || (location.isActive && !location.name.startsWith('DEMO-DIST-ZONE · ')),
+  )
   const remainingKg = selected?.hasNonKgInventory ? null : selected?.remainingWeightKg
   const insufficient = remainingKg != null && remainingKg < incomingKg
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
@@ -24,7 +28,7 @@ export default function GoodsReceiptDraftFields({ values, onChange, locations, d
         onChange={e => onChange({ ...values, location: e.target.value })}
       >
         <option value="">Chọn vị trí đang hoạt động</option>
-        {locations.filter(location => location.isActive || location === selected).map(location => {
+        {selectableLocations.map(location => {
           const label = location.isActive ? receiptCapacityLabel(location, incomingKg) : 'Đã khóa'
           return (
             <option key={location.id} value={location.id} disabled={!location.isActive}>

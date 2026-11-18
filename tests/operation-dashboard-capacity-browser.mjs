@@ -54,6 +54,9 @@ try {
     { id: 1, name: 'A-01', isActive: true, maxWeightKg: 100, usedWeightKg: 100 - free, remainingWeightKg: free },
     { id: 2, name: 'A-02', isActive: true, maxWeightKg: 100, usedWeightKg: 0, remainingWeightKg: 100 },
     { id: 3, name: 'A-03', isActive: true, maxWeightKg: null, usedWeightKg: 0, remainingWeightKg: null },
+    { id: 4, name: 'DEMO-DIST-ZONE · Khu demo Distributor', isActive: true, maxWeightKg: 0, usedWeightKg: 345, remainingWeightKg: 0 },
+    { id: 5, name: 'ABC · LMAO', isActive: true, maxWeightKg: 100, usedWeightKg: 0, remainingWeightKg: 100 },
+    { id: 6, name: 'DEMO · kho khô', isActive: true, maxWeightKg: 100, usedWeightKg: 0, remainingWeightKg: 100 },
   ] })
   handlers.set('Fetch.requestPaused', e => {
     const url = new URL(e.request.url)
@@ -102,6 +105,9 @@ try {
   await until(() => evaluate(`!!document.querySelector('select[aria-label="Lô nhập kho"] option[value="30"]')`), 'eligible lot')
   await fill('select[aria-label="Lô nhập kho"]', '30')
   await until(() => evaluate(`!!document.querySelector('#receipt-location')`), 'capacity options')
+  assert.equal(await evaluate(`!!document.querySelector('#receipt-location option[value="4"]')`), false)
+  assert.equal(await evaluate(`document.querySelector('#receipt-location option[value="5"]').textContent.trim()`), 'ABC · LMAO')
+  assert.equal(await evaluate(`document.querySelector('#receipt-location option[value="6"]').textContent.trim()`), 'DEMO · kho khô')
   assert.equal(await evaluate(`document.querySelector('#receipt-location option[value="1"]').textContent.trim()`), 'A-01 · Thiếu 10 kg')
   assert.equal(await evaluate(`document.querySelector('#receipt-location option[value="2"]').textContent.trim()`), 'A-02')
   assert.match(await evaluate(`document.querySelector('#receipt-location option[value="3"]').textContent`), /Chưa đặt giới hạn/)
