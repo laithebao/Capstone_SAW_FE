@@ -36,7 +36,7 @@ export default function CreateGoodsReceiptPage() {
     {(error || options.error) && <div role="alert" className="rounded-xl bg-rose-50 p-4 text-rose-700">{error || options.error}{options.error && <button className="ml-2 underline" onClick={options.reload}>Thử lại</button>}{error && <Link className="ml-2 underline" to={ROUTES.OPERATION_GOODS_RECEIPTS}>Mở danh sách phiếu nhập</Link>}</div>}
     {options.loading ? <p>Đang tải nhà cung cấp và vị trí kho...</p> : options.data && <form onSubmit={submit} className="space-y-5">
       <fieldset disabled={saving} className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <label className="block text-sm font-medium">Nhà cung cấp<select required className={input} value={supplier} onChange={e => { setSupplier(e.target.value); setBatch(null); setError(null) }}><option value="">Chọn nhà cung cấp</option>{options.data.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+        <label className="block text-sm font-medium">Nhà cung cấp<select required aria-label="Nhà cung cấp" className={input} value={supplier} onChange={e => { setSupplier(e.target.value); setBatch(null); setError(null) }}><option value="">Chọn nhà cung cấp</option>{options.data.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
         {supplier && <GoodsReceiptBatchPicker key={supplier} supplierId={Number(supplier)} selected={batch} onSelect={setBatch} disabled={saving} />}
       </fieldset>
       {batch && <>

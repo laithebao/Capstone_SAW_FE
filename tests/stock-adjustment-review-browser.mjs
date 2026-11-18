@@ -61,7 +61,8 @@ try {
   await click('Áp dụng bộ lọc'); await until(async () => (await text()).includes('Chưa có phiếu điều chỉnh phù hợp.'), 'manager server search')
   checks.push('real Manager server list/search/empty state')
   await navigate(managerRoute(main)); await ready()
-  assert.match(await text(), /Tồn hiện tại/); assert.match(await text(), /Thực đếm \/ đề nghị sau/)
+  assert.deepEqual(await evaluate(`[...document.querySelectorAll('th')].map(e => e.textContent.trim())`),
+    ['Vị trí', 'Tồn hiện tại (kg)', 'Thực đếm / đề nghị sau (kg)', 'Chênh lệch (kg)'])
   await fill('textarea[aria-label="Ghi chú quyết định"]', 'Manager count review')
   await click('Duyệt yêu cầu'); await until(async () => (await text()).includes('Duyệt kết quả kiểm đếm?'), 'count confirmation')
   await click('Quay lại')
