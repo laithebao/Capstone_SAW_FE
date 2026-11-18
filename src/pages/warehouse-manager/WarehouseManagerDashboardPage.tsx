@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppIcon from "@/components/common/AppIcon";
+import WarehouseCapacitySettings from "@/features/warehouse/WarehouseCapacitySettings";
+import type { Capacity } from "@/features/warehouse/WarehouseCapacitySettings";
 import {
   getProductQualityDistribution,
   getWarehouseCapacity,
@@ -122,6 +124,7 @@ export default function WarehouseManagerDashboardPage({
   const [inventory, setInventory] =
     useState<WarehouseInventoryLevelChart | null>(null);
   const [capacity, setCapacity] = useState<WarehouseCapacityChart | null>(null);
+  const [warehouseLimit, setWarehouseLimit] = useState<Capacity | null>(null);
   const [quality, setQuality] =
     useState<ProductQualityDistributionChart | null>(null);
   const [loading, setLoading] = useState(true);
@@ -299,7 +302,7 @@ export default function WarehouseManagerDashboardPage({
               <p className="text-xs font-bold uppercase text-emerald-700"></p>
               <h3 className="mt-2 font-bold">Sức chứa kho</h3>
               <p className="mt-1 text-sm text-slate-500">
-                {kg.format(capacity.utilizationPercent)}% công suất,{" "}
+                {kg.format(capacity.utilizationPercent)}% sức chứa các vị trí,{" "}
                 {capacity.nearCapacityCount + capacity.overcrowdedCount} cảnh
                 báo.
               </p>
@@ -488,6 +491,7 @@ export default function WarehouseManagerDashboardPage({
           id="warehouse-capacity"
           className="scroll-mt-24 space-y-5 pt-3"
         >
+          <WarehouseCapacitySettings onChange={setWarehouseLimit} />
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-emerald-700"></p>
             <h2 className="mt-1 text-xl font-bold">Biểu đồ sức chứa kho</h2>
@@ -498,22 +502,22 @@ export default function WarehouseManagerDashboardPage({
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Mức sử dụng chung"
-              value={`${kg.format(capacity.utilizationPercent)}%`}
-              note="Theo sức chứa đã cấu hình"
+              value={warehouseLimit?.maxCapacityKg ? `${kg.format((warehouseLimit.currentStoredWeightKg / warehouseLimit.maxCapacityKg) * 100)}%` : "—"}
+              note="Theo giới hạn toàn kho"
               icon="dashboard"
               tone="bg-emerald-50 text-emerald-700"
             />
             <StatCard
               label="Đang sử dụng"
-              value={`${kg.format(capacity.usedWeightKg)} kg`}
-              note={`${kg.format(capacity.configuredCapacityKg)} kg sức chứa`}
+              value={warehouseLimit ? `${kg.format(warehouseLimit.currentStoredWeightKg)} kg` : "—"}
+              note={warehouseLimit?.maxCapacityKg != null ? `${kg.format(warehouseLimit.maxCapacityKg)} kg sức chứa toàn kho` : "Chưa thiết lập sức chứa toàn kho"}
               icon="database"
               tone="bg-sky-50 text-sky-700"
             />
             <StatCard
               label="Còn khả dụng"
-              value={`${kg.format(capacity.availableWeightKg)} kg`}
-              note="Không tính phần quá tải"
+              value={warehouseLimit?.maxCapacityKg != null ? `${kg.format(Math.max(0, warehouseLimit.maxCapacityKg - warehouseLimit.currentStoredWeightKg))} kg` : "—"}
+              note="Theo giới hạn toàn kho"
               icon="package"
               tone="bg-violet-50 text-violet-700"
             />
@@ -530,7 +534,7 @@ export default function WarehouseManagerDashboardPage({
               <div>
                 <h3 className="font-bold">Mức sử dụng theo vị trí</h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Ngưỡng cảnh báo gần đầy từ 90%
+                  Giới hạn từng vị trí độc lập với toàn kho · cảnh báo gần đầy từ 90%
                 </p>
               </div>
               <p className="text-xs text-slate-400">

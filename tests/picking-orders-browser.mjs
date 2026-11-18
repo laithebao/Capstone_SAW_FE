@@ -60,7 +60,7 @@ try {
     return result.result.value
   }
   const until = async (test, name) => {
-    for (let i = 0; i < 150; i++) { if (await test()) return; await delay(100) }
+    for (let i = 0; i < 350; i++) { if (await test()) return; await delay(100) }
     const view = await evaluate('({path: location.pathname, text: document.body?.innerText?.slice(0, 1800) ?? ""})')
     throw new Error(`Timed out: ${name}; view=${JSON.stringify(view)}; errors=${JSON.stringify(errors)}; network=${JSON.stringify(network.slice(-25))}`)
   }

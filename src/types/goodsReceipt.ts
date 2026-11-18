@@ -38,7 +38,7 @@ export interface GoodsReceiptFilters {
 }
 export interface GoodsReceiptOptions {
   suppliers: { id: number; name: string }[]
-  locations: { id: number; name: string; isActive: boolean; maxWeightKg: number | null }[]
+  locations: { id: number; name: string; isActive: boolean; maxWeightKg: number | null; usedWeightKg: number; hasNonKgInventory: boolean }[]
 }
 export interface GoodsReceiptBatch {
   id: number
