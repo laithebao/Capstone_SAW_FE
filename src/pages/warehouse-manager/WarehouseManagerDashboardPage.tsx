@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppIcon from "@/components/common/AppIcon";
+import WarehouseManagement from "@/features/warehouse/WarehouseManagement";
 import {
   getProductQualityDistribution,
   getWarehouseCapacity,
@@ -50,35 +51,6 @@ function inventoryLevel(item: InventoryLocationLevel) {
     };
   return {
     label: "Bình thường",
-    bar: "bg-emerald-600",
-    text: "text-emerald-700",
-    badge: "bg-emerald-50",
-  };
-}
-function capacityLevel(status: string) {
-  if (status === "UNCONFIGURED")
-    return {
-      label: "Chưa cấu hình sức chứa",
-      bar: "bg-slate-400",
-      text: "text-slate-600",
-      badge: "bg-slate-100",
-    };
-  if (status === "OVERCROWDED")
-    return {
-      label: "Quá tải",
-      bar: "bg-rose-500",
-      text: "text-rose-700",
-      badge: "bg-rose-50",
-    };
-  if (status === "NEAR_CAPACITY")
-    return {
-      label: "Gần đầy",
-      bar: "bg-amber-500",
-      text: "text-amber-700",
-      badge: "bg-amber-50",
-    };
-  return {
-    label: "Còn chỗ",
     bar: "bg-emerald-600",
     text: "text-emerald-700",
     badge: "bg-emerald-50",
@@ -299,7 +271,7 @@ export default function WarehouseManagerDashboardPage({
               <p className="text-xs font-bold uppercase text-emerald-700"></p>
               <h3 className="mt-2 font-bold">Sức chứa kho</h3>
               <p className="mt-1 text-sm text-slate-500">
-                {kg.format(capacity.utilizationPercent)}% công suất,{" "}
+                {kg.format(capacity.utilizationPercent)}% sức chứa các vị trí,{" "}
                 {capacity.nearCapacityCount + capacity.overcrowdedCount} cảnh
                 báo.
               </p>
@@ -483,121 +455,51 @@ export default function WarehouseManagerDashboardPage({
         </section>
       )}
 
-      {view === "capacity" && capacity && (
-        <section
-          id="warehouse-capacity"
-          className="scroll-mt-24 space-y-5 pt-3"
-        >
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-emerald-700"></p>
-            <h2 className="mt-1 text-xl font-bold">Biểu đồ sức chứa kho</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Theo dõi mật độ lưu trữ, tối ưu vị trí và ngăn ngừa quá tải.
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              label="Mức sử dụng chung"
-              value={`${kg.format(capacity.utilizationPercent)}%`}
-              note="Theo sức chứa đã cấu hình"
-              icon="dashboard"
-              tone="bg-emerald-50 text-emerald-700"
-            />
-            <StatCard
-              label="Đang sử dụng"
-              value={`${kg.format(capacity.usedWeightKg)} kg`}
-              note={`${kg.format(capacity.configuredCapacityKg)} kg sức chứa`}
-              icon="database"
-              tone="bg-sky-50 text-sky-700"
-            />
-            <StatCard
-              label="Còn khả dụng"
-              value={`${kg.format(capacity.availableWeightKg)} kg`}
-              note="Không tính phần quá tải"
-              icon="package"
-              tone="bg-violet-50 text-violet-700"
-            />
-            <StatCard
-              label="Cảnh báo sức chứa"
-              value={capacity.nearCapacityCount + capacity.overcrowdedCount}
-              note={`${capacity.overcrowdedCount} vị trí quá tải`}
-              icon="alert"
-              tone="bg-rose-50 text-rose-700"
-            />
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex justify-between gap-3 border-b border-slate-100 pb-5">
+      {view === "capacity" && (
+        <section id="warehouse-capacity" className="scroll-mt-24 space-y-5 pt-3">
+          <WarehouseManagement onChange={() => void load()} />
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-5">
               <div>
-                <h3 className="font-bold">Mức sử dụng theo vị trí</h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  Ngưỡng cảnh báo gần đầy từ 90%
-                </p>
+                <h2 className="text-lg font-bold text-slate-900">Biểu đồ sức chứa từng kho</h2>
+                <p className="mt-1 text-sm text-slate-500">Theo dõi lượng hàng đã lưu và sức chứa còn lại của mỗi kho.</p>
               </div>
-              <p className="text-xs text-slate-400">
-                Cập nhật {time.format(new Date(capacity.generatedAt))}
-              </p>
+              {capacity && <span className="text-xs text-slate-400">Cập nhật {time.format(new Date(capacity.generatedAt))}</span>}
             </div>
-            <div className="mt-5 grid gap-4 xl:grid-cols-2">
-              {capacity.locations.length === 0 ? (
-                <div className="col-span-full rounded-lg bg-slate-50 p-8 text-center text-sm text-slate-500">
-                  Chưa có dữ liệu vị trí kho. Hãy tải lại sau khi cấu hình kho.
-                </div>
-              ) : (
-                capacity.locations.map((item) => {
-                  const state = capacityLevel(item.status);
+            {!capacity ? (
+              <p className="py-10 text-center text-sm text-slate-500">{loading ? "Đang tải biểu đồ sức chứa…" : "Không thể tải biểu đồ sức chứa. Hãy thử làm mới dữ liệu."}</p>
+            ) : capacity.locations.length === 0 ? (
+              <p className="py-10 text-center text-sm text-slate-500">Chưa có kho đang hoạt động để hiển thị.</p>
+            ) : (
+              <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                {capacity.locations.map((item) => {
+                  const percent = item.utilizationPercent;
+                  const over = percent != null && percent > 100;
+                  const full = percent != null && percent >= 100;
+                  const near = percent != null && percent >= 90;
+                  const badge = percent == null ? "Chưa thiết lập" : over ? "Quá tải" : full ? "Đã đầy" : near ? "Gần đầy" : "Còn chỗ";
+                  const color = percent == null ? "bg-slate-400" : full ? "bg-rose-500" : near ? "bg-amber-500" : "bg-emerald-600";
+                  const badgeColor = percent == null ? "bg-slate-100 text-slate-600" : full ? "bg-rose-50 text-rose-700" : near ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700";
                   return (
-                    <article
-                      key={item.locationId}
-                      className="rounded-xl border border-slate-200 p-4"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="text-sm font-semibold">
-                            {item.locationCode}
-                          </h4>
-                          <p className="text-xs text-slate-500">
-                            {item.zoneName}
-                          </p>
-                        </div>
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${state.badge} ${state.text}`}
-                        >
-                          {state.label}
-                        </span>
+                    <article key={item.locationId} className="rounded-xl border border-slate-200 p-4 sm:p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0"><h3 className="break-words font-semibold text-slate-900">{item.locationCode}</h3><p className="mt-1 break-words text-xs text-slate-500">{item.zoneName}</p></div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${badgeColor}`}>{badge}</span>
                       </div>
-                      <div className="mt-4 flex items-end justify-between">
-                        <strong className="text-lg">
-                          {item.utilizationPercent == null
-                            ? "—"
-                            : `${kg.format(item.utilizationPercent)}%`}
-                        </strong>
-                        <span className="text-xs text-slate-500">
-                          {kg.format(item.usedWeightKg)} /{" "}
-                          {item.maxWeightKg == null
-                            ? "—"
-                            : kg.format(item.maxWeightKg)}{" "}
-                          kg
-                        </span>
+                      <div className="mt-5 flex items-end justify-between gap-3">
+                        <strong className="text-xl text-slate-900">{percent == null ? "—" : `${kg.format(percent)}%`}</strong>
+                        <span className="text-right text-xs text-slate-500">{kg.format(item.usedWeightKg)} / {item.maxWeightKg == null ? "—" : kg.format(item.maxWeightKg)} kg</span>
                       </div>
-                      <div className="relative mt-2 h-4 overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className={`h-full rounded-full ${state.bar}`}
-                          style={{
-                            width: `${Math.min(item.utilizationPercent ?? 0, 100)}%`,
-                          }}
-                        />
-                        <i className="absolute inset-y-0 left-[90%] w-px bg-slate-700/50" />
+                      <div role="progressbar" aria-label={`Sức chứa ${item.locationCode}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent == null ? undefined : Math.min(Math.max(percent, 0), 100)} aria-valuetext={percent == null ? "Chưa thiết lập sức chứa" : `${kg.format(percent)}%`} className="relative mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
+                        <div className={`h-full rounded-full transition-[width] duration-500 ${color}`} style={{ width: `${Math.min(Math.max(percent ?? 0, 0), 100)}%` }} />
+                        <span aria-hidden="true" className="absolute inset-y-0 left-[90%] w-px bg-slate-500/60" />
                       </div>
-                      <p className="mt-2 text-[11px] text-slate-400">
-                        {item.availableWeightKg == null
-                          ? "Chưa thiết lập sức chứa tối đa"
-                          : `Còn ${kg.format(item.availableWeightKg)} kg khả dụng`}
-                      </p>
+                      <p className="mt-3 text-xs text-slate-500">{item.availableWeightKg == null ? "Chưa thiết lập sức chứa tối đa" : `Còn ${kg.format(item.availableWeightKg)} kg khả dụng`}</p>
                     </article>
                   );
-                })
-              )}
-            </div>
+                })}
+              </div>
+            )}
           </div>
         </section>
       )}

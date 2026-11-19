@@ -46,7 +46,7 @@ try {
   const page = (method, params = {}) => call(method, params, sessionId)
   const evaluate = async expression => { const r = await page('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value }
   const text = () => evaluate('document.body?.innerText ?? ""')
-  const until = async (check, label) => { for (let i = 0; i < 200; i++) { if (await check()) return; await delay(100) } throw new Error(`Timeout ${label}: ${(await text()).slice(0, 2200)}`) }
+  const until = async (check, label) => { for (let i = 0; i < 350; i++) { if (await check()) return; await delay(100) } throw new Error(`Timeout ${label}: ${(await text()).slice(0, 2200)}`) }
   const click = async label => { await until(() => evaluate(`!![...document.querySelectorAll('button')].findLast(b => b.textContent.trim() === ${JSON.stringify(label)} && !b.disabled)`), label); await evaluate(`[...document.querySelectorAll('button')].findLast(b => b.textContent.trim() === ${JSON.stringify(label)} && !b.disabled).click()`) }
   const fill = (selector, value) => evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) throw new Error('Missing input'); const p = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(p,'value').set.call(el,${JSON.stringify(value)}); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input',{bubbles:true})); })()`)
   const navigate = route => page('Page.navigate', { url: origin + route })

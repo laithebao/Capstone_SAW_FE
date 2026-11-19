@@ -178,7 +178,7 @@ export default function QCDashboardPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[880px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/60">
                     <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Mã phiếu</th>
@@ -186,6 +186,7 @@ export default function QCDashboardPage() {
                     <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Sản phẩm</th>
                     <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Trạng thái</th>
                     <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Kết quả</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Hạng</th>
                     <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Ngày bắt đầu</th>
                     <th className="px-4 py-3"></th>
                   </tr>
@@ -211,10 +212,10 @@ export default function QCDashboardPage() {
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1.5">
                           {item.qcResult && <QcResultBadge result={item.qcResult} />}
-                          {item.qualityGrade && <GradeEvaluationBadge grade={item.qualityGrade} />}
                           {!item.qcResult && <span className="text-xs text-slate-400">—</span>}
                         </div>
                       </td>
+                      <td className="px-4 py-3.5"><GradeEvaluationBadge grade={item.qualityGrade} /></td>
                       <td className="px-4 py-3.5 text-xs text-slate-500">
                         {new Date(item.startedAt).toLocaleDateString('vi-VN')}
                       </td>
