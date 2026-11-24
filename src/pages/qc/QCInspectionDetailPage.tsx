@@ -17,6 +17,7 @@ import {
 import { getAuthErrorMessage } from '@/services/authService'
 import { ROUTES } from '@/constants/routes'
 import { ROLES } from '@/constants/roles'
+import { formatVietnamDateTime } from '@/utils/vietnamTime'
 import { QcStatusBadge, QcResultBadge, GradeEvaluationBadge } from '@/components/inspection/QcSharedComponents'
 import type {
   QcInspectionDetailDto,
@@ -289,9 +290,9 @@ export default function QCInspectionDetailPage() {
         <InfoCard label="Sản phẩm" value={`${inspection.productName} (${inspection.cropTypeName})`} />
         <InfoCard label="Nhân viên kiểm định" value={inspection.qcAccountName} />
         <InfoCard label="Tiêu chuẩn" value={`[${inspection.standardCode}] ${inspection.standardName} v${inspection.versionNo}`} />
-        <InfoCard label="Ngày bắt đầu" value={new Date(inspection.startedAt).toLocaleString('vi-VN')} />
+        <InfoCard label="Ngày bắt đầu" value={formatVietnamDateTime(inspection.startedAt)} />
         {inspection.completedAt && (
-          <InfoCard label="Ngày hoàn thành" value={new Date(inspection.completedAt).toLocaleString('vi-VN')} />
+          <InfoCard label="Ngày hoàn thành" value={formatVietnamDateTime(inspection.completedAt)} />
         )}
       </div>
 

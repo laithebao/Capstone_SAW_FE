@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { ROUTES } from '@/constants/routes'
+import { formatVietnamDate } from '@/utils/vietnamTime'
 import { listQcInspections } from '@/services/inspectionService'
 import { QcStatusBadge, QcResultBadge, GradeEvaluationBadge } from '@/components/inspection/QcSharedComponents'
 import AppIcon from '@/components/common/AppIcon'
@@ -217,7 +218,7 @@ export default function QCDashboardPage() {
                       </td>
                       <td className="px-4 py-3.5"><GradeEvaluationBadge grade={item.qualityGrade} /></td>
                       <td className="px-4 py-3.5 text-xs text-slate-500">
-                        {new Date(item.startedAt).toLocaleDateString('vi-VN')}
+                        {formatVietnamDate(item.startedAt)}
                       </td>
                       <td className="px-4 py-3.5">
                         <AppIcon name="package" className="size-4 text-slate-300" />

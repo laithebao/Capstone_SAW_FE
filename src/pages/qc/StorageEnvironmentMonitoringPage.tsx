@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { getInStorageBatches } from '@/services/storageEnvironmentService'
 import { getAuthErrorMessage } from '@/services/authService'
+import { formatVietnamDateTime } from '@/utils/vietnamTime'
 import StorageEnvironmentLogModal from '@/features/qc/components/StorageEnvironmentLogModal'
 import BatchEnvironmentHistoryModal from '@/features/qc/components/BatchEnvironmentHistoryModal'
 import ProductBatchStatusBadge from '@/features/operation/components/ProductBatchStatusBadge'
@@ -255,9 +256,10 @@ export default function StorageEnvironmentMonitoringPage() {
                               )}
                             </div>
                             <div className="text-[10px] text-slate-400 mt-0.5">
-                              {new Date(b.lastRecordedAt).toLocaleString('vi-VN', {
+                              {formatVietnamDateTime(b.lastRecordedAt, {
                                 month: 'numeric',
                                 day: 'numeric',
+                                year: undefined,
                                 hour: '2-digit',
                                 minute: '2-digit',
                               })}
