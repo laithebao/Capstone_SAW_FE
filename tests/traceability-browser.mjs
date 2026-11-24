@@ -167,7 +167,7 @@ try {
   // Even with a persisted authenticated session, this client must never send its token.
   const session = { user: { id: 1, name: 'Test', email: 'test@example.invalid', role: 'SUPPLIER' }, accessToken: 'private-token',
     refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(), refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-  await evaluate(`sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
+  await evaluate(`localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
   await navigate(token)
   await until(async () => (await text()).includes('PUBLIC-BATCH'), 'authenticated public result')
   for (const [status, message] of [[404, 'Batch information not found.'], [410, 'This batch is no longer available.'],
@@ -188,7 +188,7 @@ try {
   await until(async () => (await text()).includes('Batch information not found.'), 'invalid token state')
   assert.equal(requests.length, beforeInvalid, 'invalid token should not call API')
   session.user.role = 'OPERATION_STAFF'
-  await evaluate(`sessionStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
+  await evaluate(`localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))})`)
   await page('Page.navigate', { url: `${origin}/operation` })
   await until(async () => (await text()).includes('Công việc vận hành'), 'Operation dashboard')
   assert.equal(await evaluate(`document.querySelector('#btn-primary-action') === null`), true, 'Operation primary create receipt action hidden')

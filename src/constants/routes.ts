@@ -24,6 +24,7 @@ export const ROUTES = {
   ADMIN_AUDIT_CHANGES: "/admin/audit-logs/changes",
   ADMIN_AUDIT_DETAIL: "/admin/audit-logs/:id",
   ADMIN_CONTRACTS: "/admin/contracts",
+  ADMIN_WAREHOUSE_CAPACITY: "/admin/warehouse-capacity",
   WAREHOUSE_MANAGER: "/warehouse-manager",
   WAREHOUSE_INVENTORY: "/warehouse-manager/inventory",
   WAREHOUSE_CAPACITY: "/warehouse-manager/capacity",

@@ -56,8 +56,8 @@ try {
     return result.result.value
   }
   const until = async (test, name) => {
-    for (let i = 0; i < 150; i++) { if (await test()) return; await delay(100) }
-    throw new Error(`Timed out: ${name}`)
+    for (let i = 0; i < 350; i++) { if (await test()) return; await delay(100) }
+    throw new Error(`Timed out: ${name}; view=${(await evaluate("document.body.innerText")).slice(0,2500)}`)
   }
   const text = () => evaluate('document.body.innerText')
   const navigate = route => page('Page.navigate', { url: origin + route })

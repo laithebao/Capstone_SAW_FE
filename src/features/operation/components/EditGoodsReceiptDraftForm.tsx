@@ -14,7 +14,7 @@ export default function EditGoodsReceiptDraftForm({ receipt, committed, onSaved,
   const [saving, setSaving] = useState(false)
   const [conflict, setConflict] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const options = useGoodsReceiptResource(getGoodsReceiptOptions)
+  const options = useGoodsReceiptResource(getGoodsReceiptOptions, true)
   // The editing snapshot is intentionally independent of focus/background refreshes.
   async function reload() {
     if (!window.confirm('Tải lại sẽ bỏ nội dung đang nhập và lấy dữ liệu mới nhất. Tiếp tục?')) return
@@ -46,7 +46,7 @@ export default function EditGoodsReceiptDraftForm({ receipt, committed, onSaved,
     <p className="text-sm text-slate-500">Chỉ thay đổi vị trí, ngày nhận và ghi chú. Số lượng, khối lượng và lô hàng giữ nguyên.</p>
     {(error || options.error) && <div role="alert" className="rounded-lg bg-rose-50 p-4 text-rose-700">{error || options.error}{error && <button type="button" disabled={saving} onClick={() => void reload()} className="ml-2 underline">Tải lại dữ liệu mới nhất</button>}{options.error && <button type="button" onClick={options.reload} className="ml-2 underline">Thử lại vị trí kho</button>}</div>}
     {options.loading && <p className="text-sm text-slate-500">Đang tải vị trí kho...</p>}
-    <GoodsReceiptDraftFields values={values} onChange={setValues} locations={options.data?.locations ?? []} disabled={saving || committed} />
+    <GoodsReceiptDraftFields values={values} onChange={setValues} locations={options.loading ? [] : options.data?.locations ?? []} disabled={saving || committed || options.loading} incomingKg={original.weightInKg} onRefreshCapacity={options.reload} />
     <div className="flex justify-end gap-3"><button type="button" disabled={saving} onClick={onCancel} className="rounded-lg border border-slate-200 px-4 py-2">Hủy chỉnh sửa</button><button disabled={saving || conflict || committed || options.loading || !!options.error} className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</button></div>
   </form>
 }

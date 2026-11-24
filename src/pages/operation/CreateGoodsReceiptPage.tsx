@@ -13,7 +13,7 @@ const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Mi
 
 export default function CreateGoodsReceiptPage() {
   const navigate = useNavigate()
-  const options = useGoodsReceiptResource(getGoodsReceiptOptions)
+  const options = useGoodsReceiptResource(getGoodsReceiptOptions, true)
   const [supplier, setSupplier] = useState('')
   const [batch, setBatch] = useState<GoodsReceiptBatch | null>(null)
   const [location, setLocation] = useState('')
@@ -44,7 +44,7 @@ export default function CreateGoodsReceiptPage() {
           ['Lô / sản phẩm', `${batch.batchCode} · ${batch.productName}`], ['Nhà cung cấp', batch.supplierName], ['Kết quả QC', `Đạt · Hạng ${batch.qualityGrade}`],
           ['Số lượng nhập', `${batch.quantity.toLocaleString('vi-VN')} ${batch.unit}`], ['Khối lượng nhập', `${batch.weightInKg.toLocaleString('vi-VN')} kg`],
         ].map(([label, value]) => <div key={label}><dt className="text-slate-500">{label}</dt><dd className="mt-1 font-semibold">{value}</dd></div>)}</dl><p className="mt-4 text-xs text-slate-600">Số liệu chỉ đọc, lấy từ kiểm nhận trước QC. Lưu nháp chưa làm tăng tồn kho.</p></section>
-        <GoodsReceiptDraftFields values={{ location, date, note }} onChange={v => { setLocation(v.location); setDate(v.date); setNote(v.note) }} locations={options.data.locations} disabled={saving} />
+        <GoodsReceiptDraftFields values={{ location, date, note }} onChange={v => { setLocation(v.location); setDate(v.date); setNote(v.note) }} locations={options.data.locations} disabled={saving} incomingKg={batch.weightInKg} onRefreshCapacity={options.reload} />
         <div className="flex justify-end gap-3"><Link className="rounded-lg border border-slate-200 px-5 py-2.5" to={ROUTES.OPERATION_GOODS_RECEIPTS}>Quay lại</Link><button disabled={saving} className="rounded-lg bg-emerald-700 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu nháp'}</button></div>
       </>}
     </form>}
