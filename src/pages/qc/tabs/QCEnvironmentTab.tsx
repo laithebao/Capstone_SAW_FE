@@ -260,7 +260,7 @@ export default function QCEnvironmentTab({ inspection, onSaved, createEnvironmen
                 {logs.map(log => (
                   <tr key={log.id} className={log.isTempOutOfRange ? 'bg-amber-50' : ''}>
                     <td className="px-4 py-3 text-xs text-slate-600">
-                      {new Date(log.recordedAt).toLocaleString('vi-VN')}
+                      {formatVietnamDateTime(log.recordedAt)}
                     </td>
                     <td className="px-3 py-3">
                       <span className={`text-sm font-semibold ${log.isTempOutOfRange ? 'text-amber-700' : 'text-slate-700'}`}>

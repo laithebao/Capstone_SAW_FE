@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { getAuthErrorMessage } from '@/services/authService'
+import { formatVietnamDate } from '@/utils/vietnamTime'
 import { uploadToCloudinary, validateImageFile, qcImageFolder } from '@/utils/cloudinaryUpload'
 import type { QcInspectionDetailDto, QualityImageDto, UploadQualityImageRequest } from '@/types/inspection'
 
@@ -152,7 +153,7 @@ export default function QCImagesTab({ inspection, disabled, onSaved, addImage, d
               <div className="p-3">
                 <p className="truncate text-xs font-semibold text-slate-700">{img.fileName}</p>
                 <p className="text-[10px] text-slate-400">
-                  {img.uploadedByName} · {new Date(img.uploadedAt).toLocaleDateString('vi-VN')}
+                  {img.uploadedByName} · {formatVietnamDate(img.uploadedAt)}
                 </p>
               </div>
               {!disabled && (

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { listQcInspections } from '@/services/inspectionService'
 import { getAuthErrorMessage } from '@/services/authService'
 import { ROUTES } from '@/constants/routes'
+import { formatVietnamDate } from '@/utils/vietnamTime'
 import { QcStatusBadge, QcResultBadge, GradeEvaluationBadge } from '@/components/inspection/QcSharedComponents'
 import type { QcInspectionListItem, QcInspectionListQuery, PagedResult } from '@/types/inspection'
 
@@ -239,7 +240,7 @@ export default function QCInspectionListPage() {
                     <td className="px-3 py-4"><QcResultBadge result={item.qcResult} /></td>
                     <td className="px-3 py-4"><GradeEvaluationBadge grade={item.qualityGrade} /></td>
                     <td className="px-3 py-4 text-xs text-slate-500">
-                      {new Date(item.startedAt).toLocaleDateString('vi-VN')}
+                      {formatVietnamDate(item.startedAt)}
                     </td>
                   </tr>
                 ))}

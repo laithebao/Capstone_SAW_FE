@@ -65,19 +65,47 @@ export function isFutureVietnamTime(localDateTime: string, toleranceMinutes = 1)
 }
 
 /**
- * Hiển thị ngày giờ theo chuẩn Việt Nam (HH:mm dd/MM/yyyy)
+ * Backend stores timestamps in UTC. SQL datetime values may arrive without a
+ * timezone suffix, so treat those API timestamps as UTC rather than browser time.
+ * User-entered datetime-local values must use toVietnamIsoString instead.
  */
-export function formatVietnamDateTime(dateInput: string | Date | null | undefined): string {
+function parseApiTimestamp(value: string | Date): Date {
+  if (value instanceof Date) return value
+  const timestamp = value.trim()
+  const isUnzonedDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(timestamp)
+  return new Date(isUnzonedDateTime ? `${timestamp}Z` : timestamp)
+}
+
+/** Hiển thị ngày giờ API theo múi giờ Việt Nam. */
+export function formatVietnamDateTime(
+  dateInput: string | Date | null | undefined,
+  options: Intl.DateTimeFormatOptions = {},
+): string {
   if (!dateInput) return '—'
-  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
+  const date = parseApiTimestamp(dateInput)
   if (isNaN(date.getTime())) return '—'
 
   return new Intl.DateTimeFormat('vi-VN', {
-    timeZone: 'Asia/Ho_Chi_Minh',
     hour: '2-digit',
     minute: '2-digit',
     day: '2-digit',
     month: '2-digit',
+    year: 'numeric',
+    ...options,
+    timeZone: 'Asia/Ho_Chi_Minh',
+  }).format(date)
+}
+
+/** Hiển thị ngày của một thời điểm API theo múi giờ Việt Nam. */
+export function formatVietnamDate(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return '—'
+  const date = parseApiTimestamp(dateInput)
+  if (isNaN(date.getTime())) return '—'
+
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: 'numeric',
+    month: 'numeric',
     year: 'numeric',
   }).format(date)
 }
