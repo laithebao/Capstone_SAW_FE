@@ -16,6 +16,7 @@ import {
 } from '@/services/inspectionService'
 import { getAuthErrorMessage } from '@/services/authService'
 import { ROUTES } from '@/constants/routes'
+import { ROLES } from '@/constants/roles'
 import { QcStatusBadge, QcResultBadge, GradeEvaluationBadge } from '@/components/inspection/QcSharedComponents'
 import type {
   QcInspectionDetailDto,
@@ -37,6 +38,7 @@ export default function QCInspectionDetailPage() {
   const { user }  = useAuth()
   const isAdmin     = user?.role === 'ADMINISTRATOR'
   const isWarehouse = user?.role === 'WAREHOUSE_MANAGER'
+  const canManageStorageEnvironment = user?.role === ROLES.QC_STAFF
 
   const [inspection, setInspection] = useState<QcInspectionDetailDto | null>(null)
   const [loading,    setLoading]    = useState(true)
@@ -150,9 +152,10 @@ export default function QCInspectionDetailPage() {
       count: inspection?.criteriaResults.filter(c => c.criterionGroup === 'ENVIRONMENT').length },
     { key: 'images',      label: 'Ảnh bằng chứng',
       count: inspection?.images.length },
-    { key: 'temp_log',    label: 'Nhiệt độ bảo quản',
-      count: inspection?.environmentLogs.length },
   ]
+  if (canManageStorageEnvironment) {
+    TABS.push({ key: 'temp_log', label: 'Nhiệt độ bảo quản', count: inspection?.environmentLogs.length })
+  }
 
   const inputCls = 'h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-50'
 
@@ -407,7 +410,7 @@ export default function QCInspectionDetailPage() {
             />
           )}
 
-          {activeTab === 'temp_log' && (
+          {activeTab === 'temp_log' && canManageStorageEnvironment && (
             <QCEnvironmentTab
               inspection={inspection}
               onSaved={reload}

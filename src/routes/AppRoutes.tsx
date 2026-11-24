@@ -199,6 +199,8 @@ export default function AppRoutes() {
               path={ROUTES.QC_INSPECTION_DETAIL}
               element={<QCInspectionDetailPage />}
             />
+          </Route>
+          <Route element={<RoleRoute allowedRoles={[ROLES.QC_STAFF]} />}>
             <Route
               path={ROUTES.QC_STORAGE_MONITORING}
               element={<StorageEnvironmentMonitoringPage />}
