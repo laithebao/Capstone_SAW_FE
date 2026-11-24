@@ -77,11 +77,6 @@ export const roleDashboardConfigs: Record<
         icon: "clipboard",
         route: ROUTES.WAREHOUSE_CONTRACTS,
       },
-      {
-        label: "Giám sát nhiệt ẩm kho",
-        icon: "shield",
-        route: ROUTES.QC_STORAGE_MONITORING,
-      },
     ],
     stats: [],
     tasks: [],
