@@ -4,7 +4,7 @@ import { ROUTES } from '@/constants/routes'
 import { getDistributorCatalog } from '@/services/orderService'
 import type { CatalogLot, DistributorQuery } from '@/types/order'
 import { DistributorHeader, Pagination } from '@/features/distributor-orders/shared'
-import { date, field, money, panel, primary, weight } from '@/features/distributor-orders/format'
+import { date, money, panel, primary, weight } from '@/features/distributor-orders/format'
 import { useDistributorResource } from '@/features/distributor-orders/useDistributorResource'
 
 export default function DistributorCatalogPage() {
@@ -12,34 +12,57 @@ export default function DistributorCatalogPage() {
   const location = useLocation()
   const [query, setQuery] = useState<DistributorQuery>({ page: 1, pageSize: 10 })
   const [search, setSearch] = useState('')
+  const [gradeFilter, setGradeFilter] = useState('')
+  const [supplierFilter, setSupplierFilter] = useState('')
+  const [sort, setSort] = useState('')
   const [selected, setSelected] = useState<CatalogLot[]>(() => (location.state as { selectedLots?: CatalogLot[] } | null)?.selectedLots ?? [])
   const result = useDistributorResource(useCallback((signal: AbortSignal) => getDistributorCatalog(query, signal), [query]))
+  const pageLots = result.data?.items ?? []
+  const suppliers = [...new Set(pageLots.map(lot => lot.supplierName))].sort((a, b) => a.localeCompare(b, 'vi'))
+  const grades = [...new Set(pageLots.map(lot => lot.qualityGrade).filter((grade): grade is string => Boolean(grade)))].sort()
+  const visibleLots = pageLots
+    .filter(lot => (!gradeFilter || lot.qualityGrade === gradeFilter) && (!supplierFilter || lot.supplierName === supplierFilter))
+    .sort((a, b) => sort === 'price-asc' ? a.wholeLotPrice - b.wholeLotPrice : sort === 'price-desc' ? b.wholeLotPrice - a.wholeLotPrice : sort === 'weight-desc' ? b.weightKg - a.weightKg : 0)
+
   function toggle(lot: CatalogLot) {
-    setSelected(current => current.some(l => l.batchId === lot.batchId) ? current.filter(l => l.batchId !== lot.batchId) : current.length < 20 ? [...current, lot] : current)
+    setSelected(current => current.some(item => item.batchId === lot.batchId) ? current.filter(item => item.batchId !== lot.batchId) : current.length < 20 ? [...current, lot] : current)
   }
-  return <div className="mx-auto max-w-[1400px] space-y-5">
-    <DistributorHeader title="Lô hàng đang bán" description="Chọn mua nguyên lô đã đạt QC và nhập kho. Giá hiển thị là giá cả lô." />
-    <form className={`${panel} flex flex-wrap gap-3`} onSubmit={e => { e.preventDefault(); setQuery({ ...query, search: search.trim() || undefined, page: 1 }); result.reload() }}>
-      <input className={`${field} max-w-lg`} aria-label="Tìm lô hàng" placeholder="Mã lô, tên sản phẩm hoặc loại nông sản" maxLength={100} value={search} onChange={e => setSearch(e.target.value)} />
-      <button className={primary}>Tìm kiếm</button><button type="button" onClick={result.reload} className="text-sm text-emerald-700">Làm mới</button>
+  function resetFilters() {
+    setSearch(''); setGradeFilter(''); setSupplierFilter(''); setSort('')
+    setQuery(current => ({ page: 1, pageSize: current.pageSize }))
+  }
+  return <div className="mx-auto max-w-[1400px] space-y-5 dist-catalog">
+    <DistributorHeader title="Lô hàng đang bán" description="Khám phá các lô nông sản đã đạt kiểm định và được công bố bán." icon="package" action={<button type="button" onClick={result.reload} disabled={result.loading} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">Làm mới</button>} />
+    <form className="dist-catalog-filters" onSubmit={event => { event.preventDefault(); setQuery(current => ({ ...current, search: search.trim() || undefined, page: 1 })) }}>
+      <label className="dist-catalog-search"><span className="sr-only">Tìm lô hàng</span><input aria-label="Tìm lô hàng" placeholder="Mã lô, tên sản phẩm hoặc loại nông sản" maxLength={100} value={search} onChange={event => setSearch(event.target.value)} /></label>
+      <label>Hạng chất lượng<select value={gradeFilter} onChange={event => setGradeFilter(event.target.value)}><option value="">Tất cả hạng</option>{grades.map(grade => <option key={grade} value={grade}>Hạng {grade}</option>)}</select></label>
+      <label>Nhà cung cấp<select value={supplierFilter} onChange={event => setSupplierFilter(event.target.value)}><option value="">Tất cả nhà cung cấp</option>{suppliers.map(supplier => <option key={supplier} value={supplier}>{supplier}</option>)}</select></label>
+      <label>Sắp xếp<select value={sort} onChange={event => setSort(event.target.value)}><option value="">Mới cập nhật</option><option value="price-asc">Giá thấp đến cao</option><option value="price-desc">Giá cao đến thấp</option><option value="weight-desc">Khối lượng lớn nhất</option></select></label>
+      <button className={primary}>Tìm kiếm</button><button type="button" onClick={resetFilters} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">Đặt lại</button>
     </form>
-    {result.error && <div role="alert" className="rounded-lg bg-rose-50 p-4 text-rose-700">{result.error} <button onClick={result.reload} className="underline">Thử lại</button></div>}
-    {result.loading ? <p role="status">Đang tải lô hàng...</p> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{result.data?.items.map(lot => {
-      const checked = selected.some(l => l.batchId === lot.batchId)
-      return <article key={lot.batchId} className={`${panel} ${checked ? 'ring-2 ring-emerald-600' : ''}`}>
-        <div className="flex items-start justify-between gap-3"><div><p className="font-mono text-xs text-emerald-700">{lot.batchCode}</p><h2 className="mt-2 text-lg font-bold">{lot.productName}</h2></div><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">Hạng {lot.qualityGrade}</span></div>
-        <dl className="mt-4 space-y-2 text-sm"><div><dt className="text-slate-500">Nhà cung cấp / vùng trồng</dt><dd>{lot.supplierName} · {lot.origin}</dd></div><div><dt className="text-slate-500">Khối lượng cả lô</dt><dd className="font-semibold">{weight(lot.weightKg)} kg</dd></div><div><dt className="text-slate-500">Thu hoạch / hết hạn</dt><dd>{date(lot.harvestDate)} / {date(lot.expiryDate)}</dd></div></dl>
-        <p className="mt-4 text-xl font-bold text-emerald-700">{money(lot.wholeLotPrice)} <small className="text-xs font-normal text-slate-500">/ cả lô</small></p>
-        <Link to={ROUTES.DISTRIBUTOR_LOT_DETAIL.replace(':id', String(lot.batchId))} state={{ selectedLots: selected }} className="mt-4 block text-center text-sm font-semibold text-emerald-700 underline">Xem chi tiết lô</Link>
-        <button type="button" aria-pressed={checked} disabled={!checked && selected.length >= 20} onClick={() => toggle(lot)} className={`${primary} mt-4 w-full`}>{checked ? 'Bỏ chọn lô' : 'Chọn mua nguyên lô'}</button>
-      </article>
-    })}</div>}
-    {!result.loading && !result.error && !result.data?.items.length && <div className={panel}>Chưa có lô nguyên đủ điều kiện và được công bố giá bán.</div>}
-    <Pagination page={query.page} pageSize={query.pageSize} total={result.data?.totalCount ?? 0} busy={result.loading} onPage={page => setQuery({ ...query, page })} onSize={pageSize => setQuery({ ...query, pageSize, page: 1 })} />
-    {selected.length > 0 && <section className={`${panel} sticky bottom-3 space-y-3 border-emerald-300`} aria-label="Các lô đã chọn">
-      <div className="flex flex-wrap gap-2">{selected.map(l => <button key={l.batchId} onClick={() => toggle(l)} className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-800" aria-label={`Bỏ chọn ${l.batchCode}`}>{l.batchCode} ×</button>)}</div>
-      <div className="flex flex-wrap items-center justify-between gap-3"><p><b>{selected.length}/20 lô</b> · {money(selected.reduce((sum, l) => sum + l.wholeLotPrice, 0))}</p><button className={primary} onClick={() => navigate(ROUTES.DISTRIBUTOR_ORDER_CREATE, { state: { lots: selected } })}>Tạo Đơn Hàng</button></div>
-      <p className="text-xs text-slate-500">Sau khi gửi đơn, lô tạm ẩn khỏi catalog trong lúc chờ xử lý. Nếu đơn bị từ chối hoặc hủy, lô sẽ hiện lại khi vẫn đủ điều kiện bán.</p>
+    {result.error && <div role="alert" className="rounded-lg bg-rose-50 p-4 text-rose-700">{result.error} <button type="button" onClick={result.reload} className="underline">Thử lại</button></div>}
+    <div className="dist-catalog-heading"><div><h2>Danh sách lô hàng</h2><p>{result.data?.totalCount ?? 0} lô được công bố · giá niêm yết theo nguyên lô</p></div><span>{visibleLots.length} kết quả trên trang hiện tại</span></div>
+    {result.loading ? <div role="status" className={panel + ' py-10 text-center text-slate-500'}>Đang tải lô hàng...</div> : <div className="dist-market-grid">
+      {visibleLots.map(lot => {
+        const checked = selected.some(item => item.batchId === lot.batchId)
+        return <article key={lot.batchId} className={'dist-market-card' + (checked ? ' is-selected' : '')}>
+          <div className="dist-market-top"><span>{lot.batchCode}</span><span className="dist-grade-badge">Hạng {lot.qualityGrade ?? 'Chưa phân hạng'}</span></div>
+          <div className="dist-market-name"><h2>{lot.productName}</h2><span>Đạt QC</span></div>
+          <div className="dist-market-origin"><strong>{lot.supplierName}</strong><span>{lot.origin || 'Chưa có vùng trồng'}</span></div>
+          <div className="dist-market-values"><div><span>Khối lượng cả lô</span><b>{weight(lot.weightKg)} kg</b></div><div><span>Giá nguyên lô</span><b className="dist-market-price">{money(lot.wholeLotPrice)}</b></div></div>
+          <div className="dist-market-dates"><div><small>Thu hoạch</small><b>{date(lot.harvestDate)}</b></div><div><small>Hạn sử dụng</small><b>{date(lot.expiryDate)}</b></div></div>
+          <div className="dist-market-actions"><Link to={ROUTES.DISTRIBUTOR_LOT_DETAIL.replace(':id', String(lot.batchId))} state={{ selectedLots: selected }}>Chi tiết</Link><button type="button" aria-pressed={checked} disabled={!checked && selected.length >= 20} onClick={() => toggle(lot)} className={checked ? 'is-chosen' : ''}>{checked ? '✓ Đã chọn' : 'Chọn mua lô'}</button></div>
+        </article>
+      })}
+    </div>}
+    {!result.loading && !result.error && !visibleLots.length && <div className={panel + ' py-8 text-center text-slate-500'}>{pageLots.length ? 'Không có lô phù hợp với bộ lọc trên trang này.' : 'Chưa có lô nguyên đủ điều kiện và được công bố giá bán.'}</div>}
+    <Pagination page={query.page} pageSize={query.pageSize} total={result.data?.totalCount ?? 0} busy={result.loading} onPage={page => setQuery(current => ({ ...current, page }))} onSize={pageSize => setQuery(current => ({ ...current, pageSize, page: 1 }))} />
+    {selected.length > 0 && <section className={panel + ' dist-selection-bar'} aria-label="Các lô đã chọn">
+      <div className="dist-selected-chips">{selected.map(lot => <button type="button" key={lot.batchId} onClick={() => toggle(lot)} aria-label={'Bỏ chọn ' + lot.batchCode}>{lot.batchCode} ×</button>)}</div>
+      <div className="dist-selection-summary"><b>Đã chọn {selected.length}/20 lô</b><span>{weight(selected.reduce((sum, lot) => sum + lot.weightKg, 0))} kg · Mua nguyên lô</span></div>
+      <div className="dist-selection-total"><small>Tổng giá trị dự kiến</small><b>{money(selected.reduce((sum, lot) => sum + lot.wholeLotPrice, 0))}</b></div>
+      <button className={primary} onClick={() => navigate(ROUTES.DISTRIBUTOR_ORDER_CREATE, { state: { lots: selected } })}>Tạo đơn hàng</button>
+      <p className="basis-full text-xs text-slate-500">Sau khi gửi đơn, lô tạm ẩn khỏi catalog trong lúc chờ xử lý. Nếu đơn bị từ chối hoặc hủy, lô sẽ hiện lại khi vẫn đủ điều kiện bán.</p>
     </section>}
   </div>
 }

@@ -1,3 +1,4 @@
+import FormNotification from '@/components/common/FormNotification'
 import { useEffect, useId, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import AppIcon from '@/components/common/AppIcon'
@@ -65,6 +66,7 @@ export default function InspectionStandardVersionFormPage() {
   const [criteria, setCriteria]           = useState<CriterionRow[]>([makeEmptyCriterion()])
   const [saving, setSaving]               = useState(false)
   const [error, setError]                 = useState('')
+  const [actionError, setActionError] = useState('')
   const [success, setSuccess]             = useState(false)
 
   useEffect(() => {
@@ -146,7 +148,7 @@ export default function InspectionStandardVersionFormPage() {
   // ── Save ────────────────────────────────────────────────────────────────────
   async function save() {
     if (!canSave) { setError('Vui lòng kiểm tra lại các trường bắt buộc.'); return }
-    setSaving(true); setError('')
+    setSaving(true); setError(''); setActionError('')
     try {
       await createInspectionStandardVersion(setId, {
         effectiveFrom: effectiveFrom || undefined,
@@ -170,7 +172,7 @@ export default function InspectionStandardVersionFormPage() {
       setSuccess(true)
       setTimeout(() => navigate(detailRoute), 1200)
     } catch (e) {
-      setError(getAuthErrorMessage(e, 'Không thể tạo phiên bản mới.'))
+      setActionError(getAuthErrorMessage(e, 'Không thể tạo phiên bản mới.'))
     } finally {
       setSaving(false)
     }
@@ -211,7 +213,7 @@ export default function InspectionStandardVersionFormPage() {
       </div>
 
       {error   && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
-      {success && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">✓ Tạo phiên bản thành công! Đang chuyển trang...</p>}
+      <FormNotification warehouse message={actionError || (success ? "Tạo phiên bản thành công! Đang chuyển trang..." : "")} tone={actionError ? "error" : "success"} onDismiss={() => { setActionError(""); setSuccess(false) }} />
 
       {detail?.versions[0] && (
         <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">

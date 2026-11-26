@@ -1,3 +1,4 @@
+import './supplier-profile.css';
 import { SupplierDocuments } from '@/features/supplier/components/SupplierDocuments';
 import { supplierAssetUrl } from '@/features/supplier/supplierFiles';
 import React from 'react';
@@ -20,10 +21,10 @@ interface SupplierProfileViewProps {
 
 export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profile, onEdit }) => {
   return (
-    <div className="max-w-6xl mx-auto min-h-screen space-y-6 p-4 sm:p-6">
+    <div className="sp-profile">
       {/* Header Page */}
       <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Hồ sơ Nhà cung cấp</h1>
+        <div><p className="text-xs text-emerald-700">Hồ sơ / Hồ sơ doanh nghiệp</p><h1 className="text-2xl font-bold tracking-tight text-gray-900">Hồ sơ doanh nghiệp</h1><p className="text-xs text-gray-500 mt-1">Thông tin nhà cung cấp, vùng trồng và chứng nhận.</p></div>
         <div className="flex flex-wrap items-center gap-3">
           <Link to={ROUTES.CHANGE_PASSWORD} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Đổi mật khẩu</Link>
           {onEdit && (
@@ -40,7 +41,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
       </div>
 
       {/* Block 1: Thông tin cơ bản */}
-      <div className="space-y-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="sp-profile-basic space-y-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
             <Building2 className="size-[18px]" aria-hidden="true" />
@@ -64,10 +65,12 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8">
+        <div className="sp-profile-fields">
+          <div><span>Tên doanh nghiệp</span><strong>{profile.supplierName || 'Chưa cập nhật'}</strong></div>
+          <div><span>Mã nhà cung cấp</span><strong>{profile.supplierCode || 'Chưa cập nhật'}</strong></div>
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 block mb-2">
-              LOẠI HÌNH
+              Loại hình
             </span>
             <span className="break-words text-sm font-semibold leading-6 text-gray-800">
               {profile.supplierType || 'N/A'}
@@ -76,26 +79,27 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
 
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 block mb-2">
-              MÃ SỐ THUẾ / ĐKKD
+              Mã số thuế / ĐKKD
             </span>
             <span className="break-words text-sm font-semibold leading-6 text-gray-800">
               {profile.taxCode}
             </span>
           </div>
 
-          <div className="md:col-span-2">
+          <div>
             <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 block mb-2">
-              ĐỊA CHỈ TRỤ SỞ
+              Địa chỉ trụ sở
             </span>
             <span className="break-words text-sm font-medium leading-6 text-gray-800">
-              {profile.address}
+              {profile.address || 'Chưa cập nhật'}
             </span>
           </div>
+          <div><span>Trạng thái hồ sơ</span><strong>{profile.profileStatus === 'ACTIVE' ? 'Đang hoạt động' : profile.profileStatus === 'PENDING_REVIEW' ? 'Chờ duyệt' : profile.profileStatus || 'Chưa cập nhật'}</strong></div>
         </div>
       </div>
 
       {/* Block 2: Danh sách Vùng trồng */}
-      <div className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="sp-profile-areas space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
             <MapPin className="size-[18px]" aria-hidden="true" />
@@ -123,7 +127,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
                       {[area.ward, area.district].filter(Boolean).join(', ') || '—'}
                     </td>
                     <td className="py-4 px-4 text-right font-semibold text-emerald-700 whitespace-nowrap tabular-nums">
-                      {area.areaInHectares ? `${area.areaInHectares} ha` : 'Chưa cập nhật'}
+                      {area.areaInHectares != null ? `${area.areaInHectares} ha` : 'Chưa cập nhật'}
                     </td>
                   </tr>
                 ))}
@@ -136,7 +140,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
       </div>
 
       {/* Block 3: Thông tin liên hệ */}
-      <div className="space-y-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="sp-profile-contacts space-y-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
             <UsersRound className="size-[18px]" aria-hidden="true" />
@@ -144,10 +148,10 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
           <h2 className="text-base font-bold text-gray-900">Thông tin liên hệ</h2>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8">
+        <div className="sp-profile-fields">
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 block mb-2">
-              NGƯỜI ĐẠI DIỆN PHÁP LÝ
+              Người đại diện pháp lý
             </span>
             <span className="break-words text-sm font-semibold leading-6 text-gray-800">
               {profile.legalRepresentative || 'Chưa cập nhật'}
@@ -156,7 +160,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
 
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 block mb-2">
-              NGƯỜI LIÊN HỆ
+              Người liên hệ
             </span>
             <span className="break-words text-sm font-semibold leading-6 text-gray-800">
               {profile.contactPerson}
@@ -165,7 +169,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
 
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 block mb-2">
-              SỐ ĐIỆN THOẠI
+              Số điện thoại
             </span>
             <span className="break-words text-sm font-semibold leading-6 text-gray-800">
               {profile.phoneNumber || 'Chưa cập nhật'}
@@ -184,7 +188,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
       </div>
 
       {/* Block 4: Thông tin sản xuất & Chứng nhận */}
-      <div className="space-y-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="sp-profile-production space-y-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
             <Sprout className="size-[18px]" aria-hidden="true" />
@@ -195,7 +199,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
         <div className="space-y-4">
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 block mb-3">
-              DANH MỤC NÔNG SẢN
+              Danh mục nông sản
             </span>
             <div className="flex flex-wrap gap-2">
               {profile.cropTypes && profile.cropTypes.length > 0 ? (
@@ -213,9 +217,10 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
             </div>
           </div>
 
+          {profile.detailedPlantingArea && <div><span className="text-xs text-gray-500">Thông tin sản xuất</span><p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">{profile.detailedPlantingArea}</p></div>}
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 block mb-3">
-              CHỨNG NHẬN
+              Chứng nhận
             </span>
             <div className="flex flex-wrap gap-2">
               {profile.certifications && profile.certifications.length > 0 ? (
@@ -224,7 +229,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
                     key={cert.supplierCertificationId} 
                     className="px-3 py-1.5 bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg border border-gray-200"
                   >
-                    {cert.certificationName}
+                    {cert.certificationName}{cert.certificateNumber ? ` · Số ${cert.certificateNumber}` : ''}{cert.expiryDate ? ` · Đến ${new Date(cert.expiryDate).toLocaleDateString('vi-VN')}` : ''} · {cert.isActive ? 'Đang hiệu lực' : 'Không còn hiệu lực'}
                   </span>
                 ))
               ) : (
@@ -236,7 +241,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
       </div>
 
       {/* Block 5: File đính kèm */}
-      <div className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="sp-profile-documents space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
           <div className="flex items-center gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
@@ -249,7 +254,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
           </span>
         </div>
         
-        <SupplierDocuments documents={profile.documents ?? []} variant="profile" />
+        <div className="sp-profile-file-list"><SupplierDocuments documents={profile.documents ?? []} variant="profile" /></div>
       </div>
     </div>
   );

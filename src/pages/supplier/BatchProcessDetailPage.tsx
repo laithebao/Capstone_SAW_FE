@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
-import { Loader2 } from 'lucide-react';
+import { Loader2, FileText, ShieldCheck, Paperclip } from 'lucide-react';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
 import { getAuthErrorMessage } from '@/services/authService';
 import type { SupplierBatchStatusResponse } from '@/types/supplierBatch';
@@ -84,7 +84,7 @@ export function BatchProcessDetailPage() {
   if (!data) return <div className="p-6"><p role="alert" className="text-red-600">{error}</p><Link to="/supplier/batches">Quay lại danh sách lô hàng</Link></div>;
   const progress = getSupplierBatchProgress(data);
   const editable = !progress.isStored && canEditSupplierBatch(data.currentStatus);
-  return <div className="p-6 max-w-7xl mx-auto space-y-6">
+  return <div className="sp-detail space-y-4">
     {dialog && <SupplierBatchFeedbackDialog
       variant={dialog === 'confirm' ? 'confirm' : 'success'}
       title={dialog === 'confirm' ? 'Hủy lô hàng?' : dialog === 'updated' ? 'Cập nhật lô hàng thành công' : 'Hủy lô hàng thành công'}
@@ -108,23 +108,23 @@ export function BatchProcessDetailPage() {
       </div>
     </div>
     {error && <p role="alert" className="p-3 bg-red-50 text-red-700 rounded-lg">{error}</p>}
-    {!editable && <p className="text-sm text-gray-500">Supplier chỉ có thể sửa hoặc hủy khi lô hàng đang chờ tiếp nhận.</p>}
+    {!editable && <p className="text-sm text-gray-500">Nhà cung cấp chỉ có thể sửa hoặc hủy khi lô hàng đang chờ tiếp nhận.</p>}
     <div className="grid lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
-        <section className="bg-white border rounded-xl p-6"><h2 className="font-semibold mb-4">Thông tin khai báo</h2>
+        <section className="bg-white border rounded-xl p-6"><h2 className="sp-detail-title"><FileText /> Thông tin khai báo</h2>
           <dl className="grid sm:grid-cols-2 gap-5">
             <Field label="Sản phẩm" value={data.productName} /><Field label="Nông sản" value={data.cropTypeName} />
-            <Field label="Vùng trồng" value={data.areaName} /><Field label="Địa chỉ vùng trồng" value={[data.ward, data.district, data.province].filter(Boolean).join(', ') || 'Chưa cập nhật'} />
+            <Field label="Vùng trồng" value={data.areaName} /><Field label="Địa chỉ vùng trồng" value={[data.ward, data.district, data.province].filter(Boolean).join(', ') || 'Chưa cập nhật địa chỉ'} />
             <Field label="Số lượng khai báo" value={quantity(data.declaredQuantity, data.unit)} />
             <Field label="Tổng khối lượng khai báo" value={`${quantity(data.weightInKg, 'kg')} (${quantity(data.weightInKg / 1000, 'tấn')})`} />
             <Field label="Quy cách đóng gói" value={data.packageCount != null && data.packageUnitWeightKg != null ? `${data.packageCount} ${data.packagingType || 'kiện'} × ${data.packageUnitWeightKg} kg/kiện` : data.packagingType || 'Chưa khai báo'} />
             <Field label="Ngày thu hoạch" value={date(data.harvestDate)} /><Field label="Ngày giao dự kiến" value={date(data.expectedDeliveryDate)} /><Field label="Ngày hết hạn" value={date(data.expiryDate)} />
             <Field label="Nhiệt độ bảo quản" value={range(data.expectedMinTempC, data.expectedMaxTempC, '°C')} />
             <Field label="Độ ẩm bảo quản" value={range(data.expectedMinHumidityPct, data.expectedMaxHumidityPct, '%')} />
-            <Field label="Ghi chú Supplier" value={data.supplierNote || 'Không có ghi chú.'} />
+            <Field label="Ghi chú nhà cung cấp" value={data.supplierNote || 'Không có ghi chú.'} />
           </dl>
         </section>
-        <section className="bg-white border rounded-xl p-6"><h2 className="font-semibold mb-4">Kiểm nhận và nhập kho</h2>
+        <section className="bg-white border rounded-xl p-6"><h2 className="sp-detail-title"><ShieldCheck /> Kiểm nhận và nhập kho</h2>
           <dl className="grid sm:grid-cols-2 gap-5">
             <Field label="Số lượng staff kiểm nhận" value={quantity(data.verifiedQuantity, data.unit)} />
             <Field label="Khối lượng staff kiểm nhận" value={quantity(data.verifiedWeightInKg, 'kg')} />
@@ -134,7 +134,7 @@ export function BatchProcessDetailPage() {
             {!progress.isStored && data.rejectionReason && <Field label="Lý do từ chối" value={data.rejectionReason} />}
           </dl>
         </section>
-        <section className="bg-white border rounded-xl p-6"><h2 className="font-semibold mb-4">Tài liệu đính kèm</h2><SupplierDocuments documents={data.documents ?? []} /></section>
+        <section className="bg-white border rounded-xl p-6"><h2 className="sp-detail-title"><Paperclip /> Tài liệu đính kèm</h2><SupplierDocuments documents={data.documents ?? []} /></section>
       </div>
       <SupplierBatchProgress progress={progress} formatTime={time} />
     </div>

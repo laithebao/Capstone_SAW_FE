@@ -1,3 +1,4 @@
+import FormNotification from '@/components/common/FormNotification'
 import { useEffect, useId, useState } from 'react'
 import { useNavigate } from 'react-router'
 import AppIcon from '@/components/common/AppIcon'
@@ -35,6 +36,7 @@ export default function InspectionStandardsPage() {
   const [cropTypes, setCropTypes]         = useState<CropType[]>([])
   const [saving, setSaving]               = useState(false)
   const [error, setError]                 = useState('')
+  const [actionError, setActionError] = useState('')
   const [success, setSuccess]             = useState(false)
 
   useEffect(() => {
@@ -109,7 +111,7 @@ export default function InspectionStandardsPage() {
   // ── Save ────────────────────────────────────────────────────────────────────
   async function save() {
     if (!canSave) { setError('Vui lòng kiểm tra lại các trường bắt buộc.'); return }
-    setSaving(true); setError(''); setSuccess(false)
+    setSaving(true); setError(''); setActionError(''); setSuccess(false)
     try {
       await createInspectionStandard({
         cropTypeId,
@@ -138,7 +140,7 @@ export default function InspectionStandardsPage() {
       setSuccess(true)
       setTimeout(() => navigate(ROUTES.ADMIN_INSPECTION_STANDARDS), 1200)
     } catch (e) {
-      setError(getAuthErrorMessage(e, 'Không thể lưu bộ tiêu chuẩn kiểm định.'))
+      setActionError(getAuthErrorMessage(e, 'Không thể lưu bộ tiêu chuẩn kiểm định.'))
     } finally {
       setSaving(false)
     }
@@ -160,7 +162,7 @@ export default function InspectionStandardsPage() {
       </div>
 
       {error   && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
-      {success && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">✓ Tạo bộ tiêu chuẩn thành công! Đang chuyển trang...</p>}
+      <FormNotification warehouse message={actionError || (success ? "Tạo bộ tiêu chuẩn thành công! Đang chuyển trang..." : "")} tone={actionError ? "error" : "success"} onDismiss={() => { setActionError(""); setSuccess(false) }} />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
         {/* ── Left column ─────────────────────────────────────────────────── */}

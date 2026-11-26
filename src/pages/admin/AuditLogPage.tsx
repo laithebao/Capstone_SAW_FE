@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import AppIcon from '@/components/common/AppIcon'
+import RefreshButton from '@/components/common/RefreshButton'
+import FormNotification from '@/components/common/FormNotification'
 import { ROUTES } from '@/constants/routes'
 import { exportAuditLogs, getAuditLogs } from '@/services/auditService'
 import { getAuthErrorMessage } from '@/services/authService'
@@ -27,6 +29,7 @@ export default function AuditLogPage() {
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [exportError, setExportError] = useState('')
   const pageSize = 10
   const filters = useMemo<AuditLogFilters>(() => ({ ...applied, changesOnly: changesMode, page, pageSize }), [applied, changesMode, page])
 
@@ -45,16 +48,17 @@ export default function AuditLogPage() {
   }
   function reset() { setSearch(''); setFrom(''); setTo(''); setActionType(''); setEntityName(''); setActor(''); setStatus(''); setApplied({}); setPage(1) }
   async function download() {
-    setExporting(true); setError(null)
+    setExporting(true); setExportError('')
     try { await exportAuditLogs(filters) }
-    catch (requestError) { setError(getAuthErrorMessage(requestError, 'Không thể xuất nhật ký.')) }
+    catch (requestError) { setExportError(getAuthErrorMessage(requestError, 'Không thể xuất nhật ký.')) }
     finally { setExporting(false) }
   }
 
   return <div className="mx-auto max-w-[1600px] space-y-5">
+    <FormNotification warehouse message={exportError} onDismiss={() => setExportError('')} />
     <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
       <div><p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Quản trị · Nhật ký hệ thống</p><h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">{changesMode ? 'Xem thay đổi dữ liệu' : 'Lịch sử hoạt động'}</h1><p className="mt-1 text-sm text-slate-500">{changesMode ? 'Đối chiếu dữ liệu trước và sau mỗi thay đổi.' : 'Theo dõi các hoạt động quan trọng đã diễn ra trong hệ thống.'}</p></div>
-      <div className="flex gap-2"><button onClick={() => void load()} className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold"><AppIcon name="pending" className="size-4" />Làm mới</button><button onClick={() => void download()} disabled={exporting} className="inline-flex h-10 items-center gap-2 rounded-lg bg-slate-800 px-4 text-sm font-semibold text-white disabled:opacity-60"><AppIcon name="download" className="size-4" />{exporting ? 'Đang xuất...' : 'Xuất nhật ký'}</button></div>
+      <div className="flex gap-2"><RefreshButton loading={loading} onClick={() => void load()} /><button onClick={() => void download()} disabled={exporting} className="inline-flex h-10 items-center gap-2 rounded-lg bg-slate-800 px-4 text-sm font-semibold text-white disabled:opacity-60"><AppIcon name="download" className="size-4" />{exporting ? 'Đang xuất...' : 'Xuất nhật ký'}</button></div>
     </header>
     <nav className="flex gap-2 border-b border-slate-200"><Link onClick={() => setPage(1)} className={`px-4 py-3 text-sm font-semibold ${!changesMode ? 'border-b-2 border-emerald-700 text-emerald-700' : 'text-slate-500'}`} to={ROUTES.ADMIN_AUDIT_LOGS}>Lịch sử hoạt động</Link><Link onClick={() => setPage(1)} className={`px-4 py-3 text-sm font-semibold ${changesMode ? 'border-b-2 border-emerald-700 text-emerald-700' : 'text-slate-500'}`} to={ROUTES.ADMIN_AUDIT_CHANGES}>Thay đổi dữ liệu</Link></nav>
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

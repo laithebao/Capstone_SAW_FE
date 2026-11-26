@@ -288,11 +288,12 @@ export const DeclareBatchPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 max-w-5xl mx-auto">
+    <div className="sp-form">
       <form onSubmit={handleSubmit(onSubmit)}>
         {/* TOP BAR */}
         <div className="flex items-center justify-between mb-6">
           <div>
+            <p className="text-xs text-emerald-700 mb-1">Quản lý lô hàng / Khai báo lô</p>
             <h1 className="text-2xl font-bold text-gray-900">
               Khai báo thông tin lô hàng
             </h1>

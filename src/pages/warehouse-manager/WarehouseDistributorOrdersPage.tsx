@@ -1,3 +1,8 @@
+import './warehouse-orders-v3.css'
+import './warehouse-dashboard.css'
+import { ChevronRight, MapPin, Phone, MessageSquare, X, Check, PackageCheck, AlertTriangle } from 'lucide-react'
+import FormNotification from '@/components/common/FormNotification'
+import { AnimatedNumber } from '@/components/common/AnimatedNumber';
 import { Link } from 'react-router';
 import { ROUTES } from '@/constants/routes';
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -26,11 +31,25 @@ export default function WarehouseDistributorOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" }>({ message: "", tone: "success" });
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [history, setHistory] = useState<WarehouseDistributorOrderSummary[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [activeId, setActiveId] = useState<number | null>(null);
   const requestRef = useRef(0);
+  const [tab, setTab] = useState<'pending' | 'history'>('pending');
+  const [dialog, setDialog] = useState<'approve' | 'reject' | 'reserve' | null>(null);
+  const [reason, setReason] = useState('');
+  const [reasonError, setReasonError] = useState('');
+  const sending = useRef(false);
+  const dialogTrigger = useRef<HTMLElement | null>(null);
+  const openDialog = (kind: 'approve' | 'reject' | 'reserve') => { dialogTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setDialog(kind); };
+  useEffect(() => {
+    if (!dialog) return;
+    const trigger = dialogTrigger.current;
+    return () => { if (trigger?.isConnected) trigger.focus(); };
+  }, [dialog]);
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -63,295 +82,98 @@ export default function WarehouseDistributorOrdersPage() {
   }, [load]);
   const open = async (id: number) => {
     const requestId = ++requestRef.current;
+    setActiveId(id);
     setDetailLoading(true);
-    setSelected(null);
+    setSelected(current => current?.id === id ? current : null);
     try {
       const detail = await getWarehouseDistributorOrder(id);
       if (requestId === requestRef.current) {
         setSelected(detail);
       }
     } catch {
-      if (requestId === requestRef.current)
+      if (requestId === requestRef.current) {
+        setActiveId(selected?.id ?? null);
         setError("Không thể tải chi tiết đơn hàng.");
+      }
     } finally {
       if (requestId === requestRef.current) setDetailLoading(false);
     }
   };
   const approve = async () => {
-    if (!selected || !window.confirm(`Duyệt đơn ${selected.orderCode}?`))
-      return;
+    if (!selected || sending.current || selected.status !== "PENDING" || !selected.stockAvailable) return;
+    sending.current = true;
     setBusy(true);
     setError("");
     try {
       await approveWarehouseDistributorOrder(selected.id);
+      setDialog(null);
+      setToast({ message: `Đã phê duyệt đơn ${selected.orderCode}.`, tone: "success" });
       await load();
       setSelected(null);
+      setActiveId(null);
     } catch (error: unknown) {
       const message = (error as { response?: { data?: { message?: string } } })
         .response?.data?.message;
-      setError(message ?? "Không thể phê duyệt đơn hàng.");
+      setToast({ message: message ?? "Không thể phê duyệt đơn hàng.", tone: "error" });
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   };
   const reject = async () => {
-    if (!selected) return;
-    const reason = window.prompt("Nhập lý do từ chối đơn:");
-    if (!reason?.trim()) return;
+    if (!selected || sending.current || selected.status !== "PENDING") return;
+    if (!reason.trim()) { setReasonError("Vui lòng nhập lý do từ chối."); return; }
+    sending.current = true;
     setBusy(true);
     try {
-      await rejectWarehouseDistributorOrder(selected.id, reason);
+      await rejectWarehouseDistributorOrder(selected.id, reason.trim());
+      setDialog(null); setReason(""); setReasonError("");
+      setToast({ message: `Đã từ chối đơn ${selected.orderCode}.`, tone: "success" });
       await load();
       setSelected(null);
-    } catch {
-      setError("Không thể từ chối đơn hàng.");
+      setActiveId(null);
+    } catch (e: unknown) {
+      setToast({ message: (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "Không thể từ chối đơn hàng.", tone: "error" });
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   };
   const reserve = async () => {
-    if (!selected || busy || !window.confirm(`Thử phân bổ đủ hàng đã duyệt cho đơn ${selected.orderCode}?`)) return;
+    if (!selected || sending.current || selected.status !== "APPROVED") return;
+    sending.current = true;
     setBusy(true);
     setError("");
     try {
       const detail = await reserveWarehouseDistributorOrder(selected.id);
+      setDialog(null);
+      setToast({ message: `Đã cập nhật kết quả phân bổ cho đơn ${selected.orderCode}.`, tone: "success" });
       await load();
       setSelected(detail);
     } catch (e: unknown) {
-      setError((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "Chưa thể giữ đủ hàng cho đơn. Đơn vẫn chờ phân bổ.");
-    } finally { setBusy(false); }
+      setToast({ message: (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "Chưa thể giữ đủ hàng cho đơn. Đơn vẫn chờ phân bổ.", tone: "error" });
+    } finally { sending.current = false; setBusy(false); }
   };
-  return (
-    <div className="min-h-full bg-slate-50 p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-emerald-700">
-              Điều hành kho
-            </p>
-            <h1 className="text-3xl font-bold text-slate-950">
-              Phê duyệt đơn nhà phân phối
-            </h1>
-            <p className="mt-1 text-slate-500">
-              Kiểm tra tồn kho trước khi xác nhận đơn xuất hàng.
-            </p>
-          </div>
-          <button
-            aria-label="Làm mới danh sách đơn hàng"
-            onClick={() => void load()}
-            className="flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white"
-          >
-            <AppIcon name="refresh" />
-            Làm mới
-          </button>
-        </div>
-        {error && (
-          <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
-            {error}
-          </div>
-        )}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900">Đơn chờ duyệt</h2>
-            <span aria-live="polite" className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
-              {orders.length} đơn
-            </span>
-          </div>
-          {loading ? (
-            <p className="py-10 text-center text-slate-500">Đang tải...</p>
-          ) : orders.length === 0 ? (
-            <p className="py-10 text-center text-slate-500">
-              Không có đơn chờ duyệt.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
-                  <tr>
-                    <th className="p-3">Mã đơn</th>
-                    <th className="p-3">Nhà phân phối</th>
-                    <th className="p-3">Ngày tạo</th>
-                    <th className="p-3">Giá trị</th>
-                    <th className="p-3">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((o) => (
-                    <tr key={o.id} className="border-b border-slate-100">
-                      <td className="p-3 font-semibold text-slate-900">
-                        {o.orderCode}
-                      </td>
-                      <td className="p-3">{o.distributorName}</td>
-                      <td className="p-3">
-                        {new Date(o.createdAt).toLocaleDateString("vi-VN")}
-                      </td>
-                      <td className="p-3">{money.format(o.totalAmount)}</td>
-                      <td className="p-3">
-                        <button
-                          onClick={() => void open(o.id)}
-                          className="rounded-lg border border-emerald-200 px-3 py-1.5 font-semibold text-emerald-700 hover:bg-emerald-50"
-                        >
-                          Xem xét
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
-                <span>{totalCount} đơn tất cả</span>
-                <div className="flex gap-2">
-                  <button
-                    disabled={page === 1}
-                    onClick={() => setPage((value) => value - 1)}
-                    className="rounded border px-3 py-1 disabled:opacity-40"
-                  >
-                    Trang trước
-                  </button>
-                  <span className="px-2 py-1">{page}</span>
-                  <button
-                    disabled={page * 20 >= totalCount}
-                    onClick={() => setPage((value) => value + 1)}
-                    className="rounded border px-3 py-1 disabled:opacity-40"
-                  >
-                    Trang sau
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        {detailLoading && (
-          <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">
-            Đang tải chi tiết đơn...
-          </div>
-        )}
-        {selected && !detailLoading && (
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-xl font-bold">{selected.orderCode}</h2>
-                <p className="text-slate-500">
-                  {selected.distributorName} ·{" "}
-                  {money.format(selected.totalAmount)}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Ngày tạo:{" "}
-                  {new Date(selected.createdAt).toLocaleDateString("vi-VN")} ·
-                  Giao dự kiến:{" "}
-                  {selected.expectedDeliveryDate
-                    ? new Date(
-                        selected.expectedDeliveryDate,
-                      ).toLocaleDateString("vi-VN")
-                    : "Chưa xác định"}
-                </p>
-                <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-                  <p>
-                    <strong>Địa chỉ giao:</strong> {selected.deliveryAddress}
-                  </p>
-                  <p>
-                    <strong>Liên hệ:</strong>{" "}
-                    {selected.contactPhone || "Chưa có"}
-                  </p>
-                  <p>
-                    <strong>Ghi chú:</strong> {selected.orderNote || "Không có"}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelected(null)}
-                className="text-slate-400"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="mt-4 space-y-2">
-              {selected.cancellationReason && <p className="rounded-lg bg-rose-50 p-3 text-rose-800">Lý do hủy: {selected.cancellationReason} Đối soát tiền ngoài hệ thống.</p>}
-              {selected.adjustments?.map(a => <Link key={a.id} className="block rounded-lg bg-amber-50 p-3 text-amber-900 underline" to={ROUTES.WAREHOUSE_STOCK_ADJUSTMENT_DETAIL.replace(':id', String(a.id))}>{a.code} · Xem tiến độ xử lý điều chỉnh tồn</Link>)}
-              {selected.lines.map((l) => (
-                <div
-                  key={l.orderDetailId}
-                  className="flex justify-between rounded-lg bg-slate-50 p-3"
-                >
-                  <span>
-                    {l.productName}
-                    {l.batchCode ? ` · ${l.batchCode}` : ""}
-                  </span>
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="rounded-md bg-white px-3 py-1.5 text-slate-600 ring-1 ring-slate-200">
-                      Khối lượng lô: <strong className="text-slate-900">{l.requestedWeightKg} kg</strong>
-                    </span>
-                    <span className="rounded-md bg-white px-3 py-1.5 text-slate-600 ring-1 ring-slate-200">
-                      Giá nguyên lô: <strong className="text-slate-900">{money.format(l.unitPrice)}</strong>
-                    </span>
-                  </div>
-                  <span
-                    className={
-                      l.stockAvailable ? "text-emerald-700" : "text-rose-700"
-                    }
-                  >
-                    Yêu cầu {l.requestedWeightKg} kg · Khả dụng{" "}
-                    {l.availableWeightKg} kg ·{" "}
-                    {l.stockAvailable
-                      ? "Đủ điều kiện"
-                      : `Thiếu ${Math.max(l.requestedWeightKg - l.availableWeightKg, 0)} kg`}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 flex justify-end">
-              {selected.status === "APPROVED" && <button disabled={busy} onClick={() => void reserve()} className="mr-2 rounded-lg bg-emerald-700 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{busy ? "Đang phân bổ..." : "Thử phân bổ hàng"}</button>}
-              <button
-                disabled={
-                  busy ||
-                  selected.status !== "PENDING" ||
-                  !selected.stockAvailable
-                }
-                onClick={() => void approve()}
-                className="rounded-lg bg-emerald-700 px-5 py-2.5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {busy
-                  ? "Đang duyệt..."
-                  : selected.status === "PENDING"
-                    ? "Duyệt đơn"
-                    : "Đã xử lý"}
-              </button>
-              <button
-                disabled={busy || selected.status !== "PENDING"}
-                onClick={() => void reject()}
-                className="ml-2 rounded-lg border border-rose-200 px-5 py-2.5 font-semibold text-rose-700 disabled:opacity-50"
-              >
-                Từ chối đơn
-              </button>
-            </div>
-          </div>
-        )}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Lịch sử xử lý đơn</h2>
-              <p className="text-sm text-slate-500">Các đơn đã được duyệt hoặc từ chối bởi Warehouse Manager.</p>
-            </div>
-            <span aria-live="polite" className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">{history.length} đơn</span>
-          </div>
-          {history.length === 0 ? (
-            <p className="py-6 text-center text-slate-500">Chưa có lịch sử xử lý.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
-                  <tr><th className="p-3">Mã đơn</th><th className="p-3">Nhà phân phối</th><th className="p-3">Ngày tạo</th><th className="p-3">Giá trị</th><th className="p-3">Trạng thái</th></tr>
-                </thead>
-                <tbody>{history.map((o) => <tr key={`${o.id}-${o.status}`} className="border-b border-slate-100">
-                  <td className="p-3 font-semibold"><button onClick={() => void open(o.id)} className="text-emerald-700 underline">{o.orderCode}</button></td><td className="p-3">{o.distributorName}</td>
-                  <td className="p-3">{new Date(o.createdAt).toLocaleDateString("vi-VN")}</td><td className="p-3">{money.format(o.totalAmount)}</td>
-                  <td className="p-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${["REJECTED", "CANCELLED"].includes(o.status) ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{{ APPROVED: "Đã duyệt · chờ phân bổ", RESERVED: "Đã giữ hàng", PARTIALLY_PICKED: "Đang soạn một phần", PICKED: "Đã soạn đủ", REJECTED: "Đã từ chối", CANCELLED: "Đã hủy" }[o.status] ?? o.status}</span></td>
-                </tr>)}</tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  const statusNames: Record<string, string> = { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt · chờ phân bổ', RESERVED: 'Đã giữ hàng', PARTIALLY_PICKED: 'Đang soạn một phần', PICKED: 'Đã soạn đủ', REJECTED: 'Đã từ chối', CANCELLED: 'Đã hủy' };
+  const visible = tab === 'pending' ? orders : history;
+  const date = (value?: string) => value ? new Date(value).toLocaleDateString('vi-VN') : 'Chưa ghi nhận';
+  return <div className="saw-order-review">
+    <FormNotification warehouse message={toast.message} tone={toast.tone} onDismiss={() => setToast(current => ({ ...current, message: "" }))} />
+    <header className="order-header"><div><p>Điều hành kho / Phê duyệt đơn</p><h1>Phê duyệt đơn nhà phân phối</h1><span>Kiểm tra tồn kho và thông tin đơn hàng trước khi xác nhận xuất hàng.</span></div><div className="saw-wm-dashboard"><button type="button" className="wm-refresh" disabled={loading || busy} onClick={() => { if (!loading && !busy) { void load(); if (selected) void open(selected.id); } }}><AppIcon name="refresh" className={loading ? 'wm-spin' : ''} /> Làm mới</button></div></header>
+    {error && <div role="alert" className="order-error">{error} <button type="button" onClick={() => void load()}>Thử lại</button></div>}
+    <div className="order-layout"><section className="order-list-panel"><div className="order-list-heading"><h2>Danh sách đơn hàng</h2></div><div className="order-tabs" role="tablist" aria-label="Nhóm đơn hàng"><button role="tab" aria-selected={tab === 'pending'} onClick={() => setTab('pending')}>Chờ duyệt <span><AnimatedNumber value={totalCount} /></span></button><button role="tab" aria-selected={tab === 'history'} onClick={() => setTab('history')}>Lịch sử xử lý</button></div>
+      {loading && !visible.length ? <p className="order-empty">Đang tải...</p> : !visible.length ? <p className="order-empty">{tab === 'pending' ? 'Không có đơn chờ duyệt.' : 'Chưa có lịch sử xử lý.'}</p> : <div className="order-list">{visible.map(o => <button type="button" key={`${o.id}-${o.status}`} className={`order-row${activeId === o.id ? ' is-selected' : ''}`} aria-pressed={activeId === o.id} onClick={() => void open(o.id)}><span className="order-row-main"><strong>{o.orderCode}</strong><span>{o.distributorName || 'Chưa ghi nhận'}</span><small>Ngày tạo: {date(o.createdAt)} · {statusNames[o.status] ?? o.status}</small></span><span className="order-row-trailing"><span className="order-row-value">{money.format(o.totalAmount)}</span><span className="order-review-action">{activeId === o.id ? 'Đang xem' : 'Xem xét'} {activeId === o.id ? <Check aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</span></span></button>)}</div>}
+      <div className="order-pagination">{tab === 'pending' ? <><span><AnimatedNumber value={totalCount} /> đơn</span><div><button type="button" disabled={page === 1 || loading} onClick={() => setPage(v => v-1)}>Trước</button><b>{page}</b><button type="button" disabled={page*20 >= totalCount || loading} onClick={() => setPage(v => v+1)}>Sau</button></div></> : <span>Đã tải {history.length} đơn lịch sử</span>}</div>
+    </section><section className="order-detail-panel" aria-label="Chi tiết đơn hàng">{detailLoading ? <p className="order-empty">Đang tải chi tiết đơn...</p> : !selected ? <div className="order-detail-empty"><PackageCheck /><h2>Chọn đơn hàng để xem chi tiết</h2><p>Thông tin đơn và đối chiếu tồn kho sẽ hiển thị tại đây.</p></div> : <div key={selected.id} className="order-detail-content">
+      <div className="order-detail-heading"><div><small>Chi tiết đơn hàng</small><h2>{selected.orderCode}</h2></div><div><span className="order-status">{statusNames[selected.status] ?? selected.status}</span><button type="button" aria-label="Đóng chi tiết đơn" onClick={() => { requestRef.current++; setSelected(null); setActiveId(null) }}><X /></button></div></div>
+      <h3 className="order-info-title">Thông tin giao hàng</h3>
+      <div className="order-dates"><div><small>Nhà phân phối</small><strong>{selected.distributorName || 'Chưa ghi nhận'}</strong></div><div><small>Ngày tạo</small><strong>{date(selected.createdAt)}</strong></div><div><small>Ngày giao dự kiến</small><strong>{date(selected.expectedDeliveryDate)}</strong></div></div>
+      <div className="order-delivery"><div><MapPin /><span>Địa chỉ giao</span><strong>{selected.deliveryAddress?.trim() || 'Chưa ghi nhận'}</strong></div><div><Phone /><span>Liên hệ</span><strong>{selected.contactPhone?.trim() || 'Chưa ghi nhận'}</strong></div><div><MessageSquare /><span>Ghi chú</span><strong>{selected.orderNote?.trim() || 'Chưa ghi nhận'}</strong></div></div>
+      {selected.cancellationReason && <p className="order-alert">Lý do hủy: {selected.cancellationReason} Đối soát tiền ngoài hệ thống.</p>}
+      {selected.adjustments?.map(a => <Link data-saw-transition="" key={a.id} className="order-adjustment" to={ROUTES.WAREHOUSE_STOCK_ADJUSTMENT_DETAIL.replace(':id', String(a.id))}>{a.code} · Xem tiến độ xử lý điều chỉnh tồn</Link>)}
+      <div className="order-stock"><h3>Đối chiếu tồn kho</h3><div className="order-table-wrap"><table><thead><tr><th>Lô hàng</th><th>Yêu cầu</th><th>Khả dụng</th><th>Giá nguyên lô</th><th>Điều kiện</th></tr></thead><tbody>{selected.lines.map(l => <tr key={l.orderDetailId}><td><strong>{l.productName}</strong><small>{l.batchCode || 'Chưa ghi nhận'}</small></td><td>{l.requestedWeightKg} kg</td><td>{l.availableWeightKg} kg</td><td>{money.format(l.unitPrice)}</td><td className={l.stockAvailable ? 'order-good' : 'order-warning'}>{l.stockAvailable ? 'Đủ điều kiện' : `Thiếu ${Math.max(l.requestedWeightKg - l.availableWeightKg, 0)} kg`}</td></tr>)}</tbody></table></div>{!selected.stockAvailable && selected.status === 'PENDING' && <p className="order-alert"><AlertTriangle /> Đơn chưa đủ điều kiện tồn kho để duyệt.</p>}</div>
+      <footer className="order-detail-footer"><div><small>Tổng giá trị đơn</small><strong>{money.format(selected.totalAmount)}</strong></div><div className="order-actions">{selected.status === 'APPROVED' && <button type="button" className="order-secondary" disabled={busy} onClick={() => openDialog('reserve')}><PackageCheck /> Thử phân bổ hàng</button>}{selected.status === 'PENDING' && <><button type="button" className="order-reject" disabled={busy} onClick={() => {setReasonError('');openDialog('reject')}}><X /> Từ chối đơn</button><button type="button" className="order-primary" disabled={busy || !selected.stockAvailable} onClick={() => openDialog('approve')}><Check /> Duyệt đơn</button></>}</div></footer>
+    </div>}</section></div>
+    {dialog && selected && <div className="order-overlay" onMouseDown={e => { if(e.target === e.currentTarget && !busy) setDialog(null) }}><div role="dialog" aria-modal="true" aria-labelledby="order-dialog-title" className="order-modal" onKeyDown={e => { if (e.key === 'Escape' && !busy) setDialog(null); if (e.key === 'Tab') { const controls = [...e.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), textarea:not(:disabled)')]; if (!controls.length) return; const first = controls[0], last = controls[controls.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } } }}><div className="order-modal-heading"><div><h2 id="order-dialog-title">{dialog === 'approve' ? 'Xác nhận phê duyệt đơn hàng' : dialog === 'reject' ? 'Từ chối đơn hàng' : 'Xác nhận phân bổ hàng'}</h2><p>{selected.orderCode} · {selected.distributorName}</p></div><button type="button" aria-label="Đóng" disabled={busy} onClick={() => setDialog(null)}><X /></button></div>{dialog === 'reject' ? <label className="order-reason">Lý do từ chối<textarea value={reason} onChange={e => {setReason(e.target.value);setReasonError('')}} placeholder="Nhập lý do từ chối đơn hàng..." aria-invalid={!!reasonError} />{reasonError && <span role="alert">{reasonError}</span>}</label> : <p className="order-modal-copy">{dialog === 'approve' ? `Xác nhận duyệt đơn có tổng giá trị ${money.format(selected.totalAmount)}?` : 'Xác nhận thử phân bổ đủ hàng đã duyệt cho đơn này?'}</p>}<div className="order-modal-actions"><button type="button" autoFocus className="order-secondary" disabled={busy} onClick={() => setDialog(null)}>Hủy</button><button type="button" className={dialog === 'reject' ? 'order-confirm-reject' : 'order-primary'} disabled={busy} onClick={() => void (dialog === 'approve' ? approve() : dialog === 'reject' ? reject() : reserve())}>{busy ? 'Đang xử lý...' : dialog === 'approve' ? 'Xác nhận duyệt' : dialog === 'reject' ? 'Xác nhận từ chối' : 'Xác nhận phân bổ'}</button></div></div></div>}
+  </div>;
 }

@@ -287,14 +287,15 @@ export const EditBatchPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 max-w-6xl mx-auto">
+    <div className="sp-form">
       <form onSubmit={handleSubmit(onSubmit)}>
         {/* Header Bar */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <SupplierBatchBreadcrumb batchId={Number(id)} batchCode={batchCode} editing />
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">Chỉnh sửa thông tin lô hàng</h1>
+              <p className="text-xs text-emerald-700 mb-1">Quản lý lô hàng / Chỉnh sửa lô</p>
+            <h1 className="text-2xl font-bold text-gray-900">Chỉnh sửa thông tin lô hàng</h1>
               <span className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded font-mono font-semibold">
                 Lô hàng #{batchCode}
               </span>

@@ -63,3 +63,7 @@ Desktop.ini
 # Local Supplier regression tests
 /tests/supplierBatch.test.mjs
 /tests/supplierProfile.test.mjs
+Capstone_SAW_FE.zip
+
+# Local agent instructions
+/AGENTS.md

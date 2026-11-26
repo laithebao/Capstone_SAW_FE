@@ -1,0 +1,32 @@
+@property --saw-chart-sweep { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+@keyframes saw-chart-draw { from { --saw-chart-sweep: 0%; } to { --saw-chart-sweep: 100%; } }
+@keyframes saw-content-exit { to { opacity: 0; transform: scale(.97); } }
+@keyframes saw-content-in { from { opacity: 0; } to { opacity: 1; } }
+.saw-number, .saw-number > span { display:inline-block; font-variant-numeric:tabular-nums; transform-origin:center; }
+.saw-wm-motion main { view-transition-name:saw-warehouse-content; }
+html.saw-wm-transition::view-transition-old(root) { animation:none; opacity:0; }
+html.saw-wm-transition::view-transition-new(root) { animation:none; }
+html.saw-wm-transition::view-transition-old(saw-warehouse-content) { animation:saw-content-exit 150ms ease-in both; }
+html.saw-wm-transition::view-transition-new(saw-warehouse-content) { animation:saw-content-in 180ms ease-out 100ms both; }
+.saw-wm-motion .saw-chart-sweep { mask-image:conic-gradient(#000 0 var(--saw-chart-sweep),transparent var(--saw-chart-sweep) 100%); animation:saw-chart-draw 750ms cubic-bezier(.22,1,.36,1) 150ms both; }
+.saw-wm-motion main button:not(:disabled) { transition:transform 150ms ease, background-color 150ms ease, color 150ms ease; }
+.saw-wm-motion main button:not(:disabled):active { transform:scale(.97); }
+.saw-wm-motion .cap-overlay { animation:saw-content-in 160ms ease-out both; }
+.saw-wm-motion .cap-modal { animation:saw-modal-in 180ms ease-out both; }
+.saw-wm-motion .cap-menu { transform-origin:top right; animation:saw-modal-in 160ms ease-out both; }
+@keyframes saw-modal-in { from { opacity:0; transform:scale(.96); } to { opacity:1; transform:scale(1); } }
+@media (prefers-reduced-motion:reduce) {
+  .saw-wm-motion .saw-chart-sweep, .saw-wm-motion .cap-overlay, .saw-wm-motion .cap-modal, .saw-wm-motion .cap-menu { animation:none; mask-image:none; }
+  .saw-wm-motion main button:not(:disabled) { transition:none; }
+}
+@keyframes saw-modal-out { to { opacity:0; transform:scale(.96); } }
+@keyframes saw-overlay-out { to { opacity:0; } }
+.saw-wm-motion .cap-overlay.is-closing { animation:saw-overlay-out 170ms ease-in both; }
+.saw-wm-motion .cap-overlay.is-closing .cap-modal { animation:saw-modal-out 170ms ease-in both; }
+.saw-wm-motion .wm-bar>span, .saw-wm-motion .wm-stockbar>span, .saw-wm-motion .inv-chart-bar>span, .saw-wm-motion .inv-bar>span, .saw-wm-motion .cap-bar>span { transition:width 750ms cubic-bezier(.22,1,.36,1); transform-origin:left center; }
+@media (prefers-reduced-motion:reduce) {
+  .saw-wm-motion .cap-overlay.is-closing, .saw-wm-motion .cap-overlay.is-closing .cap-modal { animation:none; }
+  .saw-wm-motion .wm-bar>span, .saw-wm-motion .wm-stockbar>span, .saw-wm-motion .inv-chart-bar>span, .saw-wm-motion .inv-bar>span, .saw-wm-motion .cap-bar>span { transition:none; }
+}
+.saw-wm-motion .cap-menu.is-closing { pointer-events:none; animation:saw-modal-out 160ms ease-in both; }
+@media (prefers-reduced-motion:reduce) { .saw-wm-motion .cap-menu.is-closing { animation:none; } }

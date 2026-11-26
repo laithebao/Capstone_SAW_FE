@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import './warehouse-sale-offers.css'
+import './warehouse-dashboard.css'
+import FormNotification from '@/components/common/FormNotification'
+import { Search, Save, Eye, EyeOff, Lock, AlertTriangle } from 'lucide-react'
+import { AnimatedNumber } from '@/components/common/AnimatedNumber';
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import AppIcon from "@/components/common/AppIcon";
 import {
@@ -30,8 +35,13 @@ export default function WarehouseSaleOffersPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [busyAction, setBusyAction] = useState<"price" | "visibility" | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [invalidPriceId, setInvalidPriceId] = useState<number | null>(null);
+  const dirtyPrices = useRef(new Set<number>());
+  const pendingAction = useRef(false);
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -40,14 +50,7 @@ export default function WarehouseSaleOffersPage() {
       const result = await getWarehouseSaleOffers(search, page, signal);
       setItems(result.items);
       setTotalCount(result.totalCount);
-      setPrices(
-        Object.fromEntries(
-          result.items.map((item) => [
-            item.batchId,
-            item.requiresRepricing ? "" : item.wholeLotPrice?.toString() ?? "",
-          ]),
-        ),
-      );
+      setPrices(current => Object.fromEntries(result.items.map(item => [item.batchId, dirtyPrices.current.has(item.batchId) ? current[item.batchId] ?? '' : (item.requiresRepricing ? '' : item.wholeLotPrice?.toString() ?? '')])));
     } catch (loadError: unknown) {
       if ((loadError as { name?: string }).name !== "CanceledError")
         setError(apiMessage(loadError, "Không thể tải danh sách lô trong kho."));
@@ -70,26 +73,32 @@ export default function WarehouseSaleOffersPage() {
     setSearch(query.trim());
   };
 
-  const save = async (item: WarehouseSaleOfferItem, isPublished: boolean) => {
+  const save = async (item: WarehouseSaleOfferItem, isPublished: boolean, action: "price" | "visibility") => {
+    if (pendingAction.current) return;
+    setMessage(""); setActionError("");
     if (item.isPendingApproval) {
-      setError("Lô hàng đang chờ duyệt đơn mua, không thể thay đổi giá hoặc trạng thái bán.");
+      setActionError("Lô hàng đang chờ duyệt đơn mua, không thể thay đổi giá hoặc trạng thái bán.");
       return;
     }
     if (item.isSold) {
-      setError("Lô hàng đã bán, không thể thay đổi giá hoặc trạng thái bán.");
+      setActionError("Lô hàng đã bán, không thể thay đổi giá hoặc trạng thái bán.");
       return;
     }
     const price = Number(prices[item.batchId]);
     if (!Number.isFinite(price) || price <= 0) {
-      setError("Giá bán nguyên lô phải lớn hơn 0.");
+      setInvalidPriceId(item.batchId);
+      setActionError("Giá bán nguyên lô phải lớn hơn 0.");
       return;
     }
+    setInvalidPriceId(null);
     if (isPublished && !item.canPublish) {
-      setError(item.ineligibilityReason ?? "Lô hàng chưa đủ điều kiện công bố bán.");
+      setActionError(item.ineligibilityReason ?? "Lô hàng chưa đủ điều kiện công bố bán.");
       return;
     }
+    pendingAction.current = true;
     setBusyId(item.batchId);
-    setError("");
+    setBusyAction(action);
+    setActionError("");
     setMessage("");
     try {
       const updated = await updateWarehouseSaleOffer(item.batchId, {
@@ -100,165 +109,36 @@ export default function WarehouseSaleOffersPage() {
       setItems((current) =>
         current.map((row) => (row.batchId === item.batchId ? updated : row)),
       );
+      dirtyPrices.current.delete(item.batchId);
       setPrices((current) => ({
         ...current,
         [item.batchId]: updated.wholeLotPrice?.toString() ?? "",
       }));
-      setMessage(
-        isPublished
-          ? `Đã công bố lô ${item.batchCode} cho nhà phân phối.`
-          : item.isPublished
-            ? `Đã ẩn lô ${item.batchCode} khỏi danh mục nhà phân phối.`
-            : `Đã lưu giá lô ${item.batchCode}.`,
-      );
+      setMessage(action === "price" ? `Đã lưu giá lô ${item.batchCode}.` : isPublished ? `Đã công bố lô ${item.batchCode} cho nhà phân phối.` : `Đã ẩn lô ${item.batchCode} khỏi danh mục nhà phân phối.`);
     } catch (saveError: unknown) {
-      setError(apiMessage(saveError, "Không thể cập nhật giá và trạng thái bán."));
+      setActionError(apiMessage(saveError, "Không thể cập nhật giá và trạng thái bán."));
     } finally {
+      pendingAction.current = false;
       setBusyId(null);
+      setBusyAction(null);
     }
   };
 
-  return (
-    <div className="min-h-full bg-slate-50 p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-emerald-700">Điều hành kho</p>
-            <h1 className="text-3xl font-bold text-slate-950">Công bố lô hàng đang bán</h1>
-            <p className="mt-1 max-w-3xl text-slate-500">
-              Đặt giá nguyên lô và công bố các lô đã kiểm định, nhập kho để nhà phân phối nhìn thấy trong danh mục.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            <AppIcon name="refresh" className="size-4" /> Làm mới
-          </button>
-        </header>
-
-        <form onSubmit={submitSearch} className="flex gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm mã lô, sản phẩm hoặc loại nông sản"
-            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-emerald-600"
-          />
-          <button className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white">Tìm kiếm</button>
-        </form>
-
-        {error && <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
-        {message && <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{message}</div>}
-
-        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-            <div>
-              <h2 className="font-bold text-slate-900">Lô đã có tồn kho</h2>
-              <p className="text-sm text-slate-500">Giá áp dụng cho toàn bộ lô, không phải giá mỗi kg.</p>
-            </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">{totalCount} lô</span>
-          </div>
-          {loading ? (
-            <p className="py-14 text-center text-slate-500">Đang tải dữ liệu...</p>
-          ) : items.length === 0 ? (
-            <p className="py-14 text-center text-slate-500">Chưa có lô hàng nào đã nhập kho.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3">Lô hàng</th>
-                    <th className="px-4 py-3">Chất lượng</th>
-                    <th className="px-4 py-3">Khối lượng</th>
-                    <th className="px-4 py-3">Giá nguyên lô</th>
-                    <th className="px-4 py-3">Trạng thái bán</th>
-                    <th className="px-4 py-3 text-right">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {items.map((item) => (
-                    <tr key={item.batchId} className="align-top">
-                      <td className="px-4 py-4">
-                        <p className="font-bold text-slate-900">{item.batchCode}</p>
-                        <p>{item.productName}</p>
-                        <p className="text-xs text-slate-500">{item.cropName}</p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-700">
-                          Hạng {item.qualityGrade ?? "—"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="font-semibold">{weight.format(item.availableWeightKg)} kg khả dụng</p>
-                        <p className="text-xs text-slate-500">Nhập kho {weight.format(item.verifiedWeightKg)} kg</p>
-                      </td>
-                      <td className="px-4 py-4">
-                        {item.batchStatus === 'DISPOSED' || item.isPendingApproval || item.isSold ? (
-                          <p className="font-semibold text-slate-900">
-                            {item.wholeLotPrice == null ? "—" : money.format(item.wholeLotPrice)}
-                          </p>
-                        ) : (
-                          <>
-                            <input
-                              aria-label={`Giá bán lô ${item.batchCode}`}
-                              type="number"
-                              min="1"
-                              step="1"
-                              value={prices[item.batchId] ?? ""}
-                              onChange={(event) => setPrices((current) => ({ ...current, [item.batchId]: event.target.value }))}
-                              className="w-44 rounded-lg border border-slate-300 px-3 py-2 font-semibold outline-none focus:border-emerald-600"
-                              placeholder="Nhập giá VND"
-                            />
-                            {item.requiresRepricing && <p className="mt-1 text-xs font-semibold text-amber-800">Cần định giá lại phần lô đã kiểm đếm. Cần lưu giá mới trước khi công bố.</p>}
-                            {item.wholeLotPrice && <p className="mt-1 text-xs text-slate-500">Hiện tại: {money.format(item.wholeLotPrice)}</p>}
-                          </>
-                        )}
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.batchStatus === "DISPOSED" ? "bg-rose-50 text-rose-700" : item.isPendingApproval ? "bg-amber-50 text-amber-700" : item.isSold ? "bg-blue-50 text-blue-700" : item.isPublished ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                          {item.batchStatus === "DISPOSED" ? "Đã loại bỏ" : item.isPendingApproval ? "Đang chờ duyệt" : item.isSold ? "Đã bán" : item.isPublished ? "Đã công bố" : "Chưa công bố"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        {item.batchStatus === 'DISPOSED' || item.isPendingApproval || item.isSold ? (
-                          <p className="text-right text-sm font-semibold text-slate-500">
-                            {item.batchStatus === "DISPOSED" ? "Đã loại bỏ khỏi tồn kho" : item.isPendingApproval ? "Chờ xử lý đơn" : "Đã hoàn tất bán"}
-                          </p>
-                        ) : (
-                          <div className="flex justify-end gap-2">
-                            <button
-                              disabled={busyId === item.batchId}
-                              onClick={() => void save(item, item.isPublished)}
-                              className="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 disabled:opacity-50"
-                            >
-                              Lưu giá
-                            </button>
-                            <button
-                              disabled={busyId === item.batchId || (!item.isPublished && !item.canPublish)}
-                              onClick={() => void save(item, !item.isPublished)}
-                              className={`rounded-lg px-3 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 ${item.isPublished ? "bg-slate-600" : "bg-emerald-700"}`}
-                            >
-                              {item.isPublished ? "Ẩn lô" : "Công bố bán"}
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">
-            <span>Trang {page}</span>
-            <div className="flex gap-2">
-              <button disabled={page === 1} onClick={() => setPage((value) => value - 1)} className="rounded border px-3 py-1.5 disabled:opacity-40">Trước</button>
-              <button disabled={page * 20 >= totalCount} onClick={() => setPage((value) => value + 1)} className="rounded border px-3 py-1.5 disabled:opacity-40">Sau</button>
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
-  );
+  return <div className="saw-sale-offers-page">
+    <header className="sale-header"><div><p>Điều hành kho / Công bố lô bán</p><h1>Công bố lô bán</h1><span>Quản lý giá bán nguyên lô và công bố lô hàng cho nhà phân phối.</span></div><div className="saw-wm-dashboard"><button type="button" className="wm-refresh" disabled={loading || busyId !== null} onClick={() => void load()}><AppIcon name="refresh" className={loading ? 'wm-spin' : ''} /> Làm mới</button></div></header>
+    {error && <div role="alert" className="sale-load-error">{error} <button onClick={() => void load()} type="button">Thử lại</button></div>}
+    <FormNotification warehouse message={actionError || message} tone={actionError ? 'error' : 'success'} onDismiss={() => { setActionError(''); setMessage('') }} />
+    <section className="sale-panel"><div className="sale-panel-head"><div><h2>Danh sách lô đã có tồn kho</h2><p>Giá áp dụng cho toàn bộ lô, không phải giá mỗi kg.</p></div><span><AnimatedNumber value={totalCount} /> lô hàng</span></div>
+      <form className="sale-search" onSubmit={submitSearch}><label><Search size={16} /><input aria-label="Tìm lô hàng" value={query} onChange={e => setQuery(e.target.value)} placeholder="Tìm mã lô, sản phẩm hoặc loại nông sản" /></label><button type="submit" className="sale-primary">Tìm kiếm</button><button type="button" className="sale-secondary" onClick={() => { setQuery(''); setSearch(''); setPage(1) }}>Đặt lại</button></form>
+      {loading && !items.length ? <p className="sale-empty">Đang tải dữ liệu...</p> : !items.length ? <p className="sale-empty">Chưa có lô hàng nào đã nhập kho.</p> : <div className="sale-table-wrap"><table className="sale-table"><thead><tr><th>Lô hàng</th><th>Chất lượng</th><th>Khối lượng</th><th>Giá nguyên lô</th><th>Trạng thái bán</th><th>Thao tác</th></tr></thead><tbody>{items.map(item => {const locked = item.batchStatus === 'DISPOSED' || item.isPendingApproval || item.isSold; const status = item.batchStatus === 'DISPOSED' ? 'Đã loại bỏ' : item.isPendingApproval ? 'Đang chờ duyệt' : item.isSold ? 'Đã bán' : item.isPublished ? 'Đã công bố' : 'Chưa công bố'; return <tr key={item.batchId}>
+        <td><strong>{item.productName}</strong><small className="sale-code">{item.batchCode}</small><small>{item.cropName}</small></td>
+        <td><span className="sale-grade">{item.qualityGrade ? `Hạng ${item.qualityGrade}` : 'Chưa ghi nhận'}</span></td>
+        <td><strong>{weight.format(item.availableWeightKg)} kg</strong><small>Nhập kho {weight.format(item.verifiedWeightKg)} kg</small></td>
+        <td>{locked ? <strong>{item.wholeLotPrice == null ? 'Chưa ghi nhận' : money.format(item.wholeLotPrice)}</strong> : <><div className="sale-price-editor"><input aria-label={`Giá bán lô ${item.batchCode}`} type="number" aria-invalid={invalidPriceId === item.batchId} min="1" step="1" value={prices[item.batchId] ?? ''} onChange={e => { dirtyPrices.current.add(item.batchId); setInvalidPriceId(null); setPrices(current => ({...current,[item.batchId]:e.target.value})) }} placeholder="Nhập giá VND" /><button type="button" className={`sale-secondary${busyAction === "visibility" ? " sale-save--held" : ""}`} disabled={busyId !== null} onClick={() => void save(item,item.isPublished,'price')}><Save size={15} /> {busyId === item.batchId && busyAction === "price" ? 'Đang lưu' : 'Lưu'}</button></div>{invalidPriceId === item.batchId && <small className="sale-price-error">Giá bán nguyên lô phải lớn hơn 0.</small>}{item.wholeLotPrice != null && <small>Hiện tại: {money.format(item.wholeLotPrice)}</small>}{item.requiresRepricing && <small className="sale-warning"><AlertTriangle size={14} /> Cần định giá lại phần lô đã kiểm đếm. Cần lưu giá mới trước khi công bố.</small>}</>}</td>
+        <td><span className={`sale-status ${item.batchStatus === 'DISPOSED' ? 'is-danger' : item.isPendingApproval ? 'is-waiting' : item.isSold ? 'is-sold' : item.isPublished ? 'is-published' : ''}`}>{status}</span></td>
+        <td>{locked ? <span className="sale-locked"><Lock size={14} /> {item.batchStatus === 'DISPOSED' ? 'Đã loại bỏ khỏi tồn kho' : item.isPendingApproval ? 'Chờ xử lý đơn' : 'Đã hoàn tất bán'}</span> : <><button type="button" disabled={busyId !== null || (!item.isPublished && !item.canPublish)} onClick={() => void save(item,!item.isPublished,'visibility')} className={item.isPublished ? 'sale-secondary' : 'sale-primary'}>{item.isPublished ? <EyeOff size={15} /> : <Eye size={15} />}{item.isPublished ? 'Ẩn lô' : 'Công bố bán'}</button>{!item.isPublished && !item.canPublish && item.ineligibilityReason && <small>{item.ineligibilityReason}</small>}</>}</td>
+      </tr>})}</tbody></table></div>}
+      <div className="sale-pagination"><span>Hiển thị {totalCount ? (page-1)*20+1 : 0}–{Math.min(page*20,totalCount)} / {totalCount} lô</span><div><button className="sale-secondary" type="button" disabled={page === 1 || loading} onClick={() => setPage(v => v-1)}>Trước</button><b>{page}</b><button className="sale-secondary" type="button" disabled={page*20 >= totalCount || loading} onClick={() => setPage(v => v+1)}>Sau</button></div></div>
+    </section>
+  </div>
 }

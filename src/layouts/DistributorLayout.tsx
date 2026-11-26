@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Outlet } from 'react-router'
 import AiChatWidget from '@/components/AiChatWidget'
+import '@/pages/distributor/distributor-portal.css'
 
 export interface DistributorOutletContext {
   setBatchContext: (ctx: { batchId?: number | null; batchCode?: string | null }) => void
@@ -16,7 +17,7 @@ export default function DistributorLayout() {
 
   return (
     <>
-      <Outlet context={outletContext} />
+      <div className="saw-distributor"><Outlet context={outletContext} /></div>
       <AiChatWidget
         batchContextId={batchContext.batchId}
         batchContextCode={batchContext.batchCode}

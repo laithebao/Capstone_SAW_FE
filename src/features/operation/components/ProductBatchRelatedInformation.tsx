@@ -1,3 +1,7 @@
+import './batch-history.css'
+import { useState } from 'react'
+import { ArrowDownToLine, ArrowUpFromLine, ArrowRightLeft, Check, ChevronDown, Clock3, UserRound, X, FileClock, ScanSearch, ClipboardCheck, PackageCheck, Lock, Truck, ClipboardX, PackageX, PackageOpen, ShieldCheck, AlertTriangle, CircleCheck, FileSearch } from 'lucide-react'
+import { getProductBatchStatusPresentation } from '../productBatchStatus'
 import { Link } from 'react-router'
 import { ROUTES } from '@/constants/routes'
 import ProductBatchStatusBadge from './ProductBatchStatusBadge'
@@ -21,7 +25,7 @@ const transactionLabels: Record<string, string> = {
 }
 const card = 'rounded-xl border border-slate-200 bg-white p-5 shadow-sm'
 
-export default function ProductBatchRelatedInformation({ batch }: { batch: ProductBatchDetail }) {
+export default function ProductBatchRelatedInformation({ batch, compactHistory = false }: { batch: ProductBatchDetail; compactHistory?: boolean }) {
   const qc = batch.latestQcInspection
   const receipts = batch.goodsReceipts ?? []
   const history = batch.statusHistory ?? []
@@ -29,7 +33,7 @@ export default function ProductBatchRelatedInformation({ batch }: { batch: Produ
   return <>
     <section aria-label="Kết quả kiểm định QC" className={card}>
       <h2 className="text-lg font-bold text-slate-900">Kết quả kiểm định QC</h2>
-      {!qc ? <p className="mt-3 text-sm text-slate-500">Chưa có phiếu kiểm định QC.</p> : <>
+      {!qc ? <p className="mt-3 text-sm text-slate-500">{compactHistory ? 'Chưa ghi nhận' : 'Chưa có phiếu kiểm định QC.'}</p> : <>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <span className="break-all font-mono font-semibold text-emerald-700">{qc.inspectionCode}</span>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{statusLabels[qc.inspectionStatus] ?? qc.inspectionStatus}</span>
@@ -50,7 +54,10 @@ export default function ProductBatchRelatedInformation({ batch }: { batch: Produ
 
     <section aria-label="Phiếu nhập liên quan" className={card}>
       <h2 className="text-lg font-bold text-slate-900">Phiếu nhập liên quan</h2>
-      {!receipts.length ? <p className="mt-3 text-sm text-slate-500">Chưa có phiếu nhập.</p> : <div className="mt-4 overflow-x-auto">
+      {compactHistory ? !receipts.length ? <p className="mt-3 text-sm text-slate-500">Chưa ghi nhận</p> : <div className="saw-v7-receipts">{receipts.map(receipt => <article key={receipt.id}>
+        <div className="saw-v7-receipt-head"><Link aria-label={`Xem phiếu nhập ${receipt.receiptCode}`} to={ROUTES.OPERATION_GOODS_RECEIPT_DETAIL.replace(':id', String(receipt.id))}>{receipt.receiptCode}</Link><GoodsReceiptStatusBadge status={receipt.receiptStatus} /></div>
+        <dl><Field label="Ngày nhận" value={receipt.receivedAt ? receipt.receivedAt.slice(0,10).split('-').reverse().join('/') : 'Chưa ghi nhận'} /><Field label="Vị trí kho" value={text(receipt.locationName).replace(/\s*\/\s*—/g, '')} /><Field label="Người lập" value={text(receipt.operationStaffName)} /></dl>
+      </article>)}</div> : !receipts.length ? <p className="mt-3 text-sm text-slate-500">Chưa có phiếu nhập.</p> : <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-slate-200 text-xs uppercase text-slate-500"><tr>
             <th className="p-3">Mã phiếu</th><th className="p-3">Trạng thái</th><th className="p-3">Ngày nhận</th><th className="p-3">Vị trí kho</th><th className="p-3">Người lập</th>
@@ -65,29 +72,26 @@ export default function ProductBatchRelatedInformation({ batch }: { batch: Produ
       </div>}
     </section>
 
-    <section aria-label="Lịch sử lô hàng" className={card}>
-      <h2 className="text-lg font-bold text-slate-900">Lịch sử lô hàng</h2>
-      <h3 className="mt-4 text-sm font-semibold text-slate-700">Thay đổi trạng thái</h3>
-      {!history.length ? <p className="mt-2 text-sm text-slate-500">Chưa có lịch sử trạng thái.</p> : <ol className="mt-3 space-y-3">
-        {history.map(item => <li key={item.id} className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <time className="mr-2 text-slate-500">{time(item.changedAt)}</time>
-            {item.oldStatus ? <ProductBatchStatusBadge status={item.oldStatus} /> : <span className="text-slate-500">—</span>}
-            <span aria-label="chuyển sang">→</span><ProductBatchStatusBadge status={item.newStatus} />
-          </div>
-          {item.changedByName && <p className="mt-2 text-sm text-slate-700">Người thực hiện: {item.changedByName}</p>}
-          {item.changeReason && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-700">{item.changeReason}</p>}
-        </li>)}
+    <section aria-label="Lịch sử lô hàng" className={`${card} saw-batch-history`}>
+      <div className="saw-history-title"><h2>Lịch sử lô hàng</h2><span>{history.length} hoạt động</span></div>
+      {!compactHistory && <h3>Thay đổi trạng thái</h3>}
+      {compactHistory ? <HistoryTimeline history={history} /> : !history.length ? <p className="saw-history-empty">Chưa có lịch sử trạng thái.</p> : <ol className="saw-history-timeline">
+        {history.map(item => {
+          const presentation = getProductBatchStatusPresentation(item.newStatus)
+          return <li key={item.id} className="saw-timeline-item">
+            <span className={`saw-timeline-icon saw-timeline-icon--${presentation.tone}`} aria-hidden="true">{presentation.tone === 'red' ? <X /> : presentation.tone === 'green' ? <Check /> : <Clock3 />}</span>
+            <div className="saw-timeline-content">
+              <div className="saw-timeline-heading"><strong>{presentation.label}</strong><time>{time(item.changedAt)}</time></div>
+              <div className="saw-timeline-status">{item.oldStatus ? <ProductBatchStatusBadge status={item.oldStatus} /> : <span>—</span>}<span aria-label="chuyển sang">→</span><ProductBatchStatusBadge status={item.newStatus} /></div>
+              {item.changedByName && <p className="saw-timeline-person"><UserRound aria-hidden="true" /> Người thực hiện: {item.changedByName}</p>}
+              {item.changeReason && <p className="saw-history-note">{item.changeReason}</p>}
+            </div>
+          </li>
+        })}
       </ol>}
-      <h3 className="mt-6 text-sm font-semibold text-slate-700">Giao dịch kho đã lưu</h3>
-      {!transactions.length ? <p className="mt-2 text-sm text-slate-500">Chưa có giao dịch kho.</p> : <div className="mt-3 space-y-3">
-        {transactions.map(item => <div key={`${item.transactionType}:${item.id}`} className="rounded-lg border border-slate-100 p-4 text-sm">
-          <div className="flex flex-wrap justify-between gap-2"><p className="font-semibold text-slate-800">{transactionLabels[item.transactionType] ?? item.transactionType} · <span className="break-all font-mono">{item.code}</span></p><time className="text-slate-500">{time(item.recordedAt)}</time></div>
-          <p className="mt-2 text-slate-700">{statusLabels[item.status] ?? item.status} · {number(item.quantity)} {item.unit}{item.weightInKg !== null && ` · ${number(item.weightInKg)} kg`}</p>
-          {(item.fromLocationName || item.toLocationName) && <p className="mt-2 text-slate-600">{item.fromLocationName && `Từ: ${item.fromLocationName}`}{item.fromLocationName && item.toLocationName && ' → '}{item.toLocationName && `Đến: ${item.toLocationName}`}</p>}
-          {item.performedByName && <p className="mt-2 text-slate-600">Người thực hiện / lập phiếu: {item.performedByName}</p>}
-          {item.note && <p className="mt-2 whitespace-pre-wrap break-words text-slate-700">{item.note}</p>}
-        </div>)}
+      <h3 className="saw-transactions-title">Giao dịch kho đã lưu</h3>
+      {!transactions.length ? <p className="saw-history-empty">Chưa có giao dịch kho.</p> : <div className="saw-transaction-list">
+        {transactions.map(item => <Transaction key={`${item.transactionType}:${item.id}`} item={item} />)}
       </div>}
     </section>
   </>
@@ -95,4 +99,72 @@ export default function ProductBatchRelatedInformation({ batch }: { batch: Produ
 
 function Field({ label, value }: { label: string; value: string }) {
   return <div><dt className="text-slate-500">{label}</dt><dd className="mt-1 font-medium text-slate-800">{value}</dd></div>
+}
+
+function Transaction({ item }: { item: NonNullable<ProductBatchDetail['warehouseTransactions']>[number] }) {
+  const [open, setOpen] = useState(false)
+  const Icon = item.transactionType === 'GOODS_RECEIPT' ? ArrowDownToLine : item.transactionType === 'GOODS_ISSUE' ? ArrowUpFromLine : ArrowRightLeft
+  return <div className={`saw-transaction-item${open ? ' is-open' : ''}`}>
+    <button type="button" className="saw-transaction-header" aria-expanded={open} onClick={() => setOpen(value => !value)}>
+      <span className={`saw-transaction-icon${item.transactionType === 'GOODS_ISSUE' ? ' is-issue' : ''}`}><Icon aria-hidden="true" /></span>
+      <span className="saw-transaction-main"><strong>{transactionLabels[item.transactionType] ?? item.transactionType}</strong><span className="saw-transaction-code">{item.code}</span><time>{time(item.recordedAt)}</time></span>
+      <span className="saw-transaction-meta"><strong>{number(item.quantity)} {item.unit}</strong><span>{statusLabels[item.status] ?? item.status}</span></span>
+      <ChevronDown className="saw-transaction-chevron" aria-hidden="true" />
+    </button>
+    <div className="saw-transaction-collapse" inert={!open}><div><dl className="saw-transaction-content">
+      <Field label="Số lượng" value={`${number(item.quantity)} ${item.unit}`} />
+      {item.weightInKg !== null && <Field label="Khối lượng" value={`${number(item.weightInKg)} kg`} />}
+      {item.fromLocationName && <Field label="Từ vị trí" value={item.fromLocationName} />}
+      {item.toLocationName && <Field label="Đến vị trí" value={item.toLocationName} />}
+      {item.performedByName && <Field label="Người thực hiện / lập phiếu" value={item.performedByName} />}
+      {item.note && <Field label="Ghi chú" value={item.note} />}
+    </dl></div></div>
+  </div>
+}
+
+const historyIcons: Record<string, typeof FileClock> = {
+  PENDING_PREDECLARATION: FileClock, SUBMITTED: FileClock, PENDING_APPROVAL: FileClock,
+  PENDING_QC: ScanSearch, IN_QC: ScanSearch, APPROVED: ClipboardCheck, APPROVED_FOR_STORAGE: ClipboardCheck,
+  COMMITTED: PackageCheck, IN_STOCK: PackageCheck, STORED: PackageCheck, RESERVED: Lock,
+  ISSUED: Truck, RELEASED: Truck, PARTIALLY_ISSUED: Truck, PARTIALLY_RELEASED: Truck,
+  QC_FAILED: ClipboardX, REJECTED: ClipboardX, DISPOSED: PackageX, CANCELLED: PackageX, CANCELED: PackageX,
+  RECEIVING: PackageOpen, RECEIVED: PackageCheck, QC_PASSED: ShieldCheck, QUARANTINE: AlertTriangle,
+  EXPIRED: AlertTriangle, AVAILABLE: CircleCheck,
+}
+function historyDate(value: string) {
+  const date = new Date(/(Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}Z`)
+  if (Number.isNaN(date.getTime())) return { day: 'Chưa ghi nhận ngày', clock: '—' }
+  return { day: date.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric', month: 'long', year: 'numeric' }), clock: date.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) }
+}
+function HistoryTimeline({ history }: { history: ProductBatchDetail['statusHistory'] }) {
+  if (!history?.length) return <p className="saw-history-empty">Chưa có lịch sử trạng thái.</p>
+  const groups: { day: string; items: typeof history }[] = []
+  for (const item of history) {
+    const day = historyDate(item.changedAt).day
+    const last = groups[groups.length - 1]
+    if (last?.day === day) last.items.push(item)
+    else groups.push({ day, items: [item] })
+  }
+  return <div className="saw-timeline-groups">{groups.map((group, index) => <div className="saw-timeline-group" key={`${group.day}-${index}`}>
+    <h3 className="saw-timeline-date">{group.day}</h3>
+    <ol className="saw-history-timeline">{group.items.map(item => <HistoryItem key={item.id} item={item} />)}</ol>
+  </div>)}</div>
+}
+function HistoryItem({ item }: { item: NonNullable<ProductBatchDetail['statusHistory']>[number] }) {
+  const [open, setOpen] = useState(false)
+  const presentation = getProductBatchStatusPresentation(item.newStatus)
+  const Icon = historyIcons[item.newStatus.trim().toUpperCase()] ?? FileSearch
+  return <li className="saw-timeline-item saw-timeline-compact">
+    <span className={`saw-timeline-icon saw-timeline-icon--${presentation.tone}`}><Icon aria-hidden="true" /></span>
+    <div className="saw-timeline-content"><button type="button" className="saw-timeline-toggle" aria-expanded={open} onClick={() => setOpen(value => !value)}>
+      <span className="saw-timeline-primary"><strong>{presentation.label}</strong><span className="saw-timeline-actor"><UserRound aria-hidden="true" />{item.changedByName?.trim() || 'Chưa ghi nhận người thực hiện'}</span></span>
+      <time className="saw-timeline-time">{historyDate(item.changedAt).clock}</time><ChevronDown className="saw-timeline-chevron" aria-hidden="true" />
+    </button><div className={`saw-timeline-collapse${open ? ' is-open' : ''}`} inert={!open}><div><dl className="saw-timeline-details">
+      <Field label="Trạng thái trước" value={item.oldStatus ? getProductBatchStatusPresentation(item.oldStatus).label : 'Chưa có'} />
+      <Field label="Trạng thái sau" value={presentation.label} />
+      <Field label="Người thực hiện" value={item.changedByName?.trim() || 'Chưa ghi nhận người thực hiện'} />
+      <Field label="Thời gian" value={time(item.changedAt)} />
+      {item.changeReason && <Field label="Ghi chú / lý do" value={item.changeReason} />}
+    </dl></div></div></div>
+  </li>
 }
