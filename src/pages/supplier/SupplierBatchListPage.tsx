@@ -1,5 +1,6 @@
 import { supplierBatchFilterStatuses, canEditSupplierBatch } from '@/features/supplier/batchStatus';
 import { Pencil, RefreshCw } from 'lucide-react';
+import { formatVietnamDate } from '@/utils/vietnamTime'
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSupplierPageRefresh } from '@/features/supplier/useSupplierPageRefresh';
 import { useNavigate } from 'react-router';
@@ -291,7 +292,7 @@ export const SupplierBatchListPage: React.FC = () => {
 
                     <td className="py-3.5 px-4 text-center text-gray-500 whitespace-nowrap">
                       {batch.submittedDate
-                        ? new Date(batch.submittedDate).toLocaleDateString('vi-VN')
+                        ? formatVietnamDate(batch.submittedDate)
                         : 'N/A'}
                     </td>
 
@@ -301,7 +302,7 @@ export const SupplierBatchListPage: React.FC = () => {
 
                     <td className="py-3.5 px-4 text-center text-gray-500 whitespace-nowrap">
                       {batch.completedDate
-                        ? new Date(batch.completedDate).toLocaleDateString('vi-VN')
+                        ? formatVietnamDate(batch.completedDate)
                         : '-'}
                     </td>
 

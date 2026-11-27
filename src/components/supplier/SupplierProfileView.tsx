@@ -1,3 +1,4 @@
+import { formatVietnamDate } from '@/utils/vietnamTime'
 import './supplier-profile.css';
 import { SupplierDocuments } from '@/features/supplier/components/SupplierDocuments';
 import { supplierAssetUrl } from '@/features/supplier/supplierFiles';
@@ -229,7 +230,7 @@ export const SupplierProfileView: React.FC<SupplierProfileViewProps> = ({ profil
                     key={cert.supplierCertificationId} 
                     className="px-3 py-1.5 bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg border border-gray-200"
                   >
-                    {cert.certificationName}{cert.certificateNumber ? ` · Số ${cert.certificateNumber}` : ''}{cert.expiryDate ? ` · Đến ${new Date(cert.expiryDate).toLocaleDateString('vi-VN')}` : ''} · {cert.isActive ? 'Đang hiệu lực' : 'Không còn hiệu lực'}
+                    {cert.certificationName}{cert.certificateNumber ? ` · Số ${cert.certificateNumber}` : ''}{cert.expiryDate ? ` · Đến ${formatVietnamDate(cert.expiryDate)}` : ''} · {cert.isActive ? 'Đang hiệu lực' : 'Không còn hiệu lực'}
                   </span>
                 ))
               ) : (

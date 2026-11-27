@@ -16,6 +16,7 @@ export const userProfileSchema = z.object({
   fullName: z.string().trim().min(1, 'Họ và tên không được để trống.').max(150, 'Họ và tên không được vượt quá 150 ký tự.'),
   phoneNumber: phoneNumberSchema,
   distributor: z.object({
+    taxCode: z.string().trim().min(1, 'Mã số thuế / ĐKKD không được để trống.').max(50, 'Mã số thuế tối đa 50 ký tự.').refine(value => !value.toUpperCase().startsWith('GOOGLE-'), 'Vui lòng thay mã tạm bằng mã số thuế / ĐKKD của bạn.').optional(),
     distributorName: z.string().trim().min(1, 'Tên nhà phân phối không được để trống.').max(200, 'Tên nhà phân phối không được vượt quá 200 ký tự.'),
     contactPerson: optionalText(150, 'Người liên hệ'),
     phoneNumber: phoneNumberSchema,

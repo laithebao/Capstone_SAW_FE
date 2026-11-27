@@ -1,3 +1,4 @@
+import { formatVietnamTime } from '@/utils/vietnamTime'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import DistributorFade from '@/features/distributor-orders/DistributorFade'
@@ -277,7 +278,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
                     ? renderMarkdown(msg.content)
                     : <span>{msg.content}</span>}
                   <time className="agri-chat-time">
-                    {msg.timestamp.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                    {formatVietnamTime(msg.timestamp, { hour: '2-digit', minute: '2-digit' })}
                   </time>
                 </div>
               </div>

@@ -21,7 +21,7 @@ const palette = ['#087f59', '#4e83b5', '#c18b36', '#8d84b8', '#8ab8a5', '#64748b
 const number = (value: number | null | undefined) => value == null ? <span className="ad-unavailable">Chưa có dữ liệu</span> : <AnimatedNumber value={value} />
 const roleName: Record<string, string> = { ADMINISTRATOR: 'Quản trị viên', 'Administrator': 'Quản trị viên', WAREHOUSE_MANAGER: 'Quản lý kho', 'Warehouse Manager': 'Quản lý kho', QC_STAFF: 'Nhân viên kiểm định', 'QC Staff': 'Nhân viên kiểm định', OPERATION_STAFF: 'Nhân viên vận hành', 'Operation Staff': 'Nhân viên vận hành', SUPPLIER: 'Nhà cung cấp', Supplier: 'Nhà cung cấp', DISTRIBUTOR: 'Nhà phân phối', Distributor: 'Nhà phân phối' }
 function Panel({ title, extra, children }: { title: string; extra?: ReactNode; children: ReactNode }) { return <section className="ad-panel"><header className="ad-panel-head"><h2>{title}</h2>{extra}</header>{children}</section> }
-function showTime(value: string) { const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`; const date = new Date(normalized); return Number.isNaN(date.getTime()) ? 'Chưa ghi nhận' : new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(date) }
+function showTime(value: string) { const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`; const date = new Date(normalized); return Number.isNaN(date.getTime()) ? 'Chưa ghi nhận' : new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  dateStyle: 'short', timeStyle: 'short' }).format(date) }
 
 function ActivityChart({ days }: { days: DailyAuditActivity[] }) {
   if (!days.length) return <div className="ad-chart-empty"><History /><strong>Chưa có dữ liệu thống kê</strong></div>

@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from '@/utils/vietnamTime'
 import { SupplierBatchBreadcrumb } from '@/features/supplier/components/SupplierBatchBreadcrumb';
 import { SupplierDocumentEditor } from '@/features/supplier/components/SupplierDocuments';
 import type { SupplierDocumentDto } from '@/types/supplier';
@@ -423,7 +424,7 @@ export const EditBatchPage: React.FC = () => {
                       </option>
                       {growingAreas.map((area) => (
                         <option key={area.growingAreaId} value={area.growingAreaId}>
-                          {area.areaName} ({[area.ward, area.district, area.province].filter(Boolean).join(', ')})
+                          {[area.areaName, [area.ward, area.district, area.province].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
                         </option>
                       ))}
                     </select>
@@ -743,7 +744,7 @@ export const EditBatchPage: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-500">Tạo ngày:</span>
                   <span>
-                    {new Date(batchCreatedAt).toLocaleString('vi-VN', {
+                    {formatVietnamDateTime(batchCreatedAt, {
                       day: '2-digit',
                       month: '2-digit',
                       year: 'numeric',

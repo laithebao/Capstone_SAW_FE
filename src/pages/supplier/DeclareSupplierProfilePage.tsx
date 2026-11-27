@@ -1,9 +1,10 @@
+import SupplierCropSelector from '@/components/supplier/SupplierCropSelector'
 import axios from 'axios';
 import { getAuthErrorMessage } from '@/services/authService';
 import { readAuthSession } from '@/services/authSession';
 import { validateSupplierFile } from '@/features/supplier/supplierFiles';
 import { optionalNumericInput } from '@/features/supplier/schemas/supplierBatchSchema';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useForm, useWatch, useFieldArray, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,7 +24,7 @@ import {
 import { declareSupplierProfileSchema } from '../../features/supplier/schemas/supplierProfileSchema';
 import type { DeclareSupplierProfileFormValues } from '../../features/supplier/schemas/supplierProfileSchema';
 import { supplierService } from '../../services/suppliers/supplierService';
-import type { SupplierCropTypeDto, SupplierGrowingAreaDto } from '../../types/supplier';
+import type { SupplierGrowingAreaDto } from '../../types/supplier';
 
 const getEmailFromToken = (): string => {
   return readAuthSession()?.user.email ?? '';
@@ -45,8 +46,8 @@ export const DeclareSupplierProfilePage: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [growingAreaOptions, setGrowingAreaOptions] = useState<SupplierGrowingAreaDto[]>([]);
-  const [cropTypeOptions, setCropTypeOptions] = useState<SupplierCropTypeDto[]>([]);
+  const [, setGrowingAreaOptions] = useState<SupplierGrowingAreaDto[]>([]);
+
   
   const navigate = useNavigate();
 
@@ -83,19 +84,6 @@ export const DeclareSupplierProfilePage: React.FC = () => {
   const selectedCertifications = useWatch({ control, name: 'certifications' }) || [];
 
   // Gom nhóm danh sách cây trồng theo CategoryName
-  const groupedCropTypes = useMemo(() => {
-    const groups: { [category: string]: SupplierCropTypeDto[] } = {};
-    const safeCropList = Array.isArray(cropTypeOptions) ? cropTypeOptions : [];
-
-    safeCropList.forEach((crop) => {
-      const category = crop.categoryName || 'Nông sản khác';
-      if (!groups[category]) {
-        groups[category] = [];
-      }
-      groups[category].push(crop);
-    });
-    return groups;
-  }, [cropTypeOptions]);
 
   // Tự động lấy Email từ Token khi vào trang
   useEffect(() => {
@@ -109,12 +97,11 @@ export const DeclareSupplierProfilePage: React.FC = () => {
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
-        const [areas, crops] = await Promise.all([
+        const [areas] = await Promise.all([
           supplierService.getGrowingAreas(),
-          supplierService.getCropTypes(),
         ]);
         setGrowingAreaOptions(Array.isArray(areas) ? areas : []);
-        setCropTypeOptions(Array.isArray(crops) ? crops : []);
+
       } catch (err) {
         console.error('Lỗi khi tải dữ liệu khởi tạo:', err);
       }
@@ -122,19 +109,6 @@ export const DeclareSupplierProfilePage: React.FC = () => {
     fetchMetadata();
   }, []);
 
-  const handleCropTypeToggle = (id: number) => {
-    const numericId = Number(id);
-    if (!numericId) return;
-
-    const current = selectedCropTypes.map(Number);
-    const idx = current.indexOf(numericId);
-    if (idx > -1) {
-      current.splice(idx, 1);
-    } else {
-      current.push(numericId);
-    }
-    setValue('cropTypeIds', current, { shouldValidate: true });
-  };
 
   const handleCertToggle = (cert: string) => {
     if (cert === 'Không có chứng nhận') {
@@ -166,7 +140,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
 
   const onSubmit: SubmitHandler<DeclareSupplierProfileFormValues> = async (values) => {
     const hasInvalidArea = values.growingAreas?.some(
-      (ga) => !ga.growingAreaId || Number(ga.growingAreaId) === 0
+      (ga) => !ga.areaName?.trim()
     );
     if (hasInvalidArea) {
       setSubmitError('Vui lòng chọn tên Vùng trồng hợp lệ cho tất cả các dòng đã thêm.');
@@ -187,9 +161,9 @@ export const DeclareSupplierProfilePage: React.FC = () => {
       }
 
       const validGrowingAreas = (values.growingAreas || [])
-        .filter((ga) => ga && Number(ga.growingAreaId) > 0)
+        .filter((ga) => ga && ga.areaName?.trim())
         .map((ga) => ({
-          growingAreaId: Number(ga.growingAreaId),
+          growingAreaId: Number(ga.growingAreaId) || 0, areaName: ga.areaName?.trim(),
           areaInHectares: ga.areaInHectares ? Number(ga.areaInHectares) : undefined,
         }));
 
@@ -421,7 +395,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                   type="button"
                   onClick={() =>
                     append({
-                      growingAreaId: 0,
+                      growingAreaId: 0, areaName: '',
                       areaInHectares: undefined,
                     })
                   }
@@ -471,22 +445,10 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                           <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">
                             VÙNG TRỒNG #{index + 1}
                           </label>
-                          <select
-                            {...register(`growingAreas.${index}.growingAreaId` as const, {
-                              valueAsNumber: true,
-                            })}
-                            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          >
-                            <option value={0}>-- Chọn Vùng trồng --</option>
-                            {growingAreaOptions.map((area) => (
-                              <option key={area.growingAreaId} value={area.growingAreaId}>
-                                {area.areaName} ({[area.ward, area.district, area.province].filter(Boolean).join(', ')})
-                              </option>
-                            ))}
-                          </select>
-                          {errors.growingAreas?.[index]?.growingAreaId && (
+                          <input type="text" maxLength={200} placeholder="Nhập tên vùng trồng" {...register(`growingAreas.${index}.areaName` as const, { required: 'Vui lòng nhập tên vùng trồng.' })} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+                          {errors.growingAreas?.[index]?.areaName && (
                             <p className="text-xs text-red-500 mt-1">
-                              {errors.growingAreas[index]?.growingAreaId?.message}
+                              {errors.growingAreas[index]?.areaName?.message}
                             </p>
                           )}
                         </div>
@@ -536,40 +498,7 @@ export const DeclareSupplierProfilePage: React.FC = () => {
                   DANH MỤC NÔNG SẢN <span className="text-red-500">*</span>
                 </label>
 
-                {Object.keys(groupedCropTypes).length === 0 ? (
-                  <div className="text-xs text-gray-500 italic">
-                    Chưa có dữ liệu cây trồng hoặc đang tải...
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {Object.entries(groupedCropTypes).map(([category, crops]) => (
-                      <div key={category} className="border-b border-dashed border-gray-200 pb-3">
-                        <div className="text-xs font-bold text-emerald-700 uppercase mb-2">
-                          📁 {category}
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {crops.map((crop) => {
-                            const isChecked = selectedCropTypes.map(Number).includes(Number(crop.cropTypeId));
-                            return (
-                              <label
-                                key={crop.cropTypeId}
-                                className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 hover:text-gray-900"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => handleCropTypeToggle(crop.cropTypeId)}
-                                  className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                                />
-                                <span>{crop.cropName}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <SupplierCropSelector value={selectedCropTypes} onChange={ids => setValue('cropTypeIds', ids, { shouldValidate: true })} />
 
                 {errors.cropTypeIds && (
                   <p className="text-xs text-red-500 mt-2">

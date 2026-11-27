@@ -3,6 +3,7 @@ import './warehouse-dashboard.css'
 import { ChevronRight, MapPin, Phone, MessageSquare, X, Check, PackageCheck, AlertTriangle } from 'lucide-react'
 import FormNotification from '@/components/common/FormNotification'
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
+import { formatVietnamDate } from '@/utils/vietnamTime'
 import { Link } from 'react-router';
 import { ROUTES } from '@/constants/routes';
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -156,7 +157,7 @@ export default function WarehouseDistributorOrdersPage() {
   };
   const statusNames: Record<string, string> = { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt · chờ phân bổ', RESERVED: 'Đã giữ hàng', PARTIALLY_PICKED: 'Đang soạn một phần', PICKED: 'Đã soạn đủ', REJECTED: 'Đã từ chối', CANCELLED: 'Đã hủy' };
   const visible = tab === 'pending' ? orders : history;
-  const date = (value?: string) => value ? new Date(value).toLocaleDateString('vi-VN') : 'Chưa ghi nhận';
+  const date = (value?: string) => value ? formatVietnamDate(value) : 'Chưa ghi nhận';
   return <div className="saw-order-review">
     <FormNotification warehouse message={toast.message} tone={toast.tone} onDismiss={() => setToast(current => ({ ...current, message: "" }))} />
     <header className="order-header"><div><p>Điều hành kho / Phê duyệt đơn</p><h1>Phê duyệt đơn nhà phân phối</h1><span>Kiểm tra tồn kho và thông tin đơn hàng trước khi xác nhận xuất hàng.</span></div><div className="saw-wm-dashboard"><button type="button" className="wm-refresh" disabled={loading || busy} onClick={() => { if (!loading && !busy) { void load(); if (selected) void open(selected.id); } }}><AppIcon name="refresh" className={loading ? 'wm-spin' : ''} /> Làm mới</button></div></header>

@@ -1,3 +1,4 @@
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import { AnimatedNumber } from '@/components/common/AnimatedNumber'
 import AppIcon from '@/components/common/AppIcon'
 import { DashboardLink } from '@/components/common/DashboardLink'
@@ -8,7 +9,7 @@ import './warehouse-overview.css'
 import './warehouse-dashboard.css'
 
 const number = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 })
-const dateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+const dateTime = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  dateStyle: 'short', timeStyle: 'short' })
 const gradeColors = ['#059669', '#3976bb', '#d89b4c', '#e56565', '#7658a6', '#94a3b8']
 const kg = (value: number | null | undefined) => value == null ? '—' : `${number.format(value)} kg`
 const percent = (value: number) => `${number.format(value)}%`
@@ -34,7 +35,7 @@ export default function WarehouseOverview({ inventory, capacity, quality, loadin
     { label: 'Lô đang lưu kho', value: quality ? number.format(quality.totalBatchCount) : '—', detail: quality ? `Hạng chủ đạo: ${quality.leadingGrade ?? 'Chưa phân hạng'}` : 'Chưa có dữ liệu', icon: 'clipboard', to: ROUTES.WAREHOUSE_QUALITY, tone: 'quality' },
   ] as const
   return <div className="saw-wm-dashboard mx-auto max-w-[1600px] pb-8">
-    <header className="wm-header"><div><p className="wm-eyebrow">Quản lý kho / Tổng quan</p><h1>Điều hành kho hàng</h1><p>Theo dõi tồn kho, sức chứa và chất lượng tại một nơi.</p></div><div className="wm-header-actions"><span>{updated ? `Cập nhật ${dateTime.format(new Date(updated))}` : 'Đang chờ dữ liệu'}</span><button type="button" onClick={onRefresh} disabled={loading} className="wm-refresh"><AppIcon name="refresh" className={loading ? 'wm-spin' : ''} /> Làm mới</button></div></header>
+    <header className="wm-header"><div><p className="wm-eyebrow">Quản lý kho / Tổng quan</p><h1>Điều hành kho hàng</h1><p>Theo dõi tồn kho, sức chứa và chất lượng tại một nơi.</p></div><div className="wm-header-actions"><span>{updated ? `Cập nhật ${dateTime.format(parseApiTimestamp(updated))}` : 'Đang chờ dữ liệu'}</span><button type="button" onClick={onRefresh} disabled={loading} className="wm-refresh"><AppIcon name="refresh" className={loading ? 'wm-spin' : ''} /> Làm mới</button></div></header>
     {error && <div role="alert" className="wm-error">{error} <button onClick={onRefresh} type="button">Thử lại</button></div>}
     {loading && !inventory && !capacity && !quality && <p role="status" className="wm-loading">Đang tải dữ liệu kho…</p>}
     <section className="wm-metrics" aria-label="Chỉ số kho">{metrics.map(metric => <DashboardLink key={metric.label} to={metric.to} className={`wm-card wm-card--${metric.tone}`}><div className="wm-card-top"><span>{metric.label}</span><span className="wm-card-icon"><AppIcon name={metric.icon} /></span></div><strong className="wm-value"><AnimatedNumber value={metric.value} /></strong><span className="wm-card-detail">{metric.detail}</span></DashboardLink>)}</section>

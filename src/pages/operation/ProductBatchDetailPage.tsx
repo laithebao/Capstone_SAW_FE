@@ -2,6 +2,7 @@ import { AnimatedNumber } from '@/components/common/AnimatedNumber'
 import './batch-detail-v7.css'
 import { ArrowLeft, AlertCircle, FileText, Thermometer, Droplets, Clock3, MessageSquareText } from 'lucide-react'
 import './warehouse-batches.css'
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import axios from 'axios'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
@@ -15,8 +16,8 @@ import type { ProductBatchDetail } from '@/types/batch'
 import { useAuth } from '@/hooks/useAuth'
 import { ROLES } from '@/constants/roles'
 
-const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
-const dateOnly = (value: string | null) => value ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`)) : '—'
+const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  dateStyle: 'medium', timeStyle: 'short' }).format(parseApiTimestamp(value))
+const dateOnly = (value: string | null) => value ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  dateStyle: 'medium' }).format(parseApiTimestamp(`${value}T00:00:00`)) : '—'
 const quantity = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(value)
 const optional = (value: number | null, unit = '') => value === null ? 'Chưa ghi nhận' : `${quantity(value)}${unit}`
 const difference = (declared: number, verified: number | null, unit: string) =>
@@ -150,7 +151,7 @@ function Info({ label, value }: { label: string; value: string }) {
 
 
 const recorded = (value: string | null | undefined) => value?.trim() || 'Chưa ghi nhận'
-const displayDate = (value: string | null) => value ? new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(`${value}T00:00:00`)) : 'Chưa ghi nhận'
+const displayDate = (value: string | null) => value ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  day: '2-digit', month: '2-digit', year: 'numeric' }).format(parseApiTimestamp(`${value}T00:00:00`)) : 'Chưa ghi nhận'
 const range = (min: number | null, max: number | null, unit: string) => min == null && max == null ? 'Chưa ghi nhận' : min == null ? `Tối đa ${quantity(max!)} ${unit}` : max == null ? `Tối thiểu ${quantity(min)} ${unit}` : `${quantity(min)} – ${quantity(max)} ${unit}`
 function Metric({ value, unit, animate = false }: { value: number | null; unit?: string; animate?: boolean }) {
   return value == null ? <span className="saw-v7-empty">Chưa ghi nhận</span> : <span className="saw-v7-metric">{animate ? <AnimatedNumber value={quantity(value)} /> : quantity(value)}{unit && <> <small>{unit}</small></>}</span>

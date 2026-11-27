@@ -1,3 +1,4 @@
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import type { GoodsReceiptOptions } from '@/types/goodsReceipt'
 import { receiptCapacityLabel } from '../receiptCapacity'
 
@@ -15,7 +16,7 @@ export default function GoodsReceiptDraftFields({ values, onChange, locations, d
   )
   const remainingKg = selected?.hasNonKgInventory ? null : selected?.remainingWeightKg
   const insufficient = remainingKg != null && remainingKg < incomingKg
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(parseApiTimestamp(new Date()))
   return <fieldset disabled={disabled} className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2">
     <div className="min-w-0 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2"><label htmlFor="receipt-location" className="font-medium">Vị trí kho</label><button type="button" onClick={onRefreshCapacity} className="text-xs text-emerald-700 underline">Làm mới sức chứa</button></div>

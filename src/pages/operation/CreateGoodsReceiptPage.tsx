@@ -1,3 +1,4 @@
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ROUTES } from '@/constants/routes'
@@ -9,7 +10,7 @@ import GoodsReceiptDraftFields from '@/features/operation/components/GoodsReceip
 import type { GoodsReceiptBatch } from '@/types/goodsReceipt'
 
 const input = 'mt-1 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm'
-const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(parseApiTimestamp(new Date()))
 
 export default function CreateGoodsReceiptPage() {
   const navigate = useNavigate()

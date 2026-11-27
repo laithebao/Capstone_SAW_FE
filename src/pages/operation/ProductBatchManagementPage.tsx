@@ -1,5 +1,6 @@
 import './warehouse-batches.css'
 import { AnimatedNumber } from '@/components/common/AnimatedNumber'
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import axios from 'axios'
 import { useEffect, useMemo, useState } from 'react'
 import { OperationSmartFilters } from '@/features/operation/components/OperationSmartFilters'
@@ -24,9 +25,9 @@ const pageSize = 10
 const initialFilters: ProductBatchFilters = { page: 1, pageSize, sortBy: 'createdAtDesc' }
 const emptyOptions: ProductBatchFilterOptions = { suppliers: [], cropTypes: [], statuses: [] }
 const dateTime = (value: string) => {
-  const date = new Date(value)
-  const day = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
-  const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }).format(date)
+  const date = parseApiTimestamp(value)
+  const day = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh',  day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
+  const time = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh',  hour: '2-digit', minute: '2-digit', hour12: false }).format(date)
   return `${day} · ${time}`
 }
 

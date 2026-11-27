@@ -1,10 +1,11 @@
+import { formatVietnamDate } from '@/utils/vietnamTime'
 import type { ReactNode } from 'react'
 import type { SubmittedDeclarationDetail } from '@/types/batch'
 import { receivingUnit } from '../receivingDetails'
 
 type Declaration = Omit<SubmittedDeclarationDetail, 'id' | 'supplierId' | 'cropTypeId' | 'growingAreaId'>
 const number = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 3 })
-const date = (value: string | null) => value ? new Date(`${value}T00:00:00`).toLocaleDateString('vi-VN') : 'Chưa khai báo'
+const date = (value: string | null) => value ? formatVietnamDate(`${value}T00:00:00`) : 'Chưa khai báo'
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return <div className="min-w-0"><dt className="text-xs font-semibold text-slate-500">{label}</dt><dd className="mt-1 break-words text-sm font-medium text-slate-900">{children}</dd></div>
 }

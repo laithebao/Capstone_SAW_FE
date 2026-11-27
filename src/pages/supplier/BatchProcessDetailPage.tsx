@@ -1,3 +1,4 @@
+import { formatVietnamDate, formatVietnamDateTime } from '@/utils/vietnamTime'
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { Loader2, FileText, ShieldCheck, Paperclip } from 'lucide-react';
@@ -12,8 +13,8 @@ import { SupplierBatchProgress } from '@/features/supplier/components/SupplierBa
 import { SupplierBatchFeedbackDialog } from '@/features/supplier/components/SupplierBatchFeedbackDialog';
 import { useSupplierPageRefresh } from '@/features/supplier/useSupplierPageRefresh';
 
-const date = (value?: string | null) => value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString('vi-VN') : 'Chưa khai báo';
-const time = (value: string) => new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}Z`).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+const date = (value?: string | null) => value ? formatVietnamDate(`${value.slice(0, 10)}T00:00:00`) : 'Chưa khai báo';
+const time = (value: string) => formatVietnamDateTime(/(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}Z`, { timeZone: 'Asia/Ho_Chi_Minh' });
 const quantity = (value: number | null | undefined, unit: string) => value == null ? 'Chưa kiểm nhận' : `${value.toLocaleString('vi-VN', { maximumFractionDigits: 3 })} ${unit}`;
 const range = (min: number | null | undefined, max: number | null | undefined, unit: string) =>
   min == null && max == null ? 'Chưa khai báo' : `${min ?? '?'} – ${max ?? '?'} ${unit}`;

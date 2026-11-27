@@ -12,6 +12,7 @@ export type SupplyContractStatus =
 export type DeliveryPeriod = "WEEK" | "MONTH";
 
 export interface SupplyContractSummary {
+  unitPriceExact?: string;
   id: number;
   contractCode: string;
   supplierName: string;
@@ -28,6 +29,10 @@ export interface SupplyContractSummary {
 }
 
 export interface SupplyContractDetail extends SupplyContractSummary {
+  documentContent?: string | null;
+  documentHash?: string | null;
+  documentSentAt?: string | null;
+  cropCode?: string | null;
   supplierId: number;
   cropTypeId: number;
   terms: string | null;
@@ -96,7 +101,7 @@ export interface CreateSupplyContractRequest {
   cropTypeId: number;
   deliveryQuantityKg: number;
   deliveryPeriod: DeliveryPeriod;
-  unitPriceVndPerKg: number;
+  unitPriceVndPerKg: number | string;
   startDate: string;
   endDate: string;
   terms: string | null;

@@ -2,10 +2,7 @@ import './batch-history.css'
 import { useState } from 'react'
 import { ArrowDownToLine, ArrowUpFromLine, ArrowRightLeft, Check, ChevronDown, Clock3, UserRound, X, FileClock, ScanSearch, ClipboardCheck, PackageCheck, Lock, Truck, ClipboardX, PackageX, PackageOpen, ShieldCheck, AlertTriangle, CircleCheck, FileSearch } from 'lucide-react'
 import { getProductBatchStatusPresentation } from '../productBatchStatus'
-import { Link } from 'react-router'
-import { ROUTES } from '@/constants/routes'
 import ProductBatchStatusBadge from './ProductBatchStatusBadge'
-import GoodsReceiptStatusBadge from './GoodsReceiptStatusBadge'
 import type { ProductBatchDetail } from '@/types/batch'
 
 const time = (value: string | null) => {
@@ -27,7 +24,6 @@ const card = 'rounded-xl border border-slate-200 bg-white p-5 shadow-sm'
 
 export default function ProductBatchRelatedInformation({ batch, compactHistory = false }: { batch: ProductBatchDetail; compactHistory?: boolean }) {
   const qc = batch.latestQcInspection
-  const receipts = batch.goodsReceipts ?? []
   const history = batch.statusHistory ?? []
   const transactions = batch.warehouseTransactions ?? []
   return <>
@@ -50,26 +46,6 @@ export default function ProductBatchRelatedInformation({ batch, compactHistory =
         </dl>
         {qc.note?.trim() && <p className="mt-4 whitespace-pre-wrap break-words text-sm text-slate-700">Ghi chú QC: {qc.note}</p>}
       </>}
-    </section>
-
-    <section aria-label="Phiếu nhập liên quan" className={card}>
-      <h2 className="text-lg font-bold text-slate-900">Phiếu nhập liên quan</h2>
-      {compactHistory ? !receipts.length ? <p className="mt-3 text-sm text-slate-500">Chưa ghi nhận</p> : <div className="saw-v7-receipts">{receipts.map(receipt => <article key={receipt.id}>
-        <div className="saw-v7-receipt-head"><Link aria-label={`Xem phiếu nhập ${receipt.receiptCode}`} to={ROUTES.OPERATION_GOODS_RECEIPT_DETAIL.replace(':id', String(receipt.id))}>{receipt.receiptCode}</Link><GoodsReceiptStatusBadge status={receipt.receiptStatus} /></div>
-        <dl><Field label="Ngày nhận" value={receipt.receivedAt ? receipt.receivedAt.slice(0,10).split('-').reverse().join('/') : 'Chưa ghi nhận'} /><Field label="Vị trí kho" value={text(receipt.locationName).replace(/\s*\/\s*—/g, '')} /><Field label="Người lập" value={text(receipt.operationStaffName)} /></dl>
-      </article>)}</div> : !receipts.length ? <p className="mt-3 text-sm text-slate-500">Chưa có phiếu nhập.</p> : <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="border-b border-slate-200 text-xs uppercase text-slate-500"><tr>
-            <th className="p-3">Mã phiếu</th><th className="p-3">Trạng thái</th><th className="p-3">Ngày nhận</th><th className="p-3">Vị trí kho</th><th className="p-3">Người lập</th>
-          </tr></thead>
-          <tbody>{receipts.map(receipt => <tr key={receipt.id} className="border-b border-slate-100 last:border-0">
-            <td className="p-3"><Link aria-label={`Xem phiếu nhập ${receipt.receiptCode}`} className="font-mono font-semibold text-emerald-700 underline hover:text-emerald-900" to={ROUTES.OPERATION_GOODS_RECEIPT_DETAIL.replace(':id', String(receipt.id))}>{receipt.receiptCode}</Link></td>
-            <td className="p-3"><GoodsReceiptStatusBadge status={receipt.receiptStatus} /></td>
-            <td className="p-3">{receipt.receivedAt.slice(0, 10).split('-').reverse().join('/')}</td>
-            <td className="p-3">{text(receipt.locationName)}</td><td className="p-3">{text(receipt.operationStaffName)}</td>
-          </tr>)}</tbody>
-        </table>
-      </div>}
     </section>
 
     <section aria-label="Lịch sử lô hàng" className={`${card} saw-batch-history`}>

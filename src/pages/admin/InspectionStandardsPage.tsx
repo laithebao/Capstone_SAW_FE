@@ -1,13 +1,16 @@
 import FormNotification from '@/components/common/FormNotification'
-import { useEffect, useId, useState } from 'react'
+import { getVietnamDateInput } from '@/utils/vietnamTime'
+import InspectionExcelImport from '@/components/inspection/InspectionExcelImport'
+import { useId, useState } from 'react'
 import { useNavigate } from 'react-router'
 import AppIcon from '@/components/common/AppIcon'
-import { getCropTypes, type CropType } from '@/services/cropTypeService'
+import CropTypeLookupSelect from '@/components/common/CropTypeLookupSelect'
 import { createInspectionStandard } from '@/services/inspectionStandardService'
 import { getAuthErrorMessage } from '@/services/authService'
 import { ROUTES } from '@/constants/routes'
 import {
   CriterionBlock,
+  uid,
   type CriterionRow,
   type GradeRuleRow,
   ALL_GRADES,
@@ -33,17 +36,11 @@ export default function InspectionStandardsPage() {
   const [cropTypeId, setCropTypeId]       = useState(0)
   const [effectiveFrom, setEffectiveFrom] = useState('')
   const [criteria, setCriteria]           = useState<CriterionRow[]>([makeEmptyCriterion()])
-  const [cropTypes, setCropTypes]         = useState<CropType[]>([])
   const [saving, setSaving]               = useState(false)
   const [error, setError]                 = useState('')
   const [actionError, setActionError] = useState('')
   const [success, setSuccess]             = useState(false)
 
-  useEffect(() => {
-    void getCropTypes()
-      .then(r => { setCropTypes(r.items); if (r.items[0]) setCropTypeId(r.items[0].id) })
-      .catch(() => setError('Không thể tải danh sách loại nông sản.'))
-  }, [])
 
   // ── Criterion row helpers ───────────────────────────────────────────────────
   const updateRow = <K extends keyof CriterionRow>(id: number, key: K, value: CriterionRow[K]) =>
@@ -95,7 +92,7 @@ export default function InspectionStandardsPage() {
     }))
 
   // ── Summary & validation ────────────────────────────────────────────────────
-  const today  = new Date().toISOString().split('T')[0]
+  const today  = getVietnamDateInput()
   const checks = [
     { label: 'Mã bộ tiêu chuẩn', ok: code.trim().length > 0 },
     { label: 'Tên bộ tiêu chuẩn', ok: name.trim().length > 0 },
@@ -148,6 +145,7 @@ export default function InspectionStandardsPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 pb-24">
+      <InspectionExcelImport dirty={Boolean(code || name || description || criteria.some(c => c.code || c.name))} onImport={request => { setCode(request.code); setName(request.name); setDescription(request.description ?? ''); setCropTypeId(request.cropTypeId); setEffectiveFrom(request.effectiveFrom ?? ''); setCriteria(request.criteria.map(c => ({ ...c, unit: c.unit ?? '', _id: uid(), expanded: true, gradeRules: c.gradeRules.map(g => ({ ...g, _id: uid(), minValue: g.minValue ?? undefined, maxValue: g.maxValue ?? undefined, requiredTextValue: g.requiredTextValue ?? undefined })) }))); setError('') }} />
       {/* Header */}
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
@@ -183,11 +181,7 @@ export default function InspectionStandardsPage() {
               </label>
               <label className={labelCls}>
                 <span className={labelText}>Loại nông sản *</span>
-                <select id={`${formId}-cropType`} value={cropTypeId}
-                  onChange={e => setCropTypeId(Number(e.target.value))} className={inputCls}>
-                  <option value={0}>-- Chọn loại nông sản --</option>
-                  {cropTypes.map(ct => <option key={ct.id} value={ct.id}>{ct.name} · {ct.categoryName}</option>)}
-                </select>
+                <CropTypeLookupSelect value={cropTypeId} onChange={crop => setCropTypeId(crop.id)} />
               </label>
               <label className={labelCls}>
                 <span className={labelText}>Ngày hiệu lực <span className="text-rose-500">*</span></span>

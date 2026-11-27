@@ -1,3 +1,4 @@
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import AppIcon from '@/components/common/AppIcon'
@@ -10,7 +11,7 @@ import type { AuditLogFilters, AuditLogItem, AuditStatus } from '@/types/audit'
 
 const statusText = { SUCCESS: 'Thành công', FAILED: 'Thất bại', WARNING: 'Cảnh báo' }
 const statusTone = { SUCCESS: 'bg-emerald-100 text-emerald-700', FAILED: 'bg-rose-100 text-rose-700', WARNING: 'bg-amber-100 text-amber-700' }
-const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value))
+const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  dateStyle: 'short', timeStyle: 'medium' }).format(parseApiTimestamp(value))
 const code = (id: number) => `ALOG-${String(id).padStart(6, '0')}`
 
 export default function AuditLogPage() {

@@ -63,6 +63,10 @@ apiClient.interceptors.response.use(
 
       // 403 – không đủ quyền: chuyển về trang Forbidden thay vì lỗi mơ hồ
       if (status === 403) {
+        if (error.response?.data?.code === 'DISTRIBUTOR_PROFILE_INCOMPLETE') {
+          if (window.location.pathname !== ROUTES.PROFILE) window.location.href = ROUTES.PROFILE
+          return Promise.reject(error)
+        }
         window.location.href = ROUTES.FORBIDDEN
         return Promise.reject(error)
       }

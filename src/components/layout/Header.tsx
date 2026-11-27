@@ -1,3 +1,5 @@
+import { formatVietnamDateTime } from '@/utils/vietnamTime'
+import NotificationPopups from './NotificationPopups'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import AppIcon from '@/components/common/AppIcon'
@@ -10,7 +12,7 @@ import type { NotificationItem } from '@/types/notification'
 import { watchNotificationUpdates } from '@/services/notificationEvents'
 import { isVisibleNotification, notificationMessage } from '@/services/notificationFormat'
 
-const notificationTime = (value: string) => new Date(/(?:Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}Z`).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+const notificationTime = (value: string) => formatVietnamDateTime(/(?:Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}Z`, { timeZone: 'Asia/Ho_Chi_Minh' })
 
 export default function Header({ onOpenMenu, marketplaceMode = false }: { onOpenMenu: () => void; marketplaceMode?: boolean }) {
   const { user } = useAuth()
@@ -30,6 +32,7 @@ export default function Header({ onOpenMenu, marketplaceMode = false }: { onOpen
 
   useEffect(() => {
     if (!user?.id) return
+    setNotifications([]); setUnreadCount(0); setShowNotifications(false); notificationVersion.current++
     const controller = new AbortController()
     let inFlight = false
     let pending = false
@@ -126,9 +129,9 @@ export default function Header({ onOpenMenu, marketplaceMode = false }: { onOpen
     const type = item.relatedEntityType
     const id = item.relatedEntityId
     if (type === 'SUPPLY_CONTRACT') navigate(role === 'SUPPLIER' ? ROUTES.SUPPLIER_CONTRACTS : role === 'ADMINISTRATOR' ? ROUTES.ADMIN_CONTRACTS : ROUTES.WAREHOUSE_CONTRACTS)
-    else if (type === 'GOODS_RECEIPT') navigate(id ? ROUTES.OPERATION_GOODS_RECEIPT_DETAIL.replace(':id', id) : ROUTES.OPERATION_GOODS_RECEIPTS)
+    else if (type === 'GOODS_RECEIPT') navigate(role === 'WAREHOUSE_MANAGER' ? ROUTES.OPERATION_PRODUCT_BATCHES : id ? ROUTES.OPERATION_GOODS_RECEIPT_DETAIL.replace(':id', id) : ROUTES.OPERATION_GOODS_RECEIPTS)
     else if (type === 'GOODS_ISSUE') navigate(role === 'WAREHOUSE_MANAGER' ? ROUTES.WAREHOUSE_ORDERS : id ? ROUTES.OPERATION_GOODS_ISSUE_DETAIL.replace(':id', id) : ROUTES.OPERATION_GOODS_ISSUES)
-    else if (type === 'QC_QUEUE') navigate(ROUTES.QC_INSPECTIONS)
+    else if (type === 'QC_QUEUE') navigate(role === 'WAREHOUSE_MANAGER' ? ROUTES.OPERATION_PRODUCT_BATCHES : ROUTES.QC_INSPECTIONS)
     else if (type === 'SALE_OFFER') navigate(ROUTES.WAREHOUSE_SALE_OFFERS)
     else if (type === 'ORDER_RETURN') navigate(role === 'DISTRIBUTOR' && id ? ROUTES.DISTRIBUTOR_ORDER_DETAIL.replace(':id', id) : role === 'OPERATION_STAFF' ? ROUTES.OPERATION : ROUTES.WAREHOUSE_ORDERS)
     else if (type === 'CUSTOMER_ORDERS') navigate(ROUTES.DISTRIBUTOR_ORDERS)
@@ -188,12 +191,15 @@ export default function Header({ onOpenMenu, marketplaceMode = false }: { onOpen
       : showNotifications && notificationList}
   </div>
 
-  return marketplaceMode ? <div className="saw-marketplace-notifications">{notificationPanel}</div> : <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+  return <>
+    {user?.id && <NotificationPopups key={user.id} onOpen={item => void openNotification(item)} />}
+    {marketplaceMode ? <div className="saw-marketplace-notifications">{notificationPanel}</div> : <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
     <button type="button" onClick={onOpenMenu} className="grid size-10 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Mở menu"><AppIcon name="menu" className="size-5" /></button>
     <div className="ml-auto flex items-center gap-3">
       {notificationPanel}
       <Link to={profileRoute} className="hidden text-right sm:block" title="Hồ sơ cá nhân"><p className="text-sm font-semibold">{user?.name}</p><p className="text-xs text-slate-500">{user ? roleLabels[user.role] : ''}</p></Link>
       <Link to={profileRoute} className="grid size-10 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-700" title="Hồ sơ cá nhân" aria-label="Mở hồ sơ cá nhân">{user?.name?.charAt(0).toUpperCase()||'A'}</Link>
     </div>
-  </header>
+  </header>}
+  </>
 }

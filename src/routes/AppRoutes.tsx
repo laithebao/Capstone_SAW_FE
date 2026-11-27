@@ -6,6 +6,7 @@ import AuthLayout from "@/layouts/AuthLayout";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import PublicLayout from "@/layouts/PublicLayout";
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
+import CategoriesPage from '@/pages/admin/CategoriesPage'
 import CropTypesPage from "@/pages/admin/CropTypesPage";
 import CropTypeFormPage from "@/pages/admin/CropTypeFormPage";
 import InspectionStandardsPage from "@/pages/admin/InspectionStandardsPage";
@@ -113,6 +114,7 @@ export default function AppRoutes() {
               path={ROUTES.ADMIN_USER_ACCESS}
               element={<UserAccessPage />}
             />
+            <Route path="/admin/categories" element={<CategoriesPage />} />
             <Route path={ROUTES.ADMIN_CROP_TYPES} element={<CropTypesPage />} />
             <Route
               path={ROUTES.ADMIN_CROP_TYPE_NEW}
@@ -186,13 +188,12 @@ export default function AppRoutes() {
               element={<SupplyContractsPage mode="warehouse" />}
             />
           </Route>
-          {/* QC – Đọc: danh sách + chi tiết (WAREHOUSE_MANAGER chỉ xem) */}
+          {/* QC – Đọc: bảng điều khiển, danh sách và chi tiết phiếu */}
           <Route
             element={
               <RoleRoute
                 allowedRoles={[
                   ROLES.QC_STAFF,
-                  ROLES.WAREHOUSE_MANAGER,
                   ROLES.ADMINISTRATOR,
                 ]}
               />
@@ -252,7 +253,7 @@ export default function AppRoutes() {
             />
           </Route>
 
-          {/* Xem danh sách, chi tiết lô hàng và phiếu nhập kho (Hỗ trợ Vận hành, Quản lý kho, Quản trị viên) */}
+          {/* Xem danh sách, chi tiết lô hàng */}
           <Route
             element={
               <RoleRoute
@@ -272,6 +273,8 @@ export default function AppRoutes() {
               path={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL}
               element={<ProductBatchDetailPage />}
             />
+          </Route>
+          <Route element={<RoleRoute allowedRoles={[ROLES.OPERATION_STAFF, ROLES.ADMINISTRATOR]} />}>
             <Route
               path={ROUTES.OPERATION_GOODS_RECEIPTS}
               element={<GoodsReceiptManagementPage />}

@@ -1,4 +1,5 @@
 import FormNotification from '@/components/common/FormNotification'
+import { getVietnamDateInput } from '@/utils/vietnamTime'
 import { useEffect, useId, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import AppIcon from '@/components/common/AppIcon'
@@ -135,7 +136,7 @@ export default function InspectionStandardVersionFormPage() {
   const latestVersionNo = detail?.versions[0]?.versionNo ?? 0
   const nextVersionNo   = latestVersionNo + 1
   const criticalCount   = criteria.filter(r => r.isCritical).length
-  const today           = new Date().toISOString().split('T')[0]
+  const today           = getVietnamDateInput()
 
   const checks = [
     { label: 'Ngày hiệu lực (từ hôm nay trở đi)', ok: effectiveFrom.length > 0 && effectiveFrom >= today },

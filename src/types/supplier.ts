@@ -1,4 +1,5 @@
 export interface SupplierGrowingAreaInputDto {
+  areaName?: string;
   growingAreaId: number;
   areaInHectares?: number;
 }

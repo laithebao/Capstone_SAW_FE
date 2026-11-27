@@ -1,3 +1,4 @@
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import { AnimatedNumber } from '@/components/common/AnimatedNumber'
 import { useState } from 'react'
 import AppIcon from '@/components/common/AppIcon'
@@ -5,7 +6,7 @@ import type { InventoryLocationLevel, WarehouseInventoryLevelChart } from '@/typ
 import './warehouse-inventory.css'
 
 const amount = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 })
-const dateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+const dateTime = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  dateStyle: 'short', timeStyle: 'short' })
 const kg = (value: number | null | undefined) => value == null ? '—' : `${amount.format(value)} kg`
 const percent = (value: number) => `${amount.format(value)}%`
 const clamp = (value: number) => Math.min(100, Math.max(0, value))
@@ -39,7 +40,7 @@ export default function WarehouseInventoryOverview({ inventory, loading, error, 
   ] as const
 
   return <div className="saw-wm-inventory">
-    <header className="inv-header"><div><p className="inv-eyebrow">Quản lý kho / Tồn kho</p><h1>Tồn kho</h1><p>Theo dõi lượng tồn, khả dụng và mức sử dụng theo từng vị trí lưu trữ.</p></div><div className="inv-header-actions"><span>{inventory ? `Cập nhật ${dateTime.format(new Date(inventory.generatedAt))}` : 'Đang chờ dữ liệu'}</span><button type="button" className="inv-button" onClick={onRefresh} disabled={loading}><AppIcon name="refresh" className={loading ? 'inv-spin' : ''} /> Làm mới</button></div></header>
+    <header className="inv-header"><div><p className="inv-eyebrow">Quản lý kho / Tồn kho</p><h1>Tồn kho</h1><p>Theo dõi lượng tồn, khả dụng và mức sử dụng theo từng vị trí lưu trữ.</p></div><div className="inv-header-actions"><span>{inventory ? `Cập nhật ${dateTime.format(parseApiTimestamp(inventory.generatedAt))}` : 'Đang chờ dữ liệu'}</span><button type="button" className="inv-button" onClick={onRefresh} disabled={loading}><AppIcon name="refresh" className={loading ? 'inv-spin' : ''} /> Làm mới</button></div></header>
     {error && <div role="alert" className="inv-error">{error} <button type="button" onClick={onRefresh}>Thử lại</button></div>}
     {loading && !inventory && <p role="status" className="inv-empty">Đang tải dữ liệu tồn kho…</p>}
     <section className="inv-metrics" aria-label="Thống kê tồn kho">{metrics.map(metric => <article className={`inv-card inv-card--${metric.tone}`} key={metric.label}><div className="inv-card-top"><span>{metric.label}</span><i><AppIcon name={metric.icon} /></i></div><strong><AnimatedNumber value={metric.value} /></strong><small>{metric.note}</small></article>)}</section>

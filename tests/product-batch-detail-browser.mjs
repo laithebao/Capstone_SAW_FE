@@ -74,7 +74,7 @@ try {
   const session = { user: { id: 1, name: 'UC29 Browser', email: 'uc29@example.invalid', role: 'OPERATION_STAFF' },
     accessToken: process.env.SAW_TEST_TOKEN, refreshToken: 'unused', expiresAt: new Date(Date.now() + 3600000).toISOString(),
     refreshTokenExpiresAt: new Date(Date.now() + 7200000).toISOString() }
-  await page('Page.addScriptToEvaluateOnNewDocument', {
+  const bootstrap = await page('Page.addScriptToEvaluateOnNewDocument', {
     source: `localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(session))});`,
   })
 
@@ -82,7 +82,7 @@ try {
   await until(async () => (await section('Kết quả kiểm định QC')).includes('Đạt (PASS)'), 'saved QC PASS')
   assert.match(await section('Kết quả kiểm định QC'), /Hạng chất lượng đã lưu\s+E/)
   assert.match(await section('Kết quả kiểm định QC'), /Đã hoàn tất/)
-  assert.match(await section('Phiếu nhập liên quan'), /Phiếu nháp|Nháp/)
+  assert.equal(await section('Phiếu nhập liên quan'), '')
   assert.match(await section('Lịch sử lô hàng'), /Chuyển kho/)
   assert.match(await section('Lịch sử lô hàng'), /Điều chỉnh tồn/)
   assert.match(await section('Lịch sử lô hàng'), /Phiếu xuất kho/)
@@ -91,14 +91,14 @@ try {
   assert.match(await text(), /Staff kiểm nhận tại kho/)
   assert.equal(await evaluate(`!!document.querySelector('a[href="/operation/product-batches/${batchId}/edit"]')`), false)
   const receiptLink = `a[href="/operation/goods-receipts/${receiptId}"]`
-  assert.ok(await evaluate(`!!document.querySelector(${JSON.stringify(receiptLink)})`))
-  await evaluate(`document.querySelector(${JSON.stringify(receiptLink)}).click()`)
+  assert.equal(await evaluate(`!!document.querySelector(${JSON.stringify(receiptLink)})`), false)
+  await page('Page.navigate', { url: `${origin}/operation/goods-receipts/${receiptId}` })
   await until(() => evaluate(`location.pathname === '/operation/goods-receipts/${receiptId}'`), 'existing receipt detail route')
   await until(async () => (await text()).includes('CHI TIẾT PHIẾU NHẬP'), 'receipt detail loaded')
 
   await navigate(emptyId)
   await until(async () => (await section('Kết quả kiểm định QC')).includes('Chưa có phiếu kiểm định QC.'), 'no QC')
-  assert.match(await section('Phiếu nhập liên quan'), /Chưa có phiếu nhập/)
+  assert.equal(await section('Phiếu nhập liên quan'), '')
   assert.match(await section('Lịch sử lô hàng'), /Chưa có giao dịch kho/)
   assert.equal((await section('Kết quả kiểm định QC')).includes('PASS'), false)
   assert.ok(await evaluate(`!!document.querySelector('a[href="/operation/product-batches/${emptyId}/edit"]')`))
@@ -111,7 +111,7 @@ try {
 
   await page('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
   await navigate(batchId)
-  await until(async () => (await section('Phiếu nhập liên quan')).includes('WEB-'), 'mobile sections')
+  await until(async () => (await section('Lịch sử lô hàng')).includes('WEB-'), 'mobile sections')
   assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), true, 'no page overflow at 390px')
 
   // UI fault-state checks are injected HTTP failures only; saved-data checks above use the real API.
@@ -129,9 +129,27 @@ try {
   await until(async () => (await section('Kết quả kiểm định QC')).includes('Đạt (PASS)'), 'read retry')
   await navigate('invalid')
   await until(async () => (await text()).includes('Mã lô hàng không hợp lệ'), 'invalid ID')
-  assert.ok(requests.every(r => ['GET', 'OPTIONS'].includes(r.method)), 'viewing must never write')
+  assert.ok(requests.filter(r => !new URL(r.url).pathname.startsWith('/api/notifications'))
+    .every(r => ['GET', 'OPTIONS'].includes(r.method)), 'viewing must never write warehouse business data')
+  await page('Page.removeScriptToEvaluateOnNewDocument', { identifier: bootstrap.identifier })
+  const managerSession = { ...session, user: { ...session.user, role: 'WAREHOUSE_MANAGER' }, accessToken: process.env.SAW_TEST_MANAGER_TOKEN }
+  assert.ok(managerSession.accessToken)
+  await page('Page.addScriptToEvaluateOnNewDocument', {
+    source: `localStorage.setItem('saw.auth-session', ${JSON.stringify(JSON.stringify(managerSession))});`,
+  })
+  await navigate(batchId)
+  await until(async () => (await section('Lịch sử lô hàng')).includes('saved status reason'), 'manager batch detail remains accessible')
+  assert.equal(await section('Phiếu nhập liên quan'), '')
+  for (const route of ['/operation/goods-receipts', `/operation/goods-receipts/${receiptId}`, '/qc', '/qc/inspections', '/qc/inspections/1']) {
+    await page('Page.navigate', { url: origin + route })
+    await until(() => evaluate("location.pathname === '/403'"), `manager route denied: ${route}`)
+  }
+  await navigate(batchId)
+  await until(async () => (await section('Lịch sử lô hàng')).includes('saved status reason'), 'manager returns to batch')
+  await page('Page.reload')
+  await until(async () => (await section('Lịch sử lô hàng')).includes('saved status reason'), 'manager batch refresh')
   assert.deepEqual(errors, [])
-  console.log('PASS UC29: Edge + isolated API/SQL saved QC E/PASS, receipt route, status/warehouse history, empty, mobile, GET only; error/retry injected, no production writes.')
+  console.log('PASS UC29: Edge + isolated API/SQL QC, batch history, removed receipt section, staff receipt detail, manager batch access/refresh and receipt route denial, empty/mobile/error/retry; no warehouse business writes.')
   await call('Browser.close')
 } finally {
   socket?.close(); edge?.kill(); await vite.close()

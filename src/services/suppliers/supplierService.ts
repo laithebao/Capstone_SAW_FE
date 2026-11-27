@@ -45,19 +45,11 @@ export const supplierService = {
   },
 
   getCropTypes: async (): Promise<SupplierCropTypeDto[]> => {
-    try {
-      const response = await apiClient.get<unknown>('/crop-types', {
-        params: { pageSize: 100, isActive: true },
-      });
-      
-      const body = response.data;
-      const resData = (body && typeof body === 'object' ? body : {}) as { data?: { items?: unknown[] } | unknown[]; items?: unknown[] };
-      const rawList: unknown[] = Array.isArray(body) ? body : Array.isArray(resData.data) ? resData.data : resData.data?.items ?? resData.items ?? [];
-
-      return rawList.map(normalizeCropType);
-    } catch (error) {
-      console.error('Lỗi khi tải danh sách Cây trồng từ server:', error);
-      return [];
+    const items: SupplierCropTypeDto[] = []
+    for (let page = 1; ; page++) {
+      const response = await apiClient.get<{ data: { items: unknown[]; totalCount: number } }>('/crop-types/lookup', { params: { page, pageSize: 100 } })
+      const data = response.data.data; items.push(...data.items.map(normalizeCropType))
+      if (items.length >= data.totalCount || data.items.length === 0) return items
     }
   },
 

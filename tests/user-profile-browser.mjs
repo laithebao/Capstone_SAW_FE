@@ -13,7 +13,7 @@ import { build } from 'vite'
 const roles = ['ADMINISTRATOR', 'WAREHOUSE_MANAGER', 'QC_STAFF', 'OPERATION_STAFF', 'DISTRIBUTOR', 'SUPPLIER']
 const profiles = new Map(roles.map((role, index) => [role, {
   accountId: index + 1, username: `profile_${role}`, email: `${role.toLowerCase()}@test.invalid`,
-  fullName: `Người dùng ${role}`, phoneNumber: '0901234567', roleCode: role, avatarUrl: null,
+  fullName: `Người dùng ${role}`, phoneNumber: '0901234567', roleCode: role, avatarUrl: null, isProfileComplete: true,
   distributor: role === 'DISTRIBUTOR' ? { distributorId: 1, distributorCode: 'DIS-000001', distributorName: 'Công ty Phân phối',
     taxCode: '0123456789', contactPerson: 'Người liên hệ', phoneNumber: '0902222222', email: 'contact@test.invalid', address: 'Hà Nội' } : null,
 }]))

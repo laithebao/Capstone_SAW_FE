@@ -10,9 +10,10 @@ export const supplierContactSchema = z.object({
 });
 
 export const supplierGrowingAreaInputSchema = z.object({
+  areaName: z.string().trim().min(1, 'Vui lòng nhập tên vùng trồng.').max(200),
   growingAreaId: z
     .number({ message: 'Vui lòng chọn vùng trồng' })
-    .min(1, 'Vui lòng chọn vùng trồng'),
+    .min(0, 'Vùng trồng không hợp lệ'),
   areaInHectares: z
     .number({ message: 'Diện tích phải là một số.' })
     .positive('Diện tích phải lớn hơn 0.')
@@ -74,7 +75,7 @@ export type DeclareSupplierProfileFormValues = z.infer<
 
 export const updateSupplierProfileSchema = declareSupplierProfileSchema.pick({
   supplierName: true, taxCode: true, supplierType: true, legalRepresentative: true,
-  contactPerson: true, address: true, cropTypeIds: true,
+  contactPerson: true, address: true, cropTypeIds: true, growingAreas: true,
 }).extend({
   supplierName: z.string().trim().min(1, 'Tên doanh nghiệp không được để trống.').max(200, 'Tên doanh nghiệp không vượt quá 200 ký tự.'),
   taxCode: z.string().trim().min(1, 'Mã số thuế không được để trống.').max(50, 'Mã số thuế không vượt quá 50 ký tự.'),

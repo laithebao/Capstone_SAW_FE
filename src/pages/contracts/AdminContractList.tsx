@@ -1,3 +1,4 @@
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import { useEffect, useRef, useState } from 'react'
 import { Ban, Check, Eye, FileCheck, FileText, FilterX, Maximize2, RefreshCw, Search } from 'lucide-react'
 import { getSupplyContracts } from '@/services/supplyContractService'
@@ -11,7 +12,7 @@ const tabs: { value: Tab; label: string; statuses: SupplyContractStatus[] }[] = 
 const statuses: { value: SupplyContractStatus; label: string }[] = [{ value: 'PENDING_SUPPLIER', label: 'Chờ NCC xác nhận' }, { value: 'SUPPLIER_REJECTED', label: 'Đã hủy · NCC từ chối' }, { value: 'PENDING_ADMIN', label: 'Chờ bạn duyệt' }, { value: 'ADMIN_REJECTED', label: 'Đã hủy · Admin từ chối' }, { value: 'APPROVED', label: 'Đã duyệt' }, { value: 'CANCELLATION_REQUESTED', label: 'Chờ quản lý kho xử lý hủy' }, { value: 'PENDING_ADMIN_CANCELLATION', label: 'Chờ bạn duyệt hủy' }, { value: 'CANCELLATION_REJECTED', label: 'Quản lý kho từ chối hủy' }, { value: 'CANCELLED', label: 'Đã hủy' }]
 const sorts: { value: Sort; label: string }[] = [{ value: 'createdAt-desc', label: 'Mới tạo trước' }, { value: 'createdAt-asc', label: 'Cũ nhất trước' }, { value: 'endDate-asc', label: 'Hết hạn sớm nhất' }, { value: 'unitPrice-desc', label: 'Đơn giá cao đến thấp' }, { value: 'unitPrice-asc', label: 'Đơn giá thấp đến cao' }, { value: 'deliveryQuantity-desc', label: 'Sản lượng cao đến thấp' }]
 const canceled = tabs[4].statuses
-const date = (v: string) => new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(`${v}T00:00:00`))
+const date = (v: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  day: '2-digit', month: '2-digit', year: 'numeric' }).format(parseApiTimestamp(`${v}T00:00:00`))
 const money = (v: number) => new Intl.NumberFormat('vi-VN').format(v)
 function sortItems(items: SupplyContractSummary[], sort: Sort) { return items.sort((a, b) => sort === 'createdAt-desc' ? b.createdAt.localeCompare(a.createdAt) || b.id - a.id : sort === 'createdAt-asc' ? a.createdAt.localeCompare(b.createdAt) || a.id - b.id : sort === 'endDate-asc' ? a.endDate.localeCompare(b.endDate) || b.id - a.id : sort === 'unitPrice-desc' ? b.unitPriceVndPerKg - a.unitPriceVndPerKg || b.id - a.id : sort === 'unitPrice-asc' ? a.unitPriceVndPerKg - b.unitPriceVndPerKg || b.id - a.id : b.deliveryQuantityKg - a.deliveryQuantityKg || b.id - a.id) }
 

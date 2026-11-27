@@ -1,4 +1,5 @@
 import FormNotification from '@/components/common/FormNotification'
+import { formatVietnamDateTime } from '@/utils/vietnamTime'
 import AdjustmentResolutionPanel from '@/features/operation/components/AdjustmentResolutionPanel'
 import axios from 'axios'
 import { useEffect, useRef, useState } from 'react'
@@ -16,7 +17,7 @@ import { PickingStatus } from '@/features/operation/components/PickingPresentati
 import type { AdjustmentReviewDetail } from '@/types/stockAdjustment'
 
 const card = 'space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm'
-const time = (v: string | null) => v ? new Date(/(Z|[+-]\d{2}:\d{2})$/.test(v) ? v : v + 'Z').toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa ghi nhận'
+const time = (v: string | null) => v ? formatVietnamDateTime(/(Z|[+-]\d{2}:\d{2})$/.test(v) ? v : v + 'Z', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa ghi nhận'
 export default function WarehouseStockAdjustmentDetailPage() {
   const { id } = useParams()
   return <ReviewContent key={id} id={Number(id)} />

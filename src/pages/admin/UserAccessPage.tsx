@@ -1,3 +1,4 @@
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, FilterX, LockOpen, RotateCcw, Search, ShieldCheck, UserCheck, UserCog, UserX, Users, X } from 'lucide-react'
 import FormNotification from '@/components/common/FormNotification'
@@ -8,7 +9,7 @@ import './admin-user-access.css'
 type Status = '' | 'ACTIVE' | 'PENDING' | 'LOCKED' | 'INACTIVE'
 const statuses: { value: Status; label: string }[] = [{ value: '', label: 'Tất cả' }, { value: 'ACTIVE', label: 'Hoạt động' }, { value: 'PENDING', label: 'Chờ kích hoạt' }, { value: 'LOCKED', label: 'Tạm khóa' }, { value: 'INACTIVE', label: 'Vô hiệu' }]
 const labels: Record<string, string> = { ACTIVE: 'Hoạt động', PENDING: 'Chờ kích hoạt', LOCKED: 'Tạm khóa', INACTIVE: 'Vô hiệu' }
-const time = (value: string | null) => { if (!value) return 'Chưa đăng nhập'; const date = new Date(value); return Number.isNaN(date.getTime()) ? 'Chưa ghi nhận' : new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(date) }
+const time = (value: string | null) => { if (!value) return 'Chưa đăng nhập'; const date = parseApiTimestamp(value); return Number.isNaN(date.getTime()) ? 'Chưa ghi nhận' : new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  dateStyle: 'short', timeStyle: 'short' }).format(date) }
 const initials = (name: string) => name.trim().split(/\s+/).slice(-2).map(part => part[0]).join('').toUpperCase() || '?'
 
 export default function UserAccessPage() {
