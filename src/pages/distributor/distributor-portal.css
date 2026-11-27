@@ -3,13 +3,13 @@
 @keyframes dist-dialog-enter{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
 .saw-distributor{--dist-primary:#087f59;--dist-primary-hover:#096345;--dist-sidebar:#14231e;--dist-sidebar-active:#123b2e;--dist-background:#f5f7f6;--dist-surface:#fff;--dist-border:#dfe7e2;--dist-text:#172b24;--dist-muted:#73867c;--dist-danger:#bd4050;min-width:0}
 .saw-distributor>div{min-width:0}
-.saw-distributor>div>div:first-child{animation:dist-enter 260ms ease both}
+.saw-marketplace-content{animation:dist-enter 260ms ease both}
 .saw-distributor .rounded-xl.border.bg-white{border-color:var(--dist-border);border-radius:12px;box-shadow:0 1px 2px rgb(20 35 30 / 4%)}
 .saw-distributor .rounded-xl.border.bg-white:hover{border-color:#c5ddcf}
-.saw-distributor header{display:flex;align-items:center;gap:12px;min-width:0}
-.saw-distributor header>p:first-child{color:var(--dist-primary);font-size:12px;font-weight:600}
-.saw-distributor header h1{margin:0;color:var(--dist-text);font-size:25px;line-height:1.25;letter-spacing:-.02em}
-.saw-distributor header p:last-child{margin-top:4px;color:var(--dist-muted);font-size:13px}
+.saw-distributor .dist-page-heading{display:flex;align-items:center;gap:12px;min-width:0}
+.saw-distributor .dist-page-heading>p:first-child{color:var(--dist-primary);font-size:12px;font-weight:600}
+.saw-distributor .dist-page-heading h1{margin:0;color:var(--dist-text);font-size:25px;line-height:1.25;letter-spacing:-.02em}
+.saw-distributor .dist-page-heading p:last-child{margin-top:4px;color:var(--dist-muted);font-size:13px}
 .saw-distributor section{min-width:0}
 .saw-distributor .rounded-xl.border.bg-white input:not([type=checkbox]):not([type=file]),.saw-distributor .rounded-xl.border.bg-white select,.saw-distributor textarea{min-height:40px;border-color:var(--dist-border);border-radius:9px;color:var(--dist-text)}
 .saw-distributor button{transition:color 150ms ease,background-color 150ms ease,border-color 150ms ease,transform 150ms ease}
@@ -28,41 +28,69 @@
 .saw-distributor .bg-emerald-700:hover:not(:disabled){background:#096345}
 @media(max-width:1100px){.saw-distributor .grid.xl\:grid-cols-4,.saw-distributor .grid.xl\:grid-cols-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:900px){.saw-distributor .grid.items-start.gap-5.xl\:grid-cols-\[minmax\(0\,2fr\)_minmax\(0\,1fr\)\]{grid-template-columns:1fr}}
-@media(max-width:700px){.saw-distributor header h1{font-size:22px}.saw-distributor header{align-items:flex-start}.saw-distributor header>:last-child{margin-left:auto}.saw-distributor .grid.md\:grid-cols-2,.saw-distributor .grid.lg\:grid-cols-2{grid-template-columns:1fr}}
+@media(max-width:700px){.saw-distributor .dist-page-heading h1{font-size:22px}.saw-distributor .dist-page-heading{align-items:flex-start}.saw-distributor .dist-page-heading>:last-child{margin-left:auto}.saw-distributor .grid.md\:grid-cols-2,.saw-distributor .grid.lg\:grid-cols-2{grid-template-columns:1fr}}
 @media(max-width:520px){.saw-distributor .grid.xl\:grid-cols-3{grid-template-columns:1fr}.saw-distributor .grid.xl\:grid-cols-4{grid-template-columns:repeat(2,minmax(0,1fr))}.saw-distributor .sticky{padding:14px}.saw-distributor .grid.grid-cols-2{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.saw-distributor *,.saw-distributor *:before,.saw-distributor *:after{animation:none!important;transition-duration:.01ms!important}}
 
 /* Distributor dashboard */
-.saw-distributor .dist-dashboard{gap:18px}
-.dist-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.dist-kpi-card{display:flex;min-width:0;min-height:132px;flex-direction:column;justify-content:space-between;gap:14px;padding:17px;border:1px solid #dfe7e2;border-radius:12px;background:#fff;color:#172b24;text-decoration:none;transition:border-color 150ms ease,box-shadow 150ms ease;animation:dist-card-enter 260ms ease both}
-.dist-kpi-card:hover{border-color:#bbd9c8;box-shadow:0 4px 16px rgb(20 35 30 / 5%)}
-.dist-kpi-primary{border-color:#096345;background:#096345;color:#fff}
-.dist-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.dist-kpi-icon{display:grid;width:38px;height:38px;flex:0 0 38px;place-items:center;border-radius:10px}
-.dist-tone-orange{background:#fff4e4;color:#bc741d}.dist-tone-green{background:#e8f8ef;color:#087f59}.dist-tone-rose{background:#fff0f1;color:#bd4050}.dist-tone-blue{background:#edf4fc;color:#45679a}
-.dist-kpi-primary .dist-kpi-icon{background:rgb(255 255 255 / 16%);color:#fff}
-.dist-kpi-note{color:#73867c;font-size:11px;text-align:right}.dist-kpi-primary .dist-kpi-note{color:#d5eee3}
-.dist-kpi-card p{margin:0;color:#64776d;font-size:12px;font-weight:600}.dist-kpi-primary p{color:#d5eee3}
-.dist-kpi-card strong{display:block;margin-top:6px;font-size:clamp(21px,1.7vw,28px);line-height:1.15;font-weight:750;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.dist-kpi-primary strong{color:#fff}
-.dist-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,1fr);align-items:stretch;gap:15px}
-.dist-section-title{margin:0;color:#172b24;font-size:16px;font-weight:700}.dist-section-caption{margin:4px 0 0;color:#73867c;font-size:12px}
-.dist-donut-layout{display:grid;grid-template-columns:minmax(150px,.85fr) minmax(0,1.15fr);align-items:center;gap:15px;margin-top:18px}
-.dist-donut{display:grid;width:min(100%,180px);aspect-ratio:1;place-items:center;margin:auto;border-radius:50%;animation:dist-donut-draw 700ms ease both}
-@keyframes dist-donut-draw{from{transform:scale(.94);opacity:.55}to{transform:scale(1);opacity:1}}
-.dist-donut-hole{display:flex;width:67%;aspect-ratio:1;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;background:white}
-.dist-donut-hole strong{font-size:26px;font-variant-numeric:tabular-nums}.dist-donut-hole span{color:#73867c;font-size:12px}
-.dist-donut-legend{display:flex;min-width:0;flex-direction:column;gap:4px}
-.dist-donut-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:9px;padding:7px 6px;border-radius:7px;color:#172b24;font-size:12px;text-decoration:none;transition:background-color 140ms ease}
-.dist-donut-row:hover{background:#f2f8f4}.dist-donut-label{display:flex;min-width:0;align-items:center;gap:8px}.dist-donut-label i{width:9px;height:9px;flex:0 0 9px;border-radius:50%}.dist-donut-row>span:last-child{color:#73867c;font-variant-numeric:tabular-nums}
-.dist-watch-list{display:flex;flex-direction:column;gap:9px;margin-top:17px}
-.dist-watch-item{display:grid;grid-template-columns:36px minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px;border:1px solid #e8eeea;border-radius:10px;color:#172b24;text-decoration:none;transition:border-color 140ms ease,background-color 140ms ease}
-.dist-watch-item:hover{border-color:#bed9c8;background:#f7fbf8}.dist-watch-icon{display:grid;width:36px;height:36px;place-items:center;border-radius:9px;background:#e8f8ef;color:#087f59}
-.dist-watch-item>span:nth-child(2){min-width:0}.dist-watch-item b,.dist-watch-item small{display:block}.dist-watch-item b{font-size:13px}.dist-watch-item small{margin-top:2px;color:#73867c;font-size:11px}.dist-watch-item>strong{color:#087f59;font-size:17px;font-variant-numeric:tabular-nums}
-.dist-recent-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.dist-dashboard-empty{padding:30px 12px;text-align:center;color:#73867c}
-@media(max-width:1100px){.dist-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:900px){.dist-dashboard-grid{grid-template-columns:1fr}}
-@media(max-width:520px){.dist-kpi-grid{gap:9px}.dist-kpi-card{min-height:118px;padding:12px}.dist-kpi-note{font-size:10px}.dist-kpi-card p{font-size:11px}.dist-donut-layout{grid-template-columns:1fr}.dist-donut{width:150px}.dist-donut-legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.dist-donut-row{grid-template-columns:minmax(0,1fr) auto;font-size:10px}.dist-donut-row>span:last-child{display:none}}
+.saw-distributor .dist-overview-panel{
+  display:grid;
+  grid-template-columns:minmax(240px,.75fr) minmax(0,1.65fr);
+  overflow:hidden;
+  border:1px solid #dfe7e2;
+  border-radius:12px;
+  background:#fff;
+}
+.saw-distributor .dist-overview-spend{
+  display:grid;
+  align-content:center;
+  gap:8px;
+  padding:22px;
+  background:#eaf6ef;
+  color:#17462f;
+}
+.saw-distributor .dist-overview-panel h2{font-size:14px;font-weight:700}
+.saw-distributor .dist-overview-spend strong{
+  font-size:clamp(24px,3vw,34px);
+  line-height:1.2;
+  overflow-wrap:anywhere;
+  font-variant-numeric:tabular-nums;
+}
+.saw-distributor .dist-overview-spend p{color:#486458;font-size:12px}
+.saw-distributor .dist-overview-orders{min-width:0;padding:22px}
+.saw-distributor .dist-overview-orders dl{display:grid;gap:12px;margin:16px 0 0}
+.saw-distributor .dist-overview-row{
+  display:grid;
+  grid-template-columns:92px minmax(0,1fr);
+  align-items:center;
+  gap:10px;
+  color:#334b40;
+  font-size:13px;
+}
+.saw-distributor .dist-overview-row dd{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(4ch,auto);
+  align-items:center;
+  gap:10px;
+  margin:0;
+}
+.saw-distributor .dist-overview-row dd strong{text-align:right;font-variant-numeric:tabular-nums}
+.saw-distributor .dist-overview-track{height:8px;overflow:hidden;border-radius:99px;background:#edf2ef}
+.saw-distributor .dist-overview-track>span{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  transform-origin:left;
+  transition:transform 680ms cubic-bezier(.22,1,.36,1);
+}
+.saw-distributor .dist-overview-track [data-tone=pending]{background:#bd8425}
+.saw-distributor .dist-overview-track [data-tone=success]{background:#087f59}
+.saw-distributor .dist-overview-track [data-tone=cancelled]{background:#c14d5b}
+@starting-style{.saw-distributor .dist-overview-track>span{transform:scaleX(0)}}
+@media(max-width:640px){
+  .saw-distributor .dist-overview-panel{grid-template-columns:minmax(0,1fr)}
+  .saw-distributor .dist-overview-spend,.saw-distributor .dist-overview-orders{padding:16px}
+}
 
 .dist-catalog{gap:16px}
 .dist-catalog-filters{display:flex;flex-wrap:wrap;align-items:end;gap:10px;padding:14px;border:1px solid #dfe7e2;border-radius:12px;background:#fff}
@@ -136,12 +164,12 @@
 .saw-distributor .dist-lot-overview dl>div{padding:10px 12px;border:1px solid #edf1ee;border-radius:9px;background:#fbfcfb}
 .saw-distributor .dist-lot-overview dt,.saw-distributor .dist-lot-attributes dt{margin-bottom:4px;color:#75857c;font-size:11px}
 .saw-distributor .dist-lot-overview dd,.saw-distributor .dist-lot-attributes dd{margin:0;color:#23382d;font-weight:600}
-.saw-distributor .dist-lot-qr{grid-column:2;grid-row:1;min-width:0}
+.saw-distributor .dist-lot-qr{grid-column:2;grid-row:2;min-width:0}
 .saw-distributor .dist-lot-attributes{grid-column:1;grid-row:2;gap:12px}
 .saw-distributor .dist-lot-attributes>section{padding:18px}
 .saw-distributor .dist-lot-attributes h2,.saw-distributor .dist-order-lines h2,.saw-distributor .dist-order-history h2{color:#23382d;font-size:15px}
 .saw-distributor .dist-lot-attributes dl>div{padding-bottom:8px;border-bottom:1px solid #edf1ee}
-.saw-distributor .dist-lot-purchase{grid-column:2;grid-row:2;align-self:stretch;padding:18px}
+.saw-distributor .dist-lot-purchase{grid-column:2;grid-row:1;align-self:start;padding:18px;border-color:#b9dcc8;background:#fbfefc}
 .saw-distributor .dist-order-form{align-items:start}
 .saw-distributor .dist-order-form>section{padding:20px}
 .saw-distributor .dist-order-form label{color:#3d5146;font-size:12px;font-weight:600}
@@ -158,3 +186,367 @@
 .saw-distributor [role=dialog]{border:1px solid #e1e8e3;box-shadow:0 24px 70px rgb(18 37 27 / 22%)}
 @media(max-width:800px){.saw-distributor .dist-lot-detail-grid{grid-template-columns:minmax(0,1fr)}.saw-distributor .dist-lot-overview,.saw-distributor .dist-lot-qr,.saw-distributor .dist-lot-attributes,.saw-distributor .dist-lot-purchase{grid-column:1;grid-row:auto}.saw-distributor .dist-page-heading h1{font-size:22px}}
 @media(max-width:520px){.saw-distributor .dist-page-heading{align-items:flex-start;gap:10px}.saw-distributor .dist-page-icon{width:38px;height:38px;flex-basis:38px}.saw-distributor .dist-page-heading h1{font-size:20px}.saw-distributor .dist-page-heading-action{margin-left:auto}.saw-distributor .dist-pagination{align-items:flex-start}.saw-distributor .dist-pagination>div{width:100%;justify-content:space-between}}
+
+/* Marketplace refinements: keep SAW green while making lot comparison faster. */
+.saw-distributor .dist-catalog-filters{border-color:#d6e5dc;box-shadow:0 2px 8px rgb(20 35 30 / 3%)}
+.saw-distributor .dist-filter-chips{display:flex;flex-wrap:wrap;gap:7px}
+.saw-distributor .dist-filter-chips button{min-height:29px;padding:4px 9px;border:1px solid #cce4d5;border-radius:99px;background:#eff8f2;color:#087f59;font-size:11px;font-weight:600}
+.saw-distributor .dist-filter-chips button:hover{background:#e3f3e9}
+.saw-distributor .dist-catalog-heading{padding:0 2px}
+.saw-distributor .dist-market-card{gap:13px;padding:17px;border-radius:13px}
+.saw-distributor .dist-market-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgb(20 35 30 / 7%)}
+.saw-distributor .dist-market-card.is-selected{background:linear-gradient(180deg,#f4fbf6 0,#fff 48%)}
+.saw-distributor .dist-market-name{align-items:flex-start}
+.saw-distributor .dist-market-name h2{font-size:19px;line-height:1.25}
+.saw-distributor .dist-qc-pass,.saw-distributor .dist-qc-fail,.saw-distributor .dist-qc-other{flex:0 0 auto;padding:4px 7px;border-radius:99px;font-size:10px;font-weight:700}
+.saw-distributor .dist-qc-pass{background:#e8f7ee;color:#087f59}
+.saw-distributor .dist-qc-fail{background:#fff0f1;color:#bd4050}
+.saw-distributor .dist-qc-other{background:#f1f4f2;color:#66776f}
+.saw-distributor .dist-market-values>div{align-items:baseline}
+.saw-distributor .dist-market-values .dist-market-price{font-size:19px;letter-spacing:-.02em}
+.saw-distributor .dist-selection-bar{border-radius:13px}
+.saw-distributor .dist-lot-purchase .bg-emerald-700,.saw-distributor .dist-market-actions>button{font-weight:700}
+@media(prefers-reduced-motion:reduce){.saw-distributor .dist-market-card:hover{transform:none}}
+
+.saw-distributor .dist-checkout-summary{display:grid;gap:10px;margin-top:16px;padding:14px;border:1px solid #e4ece7;border-radius:10px;background:#f8fbf9}
+.saw-distributor .dist-checkout-summary>div{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#65776e;font-size:12px}
+.saw-distributor .dist-checkout-summary b{color:#172b24;font-size:13px;font-variant-numeric:tabular-nums}
+.saw-distributor .dist-checkout-summary .dist-checkout-grand-total{margin-top:3px;padding-top:11px;border-top:1px solid #dfe7e2;color:#344b3e;font-size:13px;font-weight:700}
+.saw-distributor .dist-checkout-summary .dist-checkout-grand-total b{color:#087f59;font-size:19px}
+
+/* Distributor storefront entry on Dashboard */
+
+/* Distributor B2B Marketplace shell */
+.saw-marketplace-shell{min-height:100vh;background:#f5f6f4;color:#21332b}
+.saw-marketplace-utility{display:flex;min-height:36px;align-items:center;justify-content:space-between;gap:12px;padding:0 max(20px,calc((100vw - 1320px)/2));background:#075c3d;color:#d9eee2;font-size:11px;font-weight:650;letter-spacing:.04em}
+.saw-marketplace-utility>span i{padding:0 5px;color:#91c7a9;font-style:normal}
+.saw-marketplace-utility-actions{display:flex;align-items:center;gap:12px}
+.saw-distributor .saw-marketplace-tools{position:static;z-index:auto;height:36px;min-height:36px;gap:8px;padding:0;border:0;background:transparent;backdrop-filter:none;color:#e7f4eb}
+.saw-distributor .saw-marketplace-tools .ml-auto{margin-left:0;gap:6px}
+.saw-distributor .saw-marketplace-tools .ml-auto>a{display:none}
+.saw-distributor .saw-marketplace-tools .relative>button{width:30px;height:30px;color:#e7f4eb}
+.saw-distributor .saw-marketplace-tools .relative>button:hover{background:#ffffff15}
+.saw-distributor .saw-marketplace-tools .relative>section{color:#21332b}
+.saw-marketplace-account{position:relative}
+.saw-marketplace-account>button{display:flex;align-items:center;gap:7px;padding:2px 0;border:0;background:transparent;color:#e7f4eb;font-size:11px;font-weight:600}
+.saw-marketplace-avatar{display:grid;width:24px;height:24px;place-items:center;border-radius:50%;background:#d7f1e3;color:#075c3d;font-size:11px;font-weight:800}
+.saw-marketplace-account-menu{position:absolute;top:32px;right:0;z-index:70;display:grid;min-width:190px;padding:6px;border:1px solid #e2e8e3;border-radius:10px;background:#fff;box-shadow:0 12px 28px rgb(20 40 28 / 16%)}
+.saw-marketplace-account-menu a,.saw-marketplace-account-menu button{padding:10px;border:0;border-radius:7px;background:#fff;color:#21332b;text-align:left;text-decoration:none;font-size:12px}
+.saw-marketplace-account-menu a:hover,.saw-marketplace-account-menu button:hover{background:#f0f7f2;color:#087c50}
+.saw-marketplace-main-header{position:sticky;top:0;z-index:30;border:0;background:#087c50;box-shadow:0 3px 14px rgb(23 62 37 / 10%)}
+.saw-marketplace-header-inner{display:grid;max-width:1320px;min-height:82px;grid-template-columns:auto minmax(250px,1fr) auto;align-items:center;gap:26px;margin:auto;padding:10px 20px}
+.saw-marketplace-brand{display:flex;align-items:center;gap:11px;color:#fff;text-decoration:none}
+.saw-marketplace-brand-mark{display:grid;width:42px;height:42px;place-items:center;border:1px solid #ffffff40;border-radius:12px;background:#ffffff19}
+.saw-marketplace-brand-mark svg{width:23px}
+.saw-marketplace-brand b,.saw-marketplace-brand small{display:block}
+.saw-marketplace-brand b{font-size:20px;font-weight:800;letter-spacing:-.04em}
+.saw-marketplace-brand small{margin-top:2px;color:#d2ecdc;font-size:10px}
+.saw-marketplace-search{display:flex;min-width:0;align-items:center;gap:8px;padding:5px 6px 5px 13px;border:1px solid #e1e8e2;border-radius:10px;background:#fff;color:#819187}
+.saw-marketplace-search>svg{width:18px;flex:0 0 18px}
+.saw-marketplace-search input{width:100%;min-width:0;height:38px;border:0;background:transparent;color:#21332b;font:inherit;font-size:13px;outline:0}
+.saw-marketplace-search button{min-height:36px;padding:0 17px;border:0;border-radius:7px;background:#075c3d;color:#fff;font-size:12px;font-weight:700;white-space:nowrap}
+.saw-marketplace-search button:hover{background:#064d34}
+.saw-marketplace-search button[aria-label="Xóa tìm kiếm"]{width:28px;min-height:28px;padding:0;background:transparent;color:#718176;font-size:20px}
+.saw-marketplace-cart{display:flex;align-items:center;gap:9px;color:#fff;text-decoration:none;font-size:12px;font-weight:700;white-space:nowrap}
+.saw-marketplace-cart-icon{position:relative;display:grid;width:38px;height:38px;place-items:center;border:1px solid #ffffff55;border-radius:10px;background:#ffffff14}
+.saw-marketplace-cart-icon svg{width:20px}
+.saw-marketplace-cart-icon i{position:absolute;top:-7px;right:-7px;display:grid;min-width:19px;height:19px;place-items:center;padding:0 4px;border:2px solid #087c50;border-radius:99px;background:#ea580c;color:#fff;font-size:10px;font-style:normal}
+.saw-marketplace-nav{position:sticky;top:82px;z-index:25;border:0;border-bottom:1px solid #e2e8e3;background:#fff}
+.saw-marketplace-nav-inner{display:flex;max-width:1320px;min-height:48px;gap:28px;margin:auto;padding:0 20px}
+.saw-marketplace-nav a{display:flex;align-items:center;border-bottom:2px solid transparent;color:#64756b;text-decoration:none;font-size:13px;font-weight:600;transition:color 150ms ease,border-color 150ms ease}
+.saw-marketplace-nav a:hover,.saw-marketplace-nav a.active{border-bottom-color:#087c50;color:#087c50}
+.saw-marketplace-content{width:min(100%,1360px);min-height:calc(100vh - 210px);margin:auto;padding:24px 20px 42px}
+.saw-marketplace-footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;padding:18px max(20px,calc((100vw - 1320px)/2));border-top:1px solid #e2e8e3;background:#fff;color:#718176;font-size:11px}
+.saw-marketplace-footer span:first-child{color:#087c50;font-weight:800}
+
+.dist-market-hero{display:grid;min-height:224px;grid-template-columns:1.05fr .95fr;align-items:center;overflow:hidden;border:1px solid #dbe8dd;border-radius:16px;background-color:#e8f5ee;background-position:center;background-size:cover}
+.dist-market-hero>div:first-child{padding:28px 36px}
+.dist-market-eyebrow{color:#087c50;font-size:10px;font-weight:800;letter-spacing:.13em}
+.dist-market-hero h1{margin:9px 0;color:#17462f;font-size:clamp(27px,3vw,38px);font-weight:800;letter-spacing:-.045em;line-height:1.12}
+.dist-market-hero p{max-width:490px;margin:0 0 17px;color:#4c6757;font-size:13px;line-height:1.6}
+.dist-market-hero button{min-height:40px;padding:0 16px;border:0;border-radius:8px;background:#087c50;color:#fff;font-size:12px;font-weight:700}
+.dist-market-hero button:hover{background:#075c3d}
+.dist-market-hero-image{display:none}
+.dist-market-categories{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:thin}
+.dist-market-categories button{flex:0 0 auto;padding:8px 14px;border:1px solid #e0e8e2;border-radius:99px;background:#fff;color:#53665a;font-size:12px;font-weight:600}
+.dist-market-categories button.active,.dist-market-categories button:hover{border-color:#acd4b9;background:#e8f5ee;color:#087c50}
+.dist-catalog-results{scroll-margin-top:150px}
+.dist-market-card{min-height:325px}
+.dist-market-card .dist-market-top{min-height:25px}
+.dist-market-card .dist-market-name{min-height:28px}
+.dist-market-card .dist-market-origin{min-height:34px;align-items:flex-start}
+.dist-selection-bar{position:sticky;bottom:10px;z-index:35;gap:10px;border-color:#b4d9c1;background:#fff;box-shadow:0 12px 32px rgb(24 63 39 / 15%)}
+.dist-filter-chips{display:flex;flex-wrap:wrap;gap:7px}
+.dist-filter-chips button{min-height:29px;padding:4px 9px;border:1px solid #cce4d5;border-radius:99px;background:#eff8f2;color:#087f59;font-size:11px;font-weight:600}
+.dist-cart-page{display:grid;gap:18px}
+.dist-cart-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;padding-bottom:17px;border-bottom:1px solid #e1e8e3}
+.dist-cart-heading h1{margin:3px 0 0;color:#172b22;font-size:26px;font-weight:800;letter-spacing:-.03em}
+.dist-cart-heading>a{color:#087c50;font-size:12px;font-weight:700;text-decoration:none}
+.dist-breadcrumb{margin:0;color:#087c50;font-size:11px;font-weight:700}
+.dist-breadcrumb span{padding:0 4px;color:#9aaba1}
+.dist-cart-layout{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,.75fr);align-items:start;gap:18px}
+.dist-cart-items,.dist-cart-summary{padding:18px}
+.dist-cart-items-heading{display:flex;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid #edf1ee;font-size:14px}
+.dist-cart-items-heading span{color:#718176;font-size:12px}
+.dist-cart-item{display:grid;grid-template-columns:90px minmax(0,1fr) auto;align-items:center;gap:15px;padding:16px 0;border-bottom:1px solid #edf1ee}
+.dist-cart-item:last-child{border-bottom:0}
+.dist-cart-item-image{position:relative;width:90px;height:76px;overflow:hidden;border-radius:9px;background:#edf5ef}
+.dist-cart-item-image img{width:100%;height:100%;object-fit:cover}
+.dist-cart-item-image span{position:absolute;right:4px;bottom:4px;padding:2px 5px;border-radius:4px;background:#14231ebd;color:#fff;font-size:8px}
+.dist-cart-item-info{display:grid;min-width:0;gap:5px}
+.dist-cart-item-title{overflow-wrap:anywhere;color:#21332b;font-size:14px;font-weight:700;text-decoration:none}
+.dist-cart-item-info>span{color:#718176;font-size:11px}
+.dist-cart-item-numbers{display:grid;gap:5px;text-align:right;font-variant-numeric:tabular-nums}
+.dist-cart-item-numbers b{font-size:12px}.dist-cart-item-numbers strong{color:#ea580c;font-size:17px}
+.dist-cart-item-actions{grid-column:2/-1;display:flex;justify-content:flex-end;gap:12px;margin-top:-8px}
+.dist-cart-item-actions a,.dist-cart-item-actions button{padding:4px;border:0;background:transparent;color:#087c50;font-size:11px;font-weight:650;text-decoration:none}
+.dist-cart-item-actions button{color:#bd4050}
+.dist-cart-summary{position:sticky;top:150px}
+.dist-cart-summary h2{margin:0 0 15px;font-size:17px}
+.dist-cart-summary>div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;color:#64756b;font-size:12px}
+.dist-cart-summary>div b{color:#21332b;font-variant-numeric:tabular-nums}
+.dist-cart-summary .dist-cart-total{display:grid;gap:7px;margin-top:7px;padding:13px 0;border-top:1px solid #e5ebe6}
+.dist-cart-summary .dist-cart-total strong{color:#ea580c;font-size:23px;font-weight:800;font-variant-numeric:tabular-nums}
+.dist-cart-summary p{margin:7px 0 14px;color:#718176;font-size:11px;line-height:1.6}
+.dist-cart-summary>button{width:100%;min-height:42px}
+.dist-cart-empty{display:grid;justify-items:center;gap:10px;padding:50px 20px;text-align:center}
+.dist-cart-empty>span{display:grid;width:56px;height:56px;place-items:center;border-radius:50%;background:#e8f5ee;color:#087c50}
+.dist-cart-empty svg{width:26px}
+.dist-cart-empty h2{margin:0;font-size:18px}
+.dist-cart-empty p{margin:0 0 8px;color:#718176;font-size:13px}
+.dist-lot-overview{display:grid;grid-template-columns:minmax(0,.72fr) minmax(0,1fr);gap:18px}
+.dist-lot-product-photo{position:relative;min-height:290px;overflow:hidden;border-radius:11px;background:#eef5ef}
+.dist-lot-product-photo img{width:100%;height:100%;min-height:290px;object-fit:cover}
+.dist-lot-product-photo span{position:absolute;bottom:10px;left:10px;padding:5px 8px;border-radius:6px;background:#14231ebd;color:#fff;font-size:10px}
+.dist-lot-product-copy{min-width:0}
+.dist-lot-price-box{margin-top:14px;padding:14px;border:1px solid #f5d7c6;border-radius:10px;background:#fff7f0}
+.dist-lot-price-box span,.dist-lot-price-box small{display:block;color:#785c4f;font-size:11px}
+.dist-lot-price-box strong{display:block;margin:4px 0;color:#ea580c;font-size:30px;font-weight:800;letter-spacing:-.04em}
+.dist-lot-price-box small{color:#8a7569}
+@media(max-width:980px){.saw-marketplace-header-inner{grid-template-columns:auto minmax(0,1fr) auto;gap:15px}.saw-marketplace-brand b{font-size:17px}.saw-marketplace-cart>span:last-child{display:none}.dist-cart-layout{grid-template-columns:minmax(0,1.3fr) minmax(250px,.8fr)}}
+@media(max-width:760px){.saw-marketplace-utility{padding:0 14px}.saw-marketplace-account-name{display:none}.saw-marketplace-header-inner{grid-template-columns:auto 1fr auto;gap:10px;padding:10px 14px}.saw-marketplace-brand small{display:none}.saw-marketplace-brand b{font-size:15px}.saw-marketplace-brand-mark{width:36px;height:36px}.saw-marketplace-search{grid-column:1/-1;grid-row:2}.saw-marketplace-cart{grid-column:3;grid-row:1}.saw-marketplace-nav{top:108px}.saw-marketplace-nav-inner{gap:18px;padding:0 14px}.saw-marketplace-content{padding:18px 14px 30px}.dist-market-hero{min-height:210px;grid-template-columns:1fr;background-position:60% center}.dist-market-hero>div:first-child{max-width:75%;padding:22px}.dist-market-hero h1{font-size:28px}.dist-lot-overview{grid-template-columns:1fr}.dist-lot-product-photo,.dist-lot-product-photo img{min-height:220px;max-height:280px}.dist-cart-layout{grid-template-columns:1fr}.dist-cart-summary{position:static}}
+@media(max-width:520px){.saw-marketplace-utility{min-height:32px;font-size:9px}.saw-distributor .saw-marketplace-tools{height:32px;min-height:32px}.saw-marketplace-header-inner{grid-template-columns:minmax(0,1fr) auto}.saw-marketplace-brand b{font-size:16px}.saw-marketplace-search{grid-column:1/-1;grid-row:2}.saw-marketplace-nav{top:108px}.saw-marketplace-nav-inner{min-height:44px;gap:14px}.saw-marketplace-nav a{font-size:11px;white-space:nowrap}.saw-marketplace-content{padding:14px 12px 28px}.saw-marketplace-footer{display:grid;padding:15px 12px}.dist-market-hero{min-height:210px;background-position:64% center}.dist-market-hero>div:first-child{max-width:88%;padding:18px}.dist-market-hero h1{font-size:25px}.dist-market-hero p{max-width:270px;font-size:12px}.dist-cart-item{grid-template-columns:68px minmax(0,1fr);gap:10px}.dist-cart-item-image{width:68px;height:64px;grid-row:1/3}.dist-cart-item-info{grid-column:2}.dist-cart-item-numbers{grid-column:2;display:flex;align-items:center;justify-content:space-between;text-align:left}.dist-cart-item-actions{grid-column:2;margin-top:-4px}.dist-cart-heading{align-items:flex-start}.dist-cart-heading>a{margin-top:22px;white-space:nowrap}}
+@media(prefers-reduced-motion:reduce){.saw-distributor .dist-market-card:hover,.saw-distributor .saw-marketplace-welcome-actions>a:hover{transform:none}.saw-distributor .dist-selection-bar{animation:none}}
+
+.dist-order-cards{display:grid;gap:10px;padding:0 16px 14px}
+.dist-purchase-order-card{padding:15px 16px;border:1px solid #e2e8e3;border-radius:11px;background:#fff;transition:border-color 150ms ease,box-shadow 150ms ease}
+.dist-purchase-order-card:hover{border-color:#b8d8c4;box-shadow:0 4px 14px rgb(20 50 30 / 5%)}
+.dist-purchase-order-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:11px;border-bottom:1px solid #edf1ee}
+.dist-purchase-order-head>div{display:grid;gap:4px;min-width:0}
+.dist-purchase-order-head>div span,.dist-purchase-order-facts small{color:#718176;font-size:10px}
+.dist-purchase-order-head>div b{overflow-wrap:anywhere;color:#087c50;font-size:13px}
+.dist-purchase-order-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:12px 0}
+.dist-purchase-order-facts>div{display:grid;gap:4px;min-width:0}
+.dist-purchase-order-facts b{color:#21332b;font-size:12px;font-weight:650}
+.dist-purchase-order-note{margin:0 0 10px;padding:8px 10px;border-radius:7px;background:#fff7e9;color:#9a641a;font-size:11px}
+.dist-purchase-order-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:11px;border-top:1px solid #edf1ee}
+.dist-purchase-order-foot>span{display:flex;align-items:center;gap:10px;color:#718176;font-size:11px}
+.dist-purchase-order-foot b{color:#ea580c;font-size:17px;font-variant-numeric:tabular-nums}
+.dist-purchase-order-foot a{color:#087c50;font-size:12px;font-weight:700;text-decoration:none}
+.dist-purchase-order-foot a:hover{text-decoration:underline}
+.dist-order-card-empty{padding:34px 12px;text-align:center;color:#718176;font-size:13px}
+@media(max-width:560px){.dist-order-cards{padding-inline:9px}.dist-purchase-order-card{padding:12px}.dist-purchase-order-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.dist-purchase-order-foot{align-items:flex-start}.dist-purchase-order-foot>span{display:grid;gap:3px}.dist-purchase-order-foot b{font-size:15px}}
+
+/* V11 Distributor Marketplace: scoped styles, appended after legacy overrides */
+.saw-distributor{--dist-primary:#087c50;--dist-primary-hover:#06643f;--dist-logo:#009b70;--dist-background:#f5f7f6;--dist-surface:#fff;--dist-text:#182b23;--dist-secondary:#718176;--dist-border:#e2e8e1;--dist-input-border:#dce5de;--dist-header-border:#e8ece9;--dist-price:#d55b24;--dist-active:#e7f5ea;box-sizing:border-box;min-height:100vh;background:var(--dist-background);color:var(--dist-text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px}
+.saw-distributor *, .saw-distributor *::before,.saw-distributor *::after{box-sizing:border-box}
+.saw-distributor .saw-top{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;width:100%;height:64px;padding:0 24px;border-bottom:1px solid var(--dist-header-border);background:#fff;color:#182235;box-shadow:none}
+.saw-distributor .saw-logo{display:flex;flex:0 0 auto;align-items:center;gap:12px;height:64px;padding:0 10px 0 0;border:0;background:#fff;color:#182235;text-decoration:none}
+.saw-distributor .saw-logo:hover{background:#f8faf9}
+.saw-distributor .saw-logo strong,.saw-distributor .saw-logo small{display:block;white-space:nowrap}
+.saw-distributor .saw-logo strong{font-size:15px;font-weight:700}
+.saw-distributor .saw-logo small{margin-top:4px;color:#64748b;font-size:12px;font-weight:600}
+.saw-distributor .saw-mark{display:grid;width:40px;height:40px;flex:0 0 40px;place-items:center;border-radius:14px;background:var(--dist-logo);color:#fff}
+.saw-distributor .saw-mark svg{width:21px;height:21px}
+.saw-distributor .header-nav{display:flex;flex:1 1 auto;align-self:stretch;align-items:stretch;min-width:0;border:0;background:transparent}
+.saw-distributor .header-nav #nav{display:flex;align-items:stretch;gap:clamp(10px,1.7vw,26px);width:100%;min-width:0;overflow-x:auto;scrollbar-width:none}
+.saw-distributor .header-nav #nav::-webkit-scrollbar{display:none}
+.saw-distributor .header-nav #nav>a{display:flex;flex:0 0 auto;align-items:center;padding:0 8px;border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;color:#66776c;font-size:14px;font-weight:600;text-decoration:none;white-space:nowrap;transition:color 180ms ease,background-color 180ms ease,border-color 180ms ease}
+.saw-distributor .header-nav #nav>a:hover{background:#f5faf7;color:#087c50}
+.saw-distributor .header-nav #nav>a.active{border-bottom-color:#087c50;color:#087c50}
+.saw-distributor .header-nav #nav>a.header-cart{align-self:center;gap:6px;height:40px;margin-left:auto;padding:0 12px;border:1px solid #dce9e0;border-radius:8px;background:#f3faf6;color:#087c50}
+.saw-distributor .header-nav #nav>a.header-cart.active{border-color:#087c50}
+.saw-distributor .header-cart svg{width:19px;height:19px}
+.saw-distributor .header-cart-count{display:grid;min-width:20px;height:20px;place-items:center;padding:0 5px;border-radius:999px;background:#e7f5ea;color:#087c50;font-size:11px;font-variant-numeric:tabular-nums}
+.saw-distributor .saw-right{display:flex;flex:0 0 auto;align-items:center;gap:14px;padding:0}
+.saw-distributor .saw-marketplace-notifications{display:flex;align-items:center}
+.saw-distributor .saw-bell{position:relative;display:grid;width:36px;height:40px;place-items:center;padding:4px;border:0;background:#fff;color:#42536b}
+.saw-distributor .saw-bell:hover{border-radius:8px;background:#f2f7f4}
+.saw-distributor .saw-bell sup{position:absolute;top:0;right:-2px;min-width:16px;padding:2px 4px;border-radius:12px;background:#e60037;color:#fff;font-size:10px;line-height:12px;text-align:center}
+.saw-distributor .saw-bell:focus-visible,.saw-distributor .account-trigger:focus-visible,.saw-distributor .header-nav a:focus-visible{outline:2px solid #087c50;outline-offset:2px}
+.saw-distributor .account-wrap{position:relative;flex:0 0 auto}
+.saw-distributor .account-trigger{display:flex;align-items:center;gap:10px;padding:4px 6px;border:0;border-radius:10px;background:#fff;color:#182235;cursor:pointer}
+.saw-distributor .account-trigger:hover,.saw-distributor .account-trigger[aria-expanded=true]{background:#f2f7f4}
+.saw-distributor .saw-user{text-align:right}
+.saw-distributor .saw-user strong,.saw-distributor .saw-user small{display:block;white-space:nowrap}
+.saw-distributor .saw-user strong{font-size:13px;font-weight:700}
+.saw-distributor .saw-user small{margin-top:4px;color:#64748b;font-size:12px}
+.saw-distributor .saw-avatar{display:grid;width:40px;height:40px;flex:0 0 40px;place-items:center;border-radius:50%;background:#d0f8e7;color:#007c5d;font-size:14px;font-weight:700}
+.saw-distributor .account-chevron{width:15px;height:15px;color:#64748b;transition:transform 180ms ease}
+.saw-distributor .account-trigger[aria-expanded=true] .account-chevron{transform:rotate(180deg)}
+.saw-distributor .account-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:100;width:240px;padding:6px;border:1px solid #e2e8e5;border-radius:12px;background:#fff;color:#182235;box-shadow:0 12px 35px #18223520}
+.saw-distributor .account-intro{display:grid;gap:4px;margin-bottom:4px;padding:12px 10px;border-bottom:1px solid #edf0ed}
+.saw-distributor .account-intro strong{font-size:14px}
+.saw-distributor .account-intro small{color:#64748b;font-size:12px}
+.saw-distributor .account-menu>a,.saw-distributor .account-menu>button{display:flex;width:100%;align-items:center;gap:11px;padding:11px 10px;border:0;border-radius:8px;background:transparent;color:#334155;font-size:14px;font-weight:500;text-align:left;text-decoration:none;cursor:pointer}
+.saw-distributor .account-menu>a svg,.saw-distributor .account-menu>button svg{width:18px;height:18px}
+.saw-distributor .account-menu>a:hover{background:#f2f7f4}
+.saw-distributor .account-menu .logout-action{color:#dc2626}
+.saw-distributor .account-menu .logout-action:hover{background:#fff1f2}
+.saw-distributor .account-divider{height:1px;margin:3px 6px;background:#edf0ed}
+.saw-distributor .distributor-main{min-height:calc(100vh - 120px);padding:18px 0 100px}
+.saw-distributor .distributor-container{width:100%;max-width:1600px;margin:0 auto;padding:0 32px}
+.saw-distributor .saw-marketplace-footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;padding:18px max(32px,calc((100vw - 1536px)/2));border-top:1px solid #e2e8e3;background:#fff;color:#718176;font-size:12px}
+.saw-distributor .saw-marketplace-footer span:first-child{color:#087c50;font-weight:700}
+.saw-distributor .market-search{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 14px;padding:0 0 0 14px;border:1px solid #dce5de;border-radius:8px;background:#fff;color:#718176}
+.saw-distributor .market-search>svg{width:19px;height:19px;flex:0 0 19px}
+.saw-distributor .market-search input{width:100%;min-width:0;height:44px;padding:0 4px;border:0;outline:0;background:transparent;color:#182b23;font:inherit;font-size:14px}
+.saw-distributor .market-search input:focus{outline:0}
+.saw-distributor .market-search:focus-within{border-color:#087c50;box-shadow:0 0 0 2px #087c5022}
+.saw-distributor .market-search button{height:36px;flex:0 0 auto;padding:0 20px;border:0;border-radius:7px;background:#087c50;color:#fff;font-size:13px;font-weight:700}
+.saw-distributor .market-search button:hover{background:#06643f}
+.saw-distributor .market-search .market-search-clear{width:32px;padding:0;background:transparent;color:#718176;font-size:21px}
+.saw-distributor .market-search .market-search-clear:hover{background:#f2f7f4;color:#182b23}
+.saw-distributor .dist-catalog{display:grid;gap:14px}
+.saw-distributor .dist-market-hero{position:relative;isolation:isolate;display:flex;min-height:150px;align-items:center;overflow:hidden;padding:18px 28px;border:1px solid #e2ebe4;border-radius:14px;background:#edf7ed}
+.saw-distributor .dist-market-hero-copy{max-width:65%;padding:0}
+.saw-distributor .dist-market-eyebrow{color:#13764a;font-size:11px;font-weight:700;letter-spacing:2px}
+.saw-distributor .dist-market-hero h1{margin:6px 0 8px;color:#124e30;font-size:clamp(24px,2.2vw,34px);font-weight:750;letter-spacing:-1px;line-height:1.12}
+.saw-distributor .dist-market-hero p{max-width:520px;margin:0 0 12px;color:#47684e;font-size:14px;line-height:1.5}
+.saw-distributor .dist-market-hero button{min-height:36px;padding:0 14px;border:0;border-radius:8px;background:#087c50;color:#fff;font-size:13px;font-weight:650;transition:background-color 160ms ease,transform 150ms ease}
+.saw-distributor .dist-market-hero button:hover{background:#06643f}
+.saw-distributor .dist-market-hero-art{
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+}
+.saw-distributor .dist-market-hero-art::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,#f2f8f1 0%,#f2f8f1 30%,rgb(242 248 241 / 94%) 46%,transparent 83%);
+}
+.saw-distributor .dist-market-hero-art span{z-index:1}
+.saw-distributor .dist-market-hero-art img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 55%}
+.saw-distributor .dist-market-hero-art span,.saw-distributor .dist-market-image>span:first-of-type{position:absolute;right:7px;bottom:7px;padding:3px 6px;border-radius:5px;background:#14231ebd;color:#fff;font-size:9px}
+.saw-distributor .dist-market-categories{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+.saw-distributor .dist-market-categories::-webkit-scrollbar{display:none}
+.saw-distributor .dist-market-categories button{display:flex;flex:0 0 auto;align-items:center;gap:7px;min-height:36px;padding:7px 12px;border:1px solid #e0e8e2;border-radius:8px;background:#fff;color:#53665a;font-size:13px;font-weight:600}
+.saw-distributor .dist-market-categories button svg{width:17px;height:17px}
+.saw-distributor .dist-market-categories button.active,.saw-distributor .dist-market-categories button:hover{border-color:#acd4b9;background:#e7f5ea;color:#087c50}
+.saw-distributor .dist-catalog-results{scroll-margin-top:80px}
+.saw-distributor .dist-catalog-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:10px}
+.saw-distributor .dist-catalog-heading h2{margin:0;color:#182b23;font-size:21px;font-weight:700}
+.saw-distributor .dist-catalog-heading p,.saw-distributor .dist-catalog-heading>span{margin:4px 0 0;color:#718176;font-size:12px}
+.saw-distributor .dist-catalog-filters{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin-bottom:14px;padding:12px 14px;border:1px solid #e2e8e1;border-radius:10px;background:#fff}
+.saw-distributor .dist-filter-label{align-self:center;margin-right:auto;color:#182b23;font-size:13px;font-weight:650}
+.saw-distributor .dist-catalog-filters>label{display:flex;min-width:160px;flex:0 1 200px;flex-direction:column;gap:5px;color:#66776c;font-size:12px;font-weight:600}
+.saw-distributor .dist-catalog-filters select{box-sizing:border-box;width:100%;height:40px;padding:0 12px;border:1px solid #dce5de;border-radius:8px;background:#fff;color:#182b23;font:inherit;font-size:13px}
+.saw-distributor .dist-catalog-filters select:focus{border-color:#087c50;outline:2px solid #087c5022}
+.saw-distributor .dist-filter-reset{height:40px;padding:0 13px;border:1px solid #dce5de;border-radius:8px;background:#fff;color:#53665a;font-size:13px;font-weight:600}
+.saw-distributor .dist-filter-reset:hover{border-color:#acd4b9;background:#f5faf7;color:#087c50}
+.saw-distributor .dist-market-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.saw-distributor .dist-market-card{display:flex;min-width:0;min-height:0;flex-direction:column;gap:0;overflow:hidden;padding:0;border:1px solid #e2e8e1;border-radius:12px;background:#fff;transition:transform 160ms ease,border-color 160ms ease,box-shadow 160ms ease;animation:none}
+.saw-distributor .dist-market-card:hover{transform:translateY(-2px);border-color:#bbd9c8;box-shadow:0 5px 16px rgb(20 35 30 / 7%)}
+.saw-distributor .dist-market-card.is-selected{border-color:#087c50;box-shadow:inset 0 0 0 1px #087c50}
+.saw-distributor .dist-market-image{position:relative;height:150px;flex:0 0 150px;overflow:hidden;background:#edf5ef}
+.saw-distributor .dist-market-image img{display:block;width:100%;height:100%;object-fit:cover;transition:transform 300ms ease}
+.saw-distributor .dist-market-card:hover .dist-market-image img{transform:scale(1.025)}
+.saw-distributor .dist-market-image .dist-grade-badge{position:absolute;top:9px;left:9px;padding:5px 8px;border-radius:6px;background:#e7f5eaf2;color:#126b42;font-size:11px;font-weight:650}
+.saw-distributor .dist-market-card-body{display:flex;min-width:0;flex:1;flex-direction:column;gap:10px;padding:13px}
+.saw-distributor .dist-market-top{min-height:auto;color:#718176;font-size:11px;font-weight:600}
+.saw-distributor .dist-market-name{min-height:0;justify-content:flex-start}
+.saw-distributor .dist-market-name h3{margin:0;color:#182b23;font-size:18px;font-weight:650;line-height:1.3;overflow-wrap:anywhere}
+.saw-distributor .dist-market-origin{min-height:38px;align-items:flex-start;flex-direction:column;justify-content:flex-start;gap:3px;color:#718176;font-size:12px}
+.saw-distributor .dist-market-origin strong{color:#46574d;font-weight:600}
+.saw-distributor .dist-market-origin span{overflow:hidden;max-width:100%;text-overflow:ellipsis;white-space:nowrap}
+.saw-distributor .dist-market-values{display:grid;gap:6px;padding:10px 0;border-top:1px solid #edf1ee;border-bottom:1px solid #edf1ee}
+.saw-distributor .dist-market-values>div{align-items:baseline}
+.saw-distributor .dist-market-values>div span{color:#718176;font-size:11px}
+.saw-distributor .dist-market-values b{color:#182b23;font-size:13px;font-variant-numeric:tabular-nums}
+.saw-distributor .dist-market-values .dist-market-price{color:#d55b24;font-size:20px;font-weight:800}
+.saw-distributor .dist-market-dates{align-items:start}
+.saw-distributor .dist-market-dates>div{display:flex;min-width:0;flex-direction:column;gap:3px}
+.saw-distributor .dist-market-dates small{color:#718176;font-size:11px}
+.saw-distributor .dist-market-dates b{font-size:12px;font-variant-numeric:tabular-nums}
+.saw-distributor .dist-market-actions{display:flex;gap:8px;margin-top:auto;padding-top:4px}
+.saw-distributor .dist-market-actions>*{display:flex;min-height:38px;flex:1;align-items:center;justify-content:center;border-radius:8px;font-size:13px;font-weight:650;text-decoration:none;transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease,transform 140ms ease}
+.saw-distributor .dist-market-actions>a{border:1px solid #dce5de;background:#fff;color:#405449}
+.saw-distributor .dist-market-actions>a:hover{border-color:#bfd9ca;background:#f4faf6;color:#087c50}
+.saw-distributor .dist-market-actions>button{border:1px solid #087c50;background:#087c50;color:#fff}
+.saw-distributor .dist-market-actions>button:hover:not(:disabled){background:#06643f}
+.saw-distributor .dist-market-actions>button.is-chosen{border-color:#cce6d4;background:#e7f5ea;color:#087c50}
+.saw-distributor .dist-market-actions>button:disabled{border-color:#e2e8e1;background:#f1f3f2;color:#9aa59e;cursor:not-allowed}
+.saw-distributor .dist-market-empty{display:grid;justify-items:center;gap:7px;padding:35px 16px;border:1px solid #e2e8e1;border-radius:12px;background:#fff;text-align:center}
+.saw-distributor .dist-market-empty>svg{width:25px;height:25px;color:#718176}
+.saw-distributor .dist-market-empty h3,.saw-distributor .dist-market-empty p{margin:0}
+.saw-distributor .dist-market-empty p{color:#718176;font-size:13px}
+.saw-distributor .dist-market-skeleton-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.saw-distributor .dist-market-skeleton{display:grid;gap:11px;min-height:310px;padding:12px;border:1px solid #e2e8e1;border-radius:12px;background:#fff}
+.saw-distributor .dist-market-skeleton>*{border-radius:6px;background:linear-gradient(90deg,#edf1ee 25%,#f7f9f7 45%,#edf1ee 65%);background-size:250% 100%;animation:dist-skeleton-wave 1.25s ease-in-out infinite}
+.saw-distributor .dist-market-skeleton>span{height:140px}.saw-distributor .dist-market-skeleton>i{height:17px}.saw-distributor .dist-market-skeleton>b{height:38px;margin-top:auto}
+@keyframes dist-skeleton-wave{to{background-position:-200% 0}}
+.saw-distributor .dist-catalog-error{padding:12px 14px;border:1px solid #f2c9c6;border-radius:9px;background:#fff4f3;color:#a63d35;font-size:13px}
+.saw-distributor .dist-catalog-error button{margin-left:6px;border:0;background:transparent;color:#087c50;font-weight:700;text-decoration:underline}
+.saw-distributor .dist-selection-bar{position:sticky;bottom:10px;z-index:35;display:flex;align-items:center;gap:16px;border:1px solid #b4d9c1;border-radius:12px;background:#fff;box-shadow:0 8px 24px rgb(24 63 39 / 12%)}
+.saw-distributor .dist-selection-summary{display:flex;min-width:150px;flex:1;flex-direction:column;gap:3px}.saw-distributor .dist-selection-summary span,.saw-distributor .dist-selection-total small{color:#718176;font-size:12px}
+.saw-distributor .dist-selection-total{display:flex;flex-direction:column;gap:3px}.saw-distributor .dist-selection-total b{color:#d55b24;font-size:19px;font-variant-numeric:tabular-nums}
+.saw-distributor .dist-selection-bar>button{min-height:40px;padding:0 15px}
+.saw-distributor .dist-logout-dialog{
+  position:fixed;
+  inset:0;
+  width:min(460px,calc(100% - 32px));
+  max-height:calc(100% - 32px);
+  margin:auto;
+  padding:24px;
+  overflow:auto;
+  border:1px solid #e2e8e5;
+  border-radius:16px;
+  background:#fff;
+  color:#21332b;
+  box-shadow:0 20px 60px #18223525;
+}
+.saw-distributor .dist-logout-dialog{
+  opacity:0;
+  transition:opacity 160ms ease,display 160ms allow-discrete,overlay 160ms allow-discrete;
+}
+.saw-distributor .dist-logout-dialog[open]{opacity:1}
+.saw-distributor .dist-logout-dialog:not([open]),
+.saw-distributor .dist-logout-dialog:not([open])::backdrop{pointer-events:none}
+.saw-distributor .dist-logout-dialog::backdrop{
+  background:#18223555;
+  backdrop-filter:blur(2px);
+  opacity:0;
+  transition:opacity 160ms ease,display 160ms allow-discrete,overlay 160ms allow-discrete;
+}
+.saw-distributor .dist-logout-dialog[open]::backdrop{opacity:1}
+@starting-style{
+  .saw-distributor .dist-logout-dialog[open],
+  .saw-distributor .dist-logout-dialog[open]::backdrop{opacity:0}
+}
+.saw-distributor :where([role=alert],.dist-catalog-error,.dist-filter-chips){animation:dist-feedback-in 160ms ease-out}
+@keyframes dist-feedback-in{from{opacity:0}to{opacity:1}}
+
+.saw-distributor .dist-logout-dialog form{display:grid;justify-items:start;gap:11px}
+.saw-distributor .dist-dialog-icon{display:grid;width:42px;height:42px;place-items:center;border-radius:11px;background:#ffe9e7;color:#a63d35}.saw-distributor .dist-dialog-icon svg{width:20px}
+.saw-distributor .dist-logout-dialog h2,.saw-distributor .dist-logout-dialog p{margin:0}.saw-distributor .dist-logout-dialog h2{font-size:19px}.saw-distributor .dist-logout-dialog p{color:#64748b;font-size:14px;line-height:1.5}
+.saw-distributor .dist-dialog-actions{display:flex;justify-content:flex-end;gap:8px;width:100%;margin-top:8px}
+.saw-distributor .dist-dialog-actions button{min-height:40px;padding:0 15px;border-radius:8px;font-size:13px;font-weight:650}
+.saw-distributor .dist-dialog-cancel{border:1px solid #dce5de;background:#fff;color:#405449}.saw-distributor .dist-dialog-confirm{border:1px solid #dc2626;background:#dc2626;color:#fff}
+@media(max-width:1050px){.saw-distributor .saw-top{gap:8px;padding:0 12px}.saw-distributor .saw-logo{padding-right:0}.saw-distributor .saw-logo small,.saw-distributor .saw-user{display:none}.saw-distributor .header-nav #nav{gap:8px}.saw-distributor .header-nav #nav>a{padding:0 6px;font-size:12px}.saw-distributor .saw-right{gap:10px}.saw-distributor .dist-market-grid,.saw-distributor .dist-market-skeleton-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:800px){.saw-distributor .distributor-container{padding-right:14px;padding-left:14px}.saw-distributor .dist-market-hero{padding:18px}.saw-distributor .dist-market-hero h1{font-size:27px}.saw-distributor .dist-market-grid,.saw-distributor .dist-market-skeleton-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.saw-distributor .saw-top{height:auto;min-height:56px;flex-wrap:wrap;gap:0;justify-content:space-between}.saw-distributor .saw-logo{height:56px}.saw-distributor .header-nav{order:3;flex:0 0 100%;height:43px;border-top:1px solid #e8ece9}.saw-distributor .header-nav #nav{gap:5px}.saw-distributor .header-nav #nav>a{font-size:12px}.saw-distributor .header-nav #nav>a.header-cart{height:34px;margin-left:auto;padding:0 8px}.saw-distributor .saw-right{margin-left:auto}.saw-distributor .saw-logo small{display:block}.saw-distributor .dist-market-hero-copy{max-width:68%}.saw-distributor .dist-catalog-filters>label{min-width:calc(50% - 6px);flex-basis:calc(50% - 6px)}}
+@media(max-width:520px){.saw-distributor .saw-top{padding:0 10px}.saw-distributor .saw-logo strong{font-size:14px}.saw-distributor .saw-logo small{font-size:10px}.saw-distributor .saw-mark{width:36px;height:36px;flex-basis:36px}.saw-distributor .account-trigger{gap:5px;padding:3px}.saw-distributor .account-chevron{display:none}.saw-distributor .saw-avatar{width:36px;height:36px;flex-basis:36px}.saw-distributor .header-nav #nav{gap:2px}.saw-distributor .header-nav #nav>a{padding:0 5px;font-size:11px}.saw-distributor .header-nav #nav>a.header-cart{gap:4px}.saw-distributor .header-cart svg{width:16px}.saw-distributor .header-cart-count{min-width:17px;height:17px;font-size:10px}.saw-distributor .distributor-container{padding:0 12px}.saw-distributor .distributor-main{padding-top:14px}.saw-distributor .market-search{gap:5px;padding-left:9px}.saw-distributor .market-search input{height:42px;font-size:12px}.saw-distributor .market-search button{padding:0 11px;font-size:12px}.saw-distributor .dist-market-hero{min-height:142px;padding:14px}.saw-distributor .dist-market-hero-copy{max-width:100%}.saw-distributor .dist-market-hero h1{font-size:23px}.saw-distributor .dist-market-hero p{max-width:290px;font-size:12px}.saw-distributor .dist-market-hero-art::after{background:linear-gradient(90deg,#f2f8f1 0%,rgb(242 248 241 / 94%) 58%,rgb(242 248 241 / 65%) 100%)}.saw-distributor .dist-catalog-heading{align-items:flex-start}.saw-distributor .dist-catalog-heading h2{font-size:19px}.saw-distributor .dist-catalog-heading>span{display:none}.saw-distributor .dist-filter-label{width:100%}.saw-distributor .dist-catalog-filters>label{min-width:100%;flex-basis:100%}.saw-distributor .dist-market-grid,.saw-distributor .dist-market-skeleton-grid{grid-template-columns:1fr}.saw-distributor .dist-market-card{display:grid;grid-template-columns:112px minmax(0,1fr);min-height:0}.saw-distributor .dist-market-image{height:100%;min-height:100%;grid-row:1;grid-column:1}.saw-distributor .dist-market-card-body{grid-row:1;grid-column:2;gap:7px;padding:10px}.saw-distributor .dist-market-name h3{font-size:15px}.saw-distributor .dist-market-values .dist-market-price{font-size:17px}.saw-distributor .dist-market-dates{gap:5px}.saw-distributor .dist-market-dates>div{flex:1}.saw-distributor .dist-market-actions>*{min-height:34px;font-size:11px}.saw-distributor .dist-selection-bar{bottom:6px;flex-wrap:wrap;gap:9px;padding:12px}.saw-distributor .dist-selection-summary{min-width:calc(50% - 6px)}.saw-distributor .dist-selection-total{flex:1}.saw-distributor .dist-selection-bar>button{width:100%}.saw-distributor .saw-marketplace-footer{display:grid;padding:14px 12px}}
+@media(prefers-reduced-motion:reduce){.saw-distributor .dist-market-card,.saw-distributor .dist-market-image img,.saw-distributor .account-menu,.saw-distributor .dist-selection-bar{animation:none!important;transition:none!important}.saw-distributor .dist-market-card:hover,.saw-distributor .dist-market-card:hover .dist-market-image img{transform:none}}
+/* Resolve legacy first-child padding with higher specificity for V11's compact banner. */
+.saw-distributor .dist-market-hero>div:first-child{padding:0}
+/* Shared, viewport-pinned cart summary used on catalog and lot detail. */
+.saw-distributor .dist-selection-bar{position:fixed;left:50%;bottom:12px;width:min(calc(100% - 48px),1200px);transform:translateX(-50%);}
+.saw-distributor .dist-selection-bar>a{display:inline-flex;min-height:40px;align-items:center;justify-content:center;gap:6px;padding:0 15px;border-radius:8px;background:#087c50;color:#fff;font-size:13px;font-weight:650;text-decoration:none}
+.saw-distributor .dist-selection-bar>a:hover{background:#06643f}
+@media(max-width:600px){.saw-distributor .dist-selection-bar{bottom:8px;width:calc(100% - 24px)}}
+
+/* Keep the fixed selection bar from covering the footer when the cart is non-empty. */
+.saw-distributor:has(.dist-selection-bar) .saw-marketplace-footer{padding-bottom:148px}
+@media(max-width:600px){.saw-distributor:has(.dist-selection-bar) .saw-marketplace-footer{padding-bottom:142px}}

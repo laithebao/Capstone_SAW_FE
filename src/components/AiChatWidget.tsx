@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import axios from 'axios'
+import DistributorFade from '@/features/distributor-orders/DistributorFade'
 import { sendAiChatMessage, type ChatMessage } from '@/services/aiChatService'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -15,6 +16,7 @@ interface Props {
   batchContextId?: number | null
   batchContextCode?: string | null
   batchCode?: string | null
+  fadePanel?: boolean
 }
 
 // ── Markdown-lite renderer (bold, bullets, line breaks) ────────────────────
@@ -78,7 +80,7 @@ function BotAvatar() {
 }
 
 // ── Main Widget Component ──────────────────────────────────────────────────
-export default function AiChatWidget({ batchContextId, batchContextCode, batchCode }: Props) {
+export default function AiChatWidget({ batchContextId, batchContextCode, batchCode, fadePanel = false }: Props) {
   const currentBatchCode = (batchContextCode || batchCode)?.trim() || null
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<UiMessage[]>([
@@ -222,6 +224,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
       </button>
 
       {/* ── Chat Panel ──────────────────────────────────────────────── */}
+      <DistributorFade enabled={fadePanel} changeKey={isOpen ? 'ai-chat' : null}>
       {isOpen && (
         <div className="agri-chat-panel" role="dialog" aria-label="SAW Agri-Copilot">
           {/* Header */}
@@ -353,6 +356,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
           </p>
         </div>
       )}
+      </DistributorFade>
 
       {/* ── Styles ──────────────────────────────────────────────────── */}
       <style>{`

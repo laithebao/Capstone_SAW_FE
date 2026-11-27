@@ -32,6 +32,8 @@ function EvidenceImage({ image }: { image: Evidence }) {
   </div>
 }
 
+import DistributorFade from '@/features/distributor-orders/DistributorFade'
+
 export default function OrderDeliveryRefusalPanel({ orderId, orderStatus, lines, receivedAt, onChanged, receiptActions, receiptMessage }: Props) {
   const [reports, setReports] = useState<Refusal[]>([])
   const [loading, setLoading] = useState(true)
@@ -121,7 +123,7 @@ export default function OrderDeliveryRefusalPanel({ orderId, orderStatus, lines,
       <p className="mt-3 text-sm font-semibold">Ảnh bằng chứng ({report.images.length})</p><div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{report.images.map(image => <EvidenceImage key={image.id} image={image} />)}</div>
       <p className="mt-4 text-sm text-slate-600">Đã gửi thông tin đến quản lý kho. Việc giải quyết và đối soát thực hiện bên ngoài hệ thống; hàng không được nhập trở lại kho.</p>
     </article>)}
-    {confirming && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><form role="dialog" aria-modal="true" aria-labelledby="refusal-title" onSubmit={event => void submit(event)} className="max-h-[90vh] w-full max-w-xl space-y-4 overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+    <DistributorFade changeKey={confirming ? 'refusal' : null} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><form role="dialog" aria-modal="true" aria-labelledby="refusal-title" onSubmit={event => void submit(event)} className="max-h-[90vh] w-full max-w-xl space-y-4 overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
       <h3 id="refusal-title" className="text-lg font-bold">Chọn lô hàng cần từ chối</h3>
       <p className="text-sm text-slate-600">Thông tin và ảnh bằng chứng sẽ được gửi đến kho. Sau khi xác nhận, các bên xử lý bên ngoài hệ thống.</p>
       <fieldset className="space-y-2"><legend className="mb-2 text-sm font-medium">Lô cần từ chối <span className="text-rose-600">*</span></legend>
@@ -136,6 +138,6 @@ export default function OrderDeliveryRefusalPanel({ orderId, orderStatus, lines,
       {images.length > 0 && <div className="grid grid-cols-3 gap-3">{images.map(image => <div key={image.id} className="min-w-0 rounded-lg border border-slate-200 p-2"><img src={image.preview} alt={image.file.name} className="h-24 w-full rounded object-contain" /><p className="mt-1 truncate text-xs">{image.file.name}</p><button type="button" disabled={busy} onClick={() => removeImage(image)} className="mt-1 text-xs text-rose-700">Bỏ ảnh</button></div>)}</div>}
       {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
       <div className="flex justify-end gap-3"><button type="button" disabled={busy} onClick={close} className="px-3 py-2 text-sm">Quay lại</button><button type="submit" disabled={busy || !reason.trim() || !images.length || !selectedBatchIds.length} className="rounded-lg bg-rose-700 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Đang gửi...' : `Từ chối ${selectedBatchIds.length} lô đã chọn`}</button></div>
-    </form></div>}
+    </form></DistributorFade>
   </section>
 }

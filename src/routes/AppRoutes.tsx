@@ -28,6 +28,7 @@ import DistributorLotDetailPage from "@/pages/distributor/DistributorLotDetailPa
 import CreateDistributorOrderPage from "@/pages/distributor/CreateDistributorOrderPage";
 import DistributorOrderListPage from "@/pages/distributor/DistributorOrderListPage";
 import DistributorOrderDetailPage from "@/pages/distributor/DistributorOrderDetailPage";
+import DistributorCartPage from "@/pages/distributor/DistributorCartPage";
 import OperationDashboardPage from "@/pages/operation/OperationDashboardPage";
 import GoodsIssueManagementPage from "@/pages/operation/GoodsIssueManagementPage";
 import StockAdjustmentManagementPage from "@/pages/operation/StockAdjustmentManagementPage";
@@ -71,8 +72,19 @@ import BatchStatusDetailPage from "@/pages/supplier/BatchStatusDetailPage";
 import { SupplierGuard } from "@/routes/SupplierGuard";
 import SupplyContractsPage from "@/pages/contracts/SupplyContractsPage";
 import DistributorLayout from "@/layouts/DistributorLayout";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AppRoutes() {
+  const { user } = useAuth();
+  const isDistributor = user?.role === ROLES.DISTRIBUTOR;
+  const accountRoutes = (
+    <>
+      <Route path={ROUTES.PROFILE} element={<UserProfilePage />} />
+      <Route path={ROUTES.CHANGE_PASSWORD} element={<ChangePasswordPage />} />
+    </>
+  );
+
+
   return (
     <Routes>
       <Route path={ROUTES.HOME} element={<HomePage />} />
@@ -93,11 +105,7 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
-          <Route path={ROUTES.PROFILE} element={<UserProfilePage />} />
-          <Route
-            path={ROUTES.CHANGE_PASSWORD}
-            element={<ChangePasswordPage />}
-          />
+          {!isDistributor && accountRoutes}
           <Route element={<RoleRoute allowedRoles={[ROLES.ADMINISTRATOR]} />}>
             <Route path={ROUTES.ADMIN} element={<AdminDashboardPage />} />
             <Route path={ROUTES.ADMIN_WAREHOUSE_CAPACITY} element={<AdminCapacityPage />} />
@@ -320,15 +328,25 @@ export default function AppRoutes() {
             </Route>
           </Route>
 
-          <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
-            <Route element={<DistributorLayout />}>
+        </Route>
+        <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
+          <Route element={<DistributorLayout />}>
+            {isDistributor && accountRoutes}
               <Route
                 path={ROUTES.DISTRIBUTOR}
+                element={<DistributorCatalogPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_OVERVIEW}
                 element={<DistributorDashboardPage />}
               />
               <Route
                 path={ROUTES.DISTRIBUTOR_CATALOG}
                 element={<DistributorCatalogPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_CART}
+                element={<DistributorCartPage />}
               />
               <Route
                 path={ROUTES.DISTRIBUTOR_LOT_DETAIL}
@@ -347,7 +365,6 @@ export default function AppRoutes() {
                 element={<DistributorOrderDetailPage />}
               />
             </Route>
-          </Route>
         </Route>
       </Route>
     </Routes>
