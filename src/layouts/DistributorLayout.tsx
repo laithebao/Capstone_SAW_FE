@@ -103,6 +103,6 @@ export default function DistributorLayout() {
         </div>
       </form>
     </dialog>
-    <AiChatWidget fadePanel batchContextId={batchContext.batchId} batchContextCode={batchContext.batchCode} />
+    <AiChatWidget key={user?.id} fadePanel batchContextId={batchContext.batchId} batchContextCode={batchContext.batchCode} />
   </div>
 }

@@ -2,7 +2,7 @@ import { formatVietnamTime } from '@/utils/vietnamTime'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import DistributorFade from '@/features/distributor-orders/DistributorFade'
-import { sendAiChatMessage, type ChatMessage } from '@/services/aiChatService'
+import { clearAiChatHistory, getAiChatHistory, sendAiChatMessage, type AiChatHistoryTurn } from '@/services/aiChatService'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface UiMessage {
@@ -18,6 +18,13 @@ interface Props {
   batchContextCode?: string | null
   batchCode?: string | null
   fadePanel?: boolean
+}
+
+function turnMessages(turn: AiChatHistoryTurn): UiMessage[] {
+  return [
+    { id: `turn-${turn.id}-user`, role: 'user', content: turn.message, timestamp: new Date(turn.sentAt) },
+    { id: `turn-${turn.id}-model`, role: 'model', content: turn.reply, timestamp: new Date(turn.repliedAt) },
+  ]
 }
 
 // ── Markdown-lite renderer (bold, bullets, line breaks) ────────────────────
@@ -94,20 +101,58 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
   ])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true)
+  const [isHistoryReady, setIsHistoryReady] = useState(false)
+  const [isClearing, setIsClearing] = useState(false)
+  const [historyError, setHistoryError] = useState('')
+  const [hasMoreHistory, setHasMoreHistory] = useState(false)
+  const [firstTurnId, setFirstTurnId] = useState<number>()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const historyAbortRef = useRef<AbortController | null>(null)
+  const busy = isLoading || isHistoryLoading || isClearing
 
-  // Build history for API (exclude welcome and error messages)
-  const apiHistory = useCallback((): ChatMessage[] =>
-    messages
-      .filter(m => m.id !== 'welcome' && m.role !== 'error')
-      .map(m => ({ role: m.role as 'user' | 'model', content: m.content })),
-    [messages])
+  const loadHistory = useCallback((beforeId?: number) => {
+    historyAbortRef.current?.abort()
+    const controller = new AbortController()
+    historyAbortRef.current = controller
+    return getAiChatHistory(beforeId, controller.signal).then(page => {
+      if (controller.signal.aborted) return
+      const restored = page.items.flatMap(turnMessages)
+      setMessages(prev => beforeId
+        ? [prev[0], ...restored, ...prev.slice(1)]
+        : [prev[0], ...restored])
+      setFirstTurnId(previous => page.items[0]?.id ?? (beforeId ? previous : undefined))
+      setHasMoreHistory(page.hasMore)
+      setIsHistoryReady(true)
+    }).catch(error => {
+      if (!controller.signal.aborted && !axios.isCancel(error)) {
+        setHistoryError('Không thể tải lịch sử chat. Vui lòng thử lại.')
+      }
+    }).finally(() => {
+      if (!controller.signal.aborted) setIsHistoryLoading(false)
+    })
+  }, [])
+
+  const reloadHistory = (beforeId?: number) => {
+    setIsHistoryLoading(true)
+    setHistoryError('')
+    void loadHistory(beforeId)
+  }
 
   useEffect(() => {
+    void loadHistory()
+    return () => {
+      historyAbortRef.current?.abort()
+      abortRef.current?.abort()
+    }
+  }, [loadHistory])
+
+  const lastMessageId = messages.at(-1)?.id
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isOpen])
+  }, [lastMessageId, isOpen])
 
   useEffect(() => {
     if (isOpen) {
@@ -117,7 +162,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
 
   const sendMessage = useCallback(async () => {
     const text = input.trim()
-    if (!text || isLoading) return
+    if (!text || busy || !isHistoryReady) return
 
     const userMsg: UiMessage = {
       id: crypto.randomUUID(),
@@ -129,17 +174,25 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
     setInput('')
     setIsLoading(true)
 
-    abortRef.current = new AbortController()
+    const controller = new AbortController()
+    abortRef.current = controller
     try {
       const response = await sendAiChatMessage(
         {
           message: text,
           batchContextId: batchContextId ?? null,
           batchContextCode: currentBatchCode,
-          history: apiHistory(),
         },
-        abortRef.current.signal,
+        controller.signal,
       )
+      if (controller.signal.aborted) return
+
+      if (response.savedTurn) {
+        const saved = response.savedTurn
+        setMessages(prev => [...prev.filter(m => m.id !== userMsg.id), ...turnMessages(saved)])
+        setFirstTurnId(previous => previous ?? saved.id)
+        return
+      }
 
       const botMsg: UiMessage = {
         id: crypto.randomUUID(),
@@ -184,10 +237,12 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
         timestamp: new Date(),
       }])
     } finally {
-      setIsLoading(false)
-      abortRef.current = null
+      if (!controller.signal.aborted) {
+        setIsLoading(false)
+        abortRef.current = null
+      }
     }
-  }, [input, isLoading, batchContextId, currentBatchCode, apiHistory])
+  }, [input, busy, isHistoryReady, batchContextId, currentBatchCode])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -196,8 +251,29 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
     }
   }
 
-  const clearChat = () => {
-    setMessages(prev => [prev[0]]) // keep welcome
+  const clearChat = async () => {
+    if (busy || !isHistoryReady) return
+    const controller = new AbortController()
+    abortRef.current = controller
+    setIsClearing(true)
+    setHistoryError('')
+    try {
+      await clearAiChatHistory(controller.signal)
+      if (controller.signal.aborted) return
+      setMessages(prev => [prev[0]])
+      setFirstTurnId(undefined)
+      setHasMoreHistory(false)
+      setInput('')
+    } catch (error) {
+      if (!controller.signal.aborted && !axios.isCancel(error)) {
+        setHistoryError('Không thể xóa lịch sử chat. Vui lòng thử lại.')
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setIsClearing(false)
+        abortRef.current = null
+      }
+    }
   }
 
   return (
@@ -248,6 +324,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
                 id="agri-chat-clear"
                 aria-label="Xóa lịch sử chat"
                 onClick={clearChat}
+                disabled={busy || !isHistoryReady}
                 className="agri-chat-icon-btn"
                 title="Xóa lịch sử"
               >
@@ -270,6 +347,21 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
 
           {/* Messages */}
           <div className="agri-chat-messages" role="log" aria-live="polite">
+            {isHistoryLoading && <p role="status">Đang tải lịch sử chat...</p>}
+            {isClearing && <p role="status">Đang xóa lịch sử chat...</p>}
+            {historyError && (
+              <div role="alert" className="agri-chat-history-error">
+                <p>{historyError}</p>
+                <button className="agri-chat-chip" disabled={busy} onClick={() => reloadHistory()}>
+                  Tải lại lịch sử
+                </button>
+              </div>
+            )}
+            {hasMoreHistory && (
+              <button className="agri-chat-chip" disabled={busy} onClick={() => reloadHistory(firstTurnId)}>
+                Xem tin nhắn cũ hơn
+              </button>
+            )}
             {messages.map(msg => (
               <div key={msg.id} className={`agri-chat-row agri-chat-row--${msg.role}`}>
                 {msg.role !== 'user' && <BotAvatar />}
@@ -277,7 +369,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
                   {msg.role !== 'user'
                     ? renderMarkdown(msg.content)
                     : <span>{msg.content}</span>}
-                  <time className="agri-chat-time">
+                  <time className="agri-chat-time" dateTime={msg.timestamp.toISOString()} title={formatVietnamTime(msg.timestamp)}>
                     {formatVietnamTime(msg.timestamp, { hour: '2-digit', minute: '2-digit' })}
                   </time>
                 </div>
@@ -297,7 +389,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
           </div>
 
           {/* Suggestion chips */}
-          {messages.length <= 2 && !isLoading && (
+          {messages.length <= 2 && !busy && isHistoryReady && (
             <div className="agri-chat-chips">
               {(currentBatchCode
                 ? [
@@ -335,14 +427,14 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
               onKeyDown={handleKeyDown}
               placeholder="Hỏi về lô hàng, kiểm định, bảo quản..."
               maxLength={2000}
-              disabled={isLoading}
+              disabled={busy || !isHistoryReady}
               className="agri-chat-input"
               aria-label="Nhập câu hỏi"
             />
             <button
               id="agri-chat-send"
               onClick={sendMessage}
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || busy || !isHistoryReady}
               className="agri-chat-send-btn"
               aria-label="Gửi tin nhắn"
             >
@@ -353,7 +445,7 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
             </button>
           </div>
           <p className="agri-chat-footer">
-            SAW Agri-Copilot · Chỉ trả lời về nông sản &amp; chất lượng
+            SAW Agri-Copilot · Lịch sử được lưu theo tài khoản
           </p>
         </div>
       )}
@@ -361,6 +453,8 @@ export default function AiChatWidget({ batchContextId, batchContextCode, batchCo
 
       {/* ── Styles ──────────────────────────────────────────────────── */}
       <style>{`
+        .agri-chat-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .agri-chat-history-error { color: #be123c; font-size: 12px; margin-bottom: 8px; }
         /* FAB */
         .agri-chat-fab {
           position: fixed;
