@@ -1,3 +1,4 @@
+import { getVietnamDateInput } from '@/utils/vietnamTime'
 /**
  * Shared CriterionBlock component for UC12 and UC13.
  * Enforces sequential grade rules: A → B → C → D → E (no skipping, no reordering).
@@ -143,7 +144,7 @@ export function describeRangeContinuity(rules: GradeRuleRow[]): {
 
 // ── Shared validation logic (mirrors backend) ────────────────────────────────
 export function buildChecks(criteria: CriterionRow[], effectiveFrom: string, requireEffectiveFrom: boolean) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = getVietnamDateInput()
   return [
     ...(requireEffectiveFrom
       ? [{ label: 'Ngày hiệu lực (từ hôm nay trở đi)', ok: effectiveFrom.length > 0 && effectiveFrom >= today }]
@@ -217,6 +218,10 @@ export function buildChecks(criteria: CriterionRow[], effectiveFrom: string, req
     {
       label: 'BOOLEAN phải là Nghiêm trọng (Tiêu chuẩn Nhà nước/Quốc tế)',
       ok: criteria.every(r => r.dataType !== 'BOOLEAN' || r.isCritical),
+    },
+    {
+      label: 'BOOLEAN không có quy tắc phân hạng',
+      ok: criteria.every(r => r.dataType !== 'BOOLEAN' || r.gradeRules.length === 0),
     },
     {
       label: 'Ngưỡng từ chối cascade: hạng tệ hơn cũng phải là ngưỡng từ chối',

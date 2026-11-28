@@ -1,3 +1,4 @@
+import { getVietnamDateInput } from '@/utils/vietnamTime'
 import { apiClient } from '@/services/apiClient'
 import type { ApiResponse } from '@/types/api'
 import type { AuditLogDetail, AuditLogFilters, AuditLogListResponse } from '@/types/audit'
@@ -21,7 +22,7 @@ export async function exportAuditLogs(filters: AuditLogFilters): Promise<void> {
   const url = URL.createObjectURL(response.data)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
+  anchor.download = `audit-log-${getVietnamDateInput()}.csv`
   anchor.click()
   URL.revokeObjectURL(url)
 }

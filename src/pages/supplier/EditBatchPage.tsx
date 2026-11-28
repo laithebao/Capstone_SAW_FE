@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from '@/utils/vietnamTime'
 import { SupplierBatchBreadcrumb } from '@/features/supplier/components/SupplierBatchBreadcrumb';
 import { SupplierDocumentEditor } from '@/features/supplier/components/SupplierDocuments';
 import type { SupplierDocumentDto } from '@/types/supplier';
@@ -287,14 +288,15 @@ export const EditBatchPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 max-w-6xl mx-auto">
+    <div className="sp-form">
       <form onSubmit={handleSubmit(onSubmit)}>
         {/* Header Bar */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <SupplierBatchBreadcrumb batchId={Number(id)} batchCode={batchCode} editing />
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">Chỉnh sửa thông tin lô hàng</h1>
+              <p className="text-xs text-emerald-700 mb-1">Quản lý lô hàng / Chỉnh sửa lô</p>
+            <h1 className="text-2xl font-bold text-gray-900">Chỉnh sửa thông tin lô hàng</h1>
               <span className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded font-mono font-semibold">
                 Lô hàng #{batchCode}
               </span>
@@ -422,7 +424,7 @@ export const EditBatchPage: React.FC = () => {
                       </option>
                       {growingAreas.map((area) => (
                         <option key={area.growingAreaId} value={area.growingAreaId}>
-                          {area.areaName} ({[area.ward, area.district, area.province].filter(Boolean).join(', ')})
+                          {[area.areaName, [area.ward, area.district, area.province].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
                         </option>
                       ))}
                     </select>
@@ -742,7 +744,7 @@ export const EditBatchPage: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-500">Tạo ngày:</span>
                   <span>
-                    {new Date(batchCreatedAt).toLocaleString('vi-VN', {
+                    {formatVietnamDateTime(batchCreatedAt, {
                       day: '2-digit',
                       month: '2-digit',
                       year: 'numeric',

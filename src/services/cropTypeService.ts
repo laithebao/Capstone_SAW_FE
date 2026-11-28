@@ -6,7 +6,9 @@ export interface CropType {
   code: string
   name: string
   categoryName: string
-  scientificName: string | null
+  categoryId: number | null
+  parentCategoryId?: number | null
+  childCategoryName?: string | null
   minTemperature: number | null
   maxTemperature: number | null
   minHumidity: number | null
@@ -30,7 +32,7 @@ export interface SaveCropTypeRequest {
   code: string
   name: string
   categoryName: string
-  scientificName?: string
+  categoryId: number | null
   minTemperature?: number
   maxTemperature?: number
   minHumidity?: number
@@ -41,13 +43,26 @@ export interface SaveCropTypeRequest {
   isActive: boolean
 }
 
-export async function getCropTypes(search = ''): Promise<CropTypeListResponse> {
-  const response = await apiClient.get<ApiResponse<CropTypeListResponse>>('/crop-types', { params: { search, pageSize: 100 } })
+export type SaveCropTypeBasicsRequest = Pick<SaveCropTypeRequest, 'code' | 'name' | 'categoryId' | 'isActive'>
+
+export async function saveCropTypeBasics(request: SaveCropTypeBasicsRequest, id?: number): Promise<CropType> {
+  const response = id
+    ? await apiClient.put<ApiResponse<CropType>>(`/crop-types/${id}/basic`, request)
+    : await apiClient.post<ApiResponse<CropType>>('/crop-types/basic', request)
   return response.data.data
 }
 
-export async function getCropType(id: number): Promise<CropType> {
-  const response = await apiClient.get<ApiResponse<CropType>>(`/crop-types/${id}`)
+export async function getCropTypes(search = '', page = 1, pageSize = 100, signal?: AbortSignal): Promise<CropTypeListResponse> {
+  const response = await apiClient.get<ApiResponse<CropTypeListResponse>>('/crop-types', { params: { search, page, pageSize }, signal })
+  return response.data.data
+}
+
+export async function getCropTypeLookup(params: { categoryId?: number; search?: string; page?: number; pageSize?: number }, signal?: AbortSignal): Promise<CropTypeListResponse> {
+  return (await apiClient.get<ApiResponse<CropTypeListResponse>>('/crop-types/lookup', { params: { page: 1, pageSize: 20, ...params }, signal })).data.data
+}
+
+export async function getCropType(id: number, signal?: AbortSignal): Promise<CropType> {
+  const response = await apiClient.get<ApiResponse<CropType>>(`/crop-types/${id}`, { signal })
   return response.data.data
 }
 

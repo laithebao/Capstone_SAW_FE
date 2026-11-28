@@ -1,3 +1,18 @@
+import SupplyContractTimeline from './SupplyContractTimeline';
+import AdminContractList from './AdminContractList';
+import SupplierContractList from './SupplierContractList';
+import './warehouse-contracts-v2.css'
+import { Eye, Pencil } from 'lucide-react'
+import FormNotification from '@/components/common/FormNotification'
+import RefreshButton from '@/components/common/RefreshButton'
+import { AnimatedNumber } from '@/components/common/AnimatedNumber';
+import { getVietnamDateInput } from '@/utils/vietnamTime'
+import { parseApiTimestamp } from '@/utils/vietnamTime'
+import SearchableSelect from '@/components/common/SearchableSelect'
+import CurrencyInput from '@/components/common/CurrencyInput'
+import ContractPreview from '@/components/common/ContractPreview'
+import ContractDocument from '@/components/common/ContractDocument'
+import { formatCurrencyInput, isValidPrice } from '@/utils/currency'
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { renderAsync } from "docx-preview";
@@ -18,7 +33,6 @@ import {
   requestSupplyContractCancellation,
   rejectSupplyContractCancellationByWarehouse,
   updateSupplyContract,
-  uploadSupplyContractAttachment,
   downloadSupplyContractAttachmentBlob,
 } from "@/services/supplyContractService";
 import type {
@@ -34,7 +48,6 @@ import type {
 type ContractMode = "warehouse" | "supplier" | "admin";
 const CONTRACT_DETAIL_CLOSE_DELAY_MS = 280;
 const CONTRACT_FORM_CLOSE_DELAY_MS = 240;
-const CONTRACT_PREVIEW_TOGGLE_DELAY_MS = 240;
 type ContractSortField = "createdAt" | "endDate" | "unitPrice" | "deliveryQuantity";
 type ContractSortOption =
   | "createdAt-desc"
@@ -119,15 +132,10 @@ const pageCopy: Record<
   },
 };
 
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
 
 const weight = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 });
 
-const dateFormatter = new Intl.DateTimeFormat("vi-VN", {
+const dateFormatter = new Intl.DateTimeFormat("vi-VN", { timeZone: 'Asia/Ho_Chi_Minh',
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
@@ -142,36 +150,32 @@ const dateTimeFormatter = new Intl.DateTimeFormat("vi-VN", {
   timeZone: "Asia/Ho_Chi_Minh",
 });
 
-function localIsoDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+function localIsoDate(date: Date) { return getVietnamDateInput(date); }
 
 function initialForm(): ContractFormState {
-  const today = new Date();
-  const end = new Date(today);
-  end.setMonth(end.getMonth() + 1);
+  const today = getVietnamDateInput();
+  // Date-only arithmetic is anchored to UTC midnight, independent of device timezone.
+  const end = new Date(`${today}T00:00:00Z`);
+  end.setUTCMonth(end.getUTCMonth() + 1);
   return {
     supplierId: "",
     cropTypeId: "",
     deliveryQuantityKg: "",
     deliveryPeriod: "WEEK",
     unitPriceVndPerKg: "",
-    startDate: localIsoDate(today),
-    endDate: localIsoDate(end),
+    startDate: today,
+    endDate: end.toISOString().slice(0, 10),
     terms: "",
   };
 }
 
 function formatDate(value: string) {
-  return dateFormatter.format(new Date(`${value}T00:00:00`));
+  return dateFormatter.format(parseApiTimestamp(`${value}T00:00:00`));
 }
 
 function formatDateTime(value: string) {
   const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`;
-  return dateTimeFormatter.format(new Date(normalized));
+  return dateTimeFormatter.format(parseApiTimestamp(normalized));
 }
 
 function statusLabel(status: SupplyContractStatus, mode: ContractMode) {
@@ -241,6 +245,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
   const [resultRevision, setResultRevision] = useState(0);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [adminActionError, setAdminActionError] = useState("");
   const [selected, setSelected] = useState<SupplyContractDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailClosing, setDetailClosing] = useState(false);
@@ -256,37 +261,36 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
   const [options, setOptions] = useState<SupplyContractOptions | null>(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
+  const [createNotice, setCreateNotice] = useState("");
   const [form, setForm] = useState<ContractFormState>(initialForm);
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
-  const [showCreateAttachmentPreview, setShowCreateAttachmentPreview] = useState(true);
-  const [createAttachmentPreviewClosing, setCreateAttachmentPreviewClosing] = useState(false);
-  const [createAttachmentPreviewUrl, setCreateAttachmentPreviewUrl] = useState<string | null>(null);
-  const [createAttachmentPreviewLoading, setCreateAttachmentPreviewLoading] = useState(false);
-  const [createAttachmentPreviewError, setCreateAttachmentPreviewError] = useState("");
   const [attachmentPreviewOpen, setAttachmentPreviewOpen] = useState(false);
   const [attachmentPreviewRequested, setAttachmentPreviewRequested] = useState(false);
   const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState<string | null>(null);
   const [attachmentPreviewLoading, setAttachmentPreviewLoading] = useState(false);
   const attachmentDocxRef = useRef<HTMLDivElement | null>(null);
-  const createAttachmentDocxRef = useRef<HTMLDivElement | null>(null);
+  const createSubmitRef = useRef(false);
   const detailCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const createCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const createPreviewCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const copy = pageCopy[mode];
   const selectedSupplier = options?.suppliers.find(
     (supplier) => supplier.id === Number(form.supplierId),
   );
   const availableCropTypes = options?.cropTypes.filter(
-    (crop) => !form.supplierId || selectedSupplier?.cropTypeIds.includes(crop.id),
+    (crop) => Boolean(form.supplierId) && Boolean(selectedSupplier?.cropTypeIds.includes(crop.id)),
   ) ?? [];
 
   const detailPanelOpen = detailLoading || Boolean(selected) || detailClosing;
+  const canEditContract = mode === "warehouse" && selected
+    && selected.status !== "APPROVED"
+    && selected.status !== "CANCELLATION_REQUESTED"
+    && selected.status !== "PENDING_ADMIN_CANCELLATION"
+    && selected.status !== "CANCELLED";
+  const today = getVietnamDateInput();
 
   useEffect(() => () => {
     if (detailCloseTimerRef.current) clearTimeout(detailCloseTimerRef.current);
     if (createCloseTimerRef.current) clearTimeout(createCloseTimerRef.current);
-    if (createPreviewCloseTimerRef.current) clearTimeout(createPreviewCloseTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -347,48 +351,6 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
     };
   }, [selected?.id, selected?.attachmentFileName, attachmentPreviewRequested]);
 
-  useEffect(() => {
-    if (!attachmentFile) {
-      setCreateAttachmentPreviewUrl(null);
-      setCreateAttachmentPreviewLoading(false);
-      setCreateAttachmentPreviewError("");
-      if (createAttachmentDocxRef.current) createAttachmentDocxRef.current.innerHTML = "";
-      return;
-    }
-
-    let active = true;
-    const previewUrl = URL.createObjectURL(attachmentFile);
-    const isPdf = attachmentFile.name.toLowerCase().endsWith(".pdf");
-    const isDocx = attachmentFile.name.toLowerCase().endsWith(".docx");
-    setCreateAttachmentPreviewUrl(previewUrl);
-    setCreateAttachmentPreviewError("");
-    setCreateAttachmentPreviewLoading(isDocx);
-    if (createAttachmentDocxRef.current) createAttachmentDocxRef.current.innerHTML = "";
-
-    if (isDocx && createAttachmentDocxRef.current) {
-      void renderAsync(attachmentFile, createAttachmentDocxRef.current, undefined, {
-        className: "docx-preview",
-        inWrapper: true,
-        breakPages: true,
-        ignoreWidth: true,
-        ignoreHeight: true,
-      })
-        .catch(() => {
-          if (active) setCreateAttachmentPreviewError("Không thể hiển thị bản xem trước Word này.");
-        })
-        .finally(() => {
-          if (active) setCreateAttachmentPreviewLoading(false);
-        });
-    } else if (!isPdf) {
-      setCreateAttachmentPreviewError("Không thể xem trước định dạng .doc trong trình duyệt. Có thể tải file để xem.");
-    }
-
-    return () => {
-      active = false;
-      URL.revokeObjectURL(previewUrl);
-      if (createAttachmentDocxRef.current) createAttachmentDocxRef.current.innerHTML = "";
-    };
-  }, [attachmentFile]);
 
   const downloadSelectedAttachment = async () => {
     if (!selected?.attachmentFileName) return;
@@ -429,12 +391,13 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
   );
 
   useEffect(() => {
+    if (mode === "admin" || mode === "supplier") return;
     const controller = new AbortController();
     // The request lifecycle intentionally follows the active filters and page.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load(controller.signal);
     return () => controller.abort();
-  }, [load]);
+  }, [load, mode]);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -493,14 +456,13 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
 
   const openCreate = async () => {
     if (createCloseTimerRef.current) clearTimeout(createCloseTimerRef.current);
-    if (createPreviewCloseTimerRef.current) clearTimeout(createPreviewCloseTimerRef.current);
     setCreateClosing(false);
     setEditingId(null);
     setForm(initialForm());
-    setAttachmentFile(null);
-    setShowCreateAttachmentPreview(true);
-    setCreateAttachmentPreviewClosing(false);
+
+
     setShowCreate(true);
+    setCreateNotice("");
     setError("");
     setMessage("");
     if (options) return;
@@ -519,10 +481,33 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
     }
   };
 
+  const openEdit = () => {
+    if (!selected || !canEditContract || actionBusy || detailLoading || detailClosing) return;
+    if (createCloseTimerRef.current) clearTimeout(createCloseTimerRef.current);
+    setCreateClosing(false);
+    setEditingId(selected.id);
+    setForm({
+      supplierId: String(selected.supplierId),
+      cropTypeId: String(selected.cropTypeId),
+      deliveryQuantityKg: String(selected.deliveryQuantityKg),
+      deliveryPeriod: selected.deliveryPeriod,
+      unitPriceVndPerKg: selected.unitPriceExact ?? String(selected.unitPriceVndPerKg),
+      startDate: selected.startDate,
+      endDate: selected.endDate,
+      terms: selected.terms ?? "",
+    });
+    setCreateNotice("");
+    setError("");
+    setMessage("");
+    setShowCreate(true);
+  };
+
   const closeContractForm = (force = false) => {
     if (createBusy && !force) return;
     if (createCloseTimerRef.current) clearTimeout(createCloseTimerRef.current);
     setCreateClosing(true);
+    setCreateNotice("");
+    if (editingId) setError("");
     createCloseTimerRef.current = setTimeout(() => {
       setShowCreate(false);
       setCreateClosing(false);
@@ -531,47 +516,34 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
     }, CONTRACT_FORM_CLOSE_DELAY_MS);
   };
 
-  const toggleCreateAttachmentPreview = () => {
-    if (!attachmentFile) return;
-    if (createPreviewCloseTimerRef.current) clearTimeout(createPreviewCloseTimerRef.current);
 
-    if (showCreateAttachmentPreview) {
-      setShowCreateAttachmentPreview(false);
-      setCreateAttachmentPreviewClosing(true);
-      createPreviewCloseTimerRef.current = setTimeout(() => {
-        setCreateAttachmentPreviewClosing(false);
-        createPreviewCloseTimerRef.current = null;
-      }, CONTRACT_PREVIEW_TOGGLE_DELAY_MS);
-      return;
-    }
-
-    setCreateAttachmentPreviewClosing(false);
-    setShowCreateAttachmentPreview(true);
-  };
+  const setCreateFormError = (value: string) => { setError(value); setCreateNotice(value); };
 
   const submitCreate = async (event: FormEvent) => {
     event.preventDefault();
+    if (createSubmitRef.current) return;
     const supplierId = Number(form.supplierId);
     const cropTypeId = Number(form.cropTypeId);
     const deliveryQuantityKg = Number(form.deliveryQuantityKg);
-    const unitPriceVndPerKg = Number(form.unitPriceVndPerKg);
+    const unitPriceVndPerKg = form.unitPriceVndPerKg;
 
     if (!supplierId || !cropTypeId) {
-      setError("Vui lòng chọn nhà cung cấp và loại rau củ.");
+      setCreateFormError("Vui lòng chọn nhà cung cấp và loại rau củ.");
       return;
     }
     if (!Number.isFinite(deliveryQuantityKg) || deliveryQuantityKg <= 0) {
-      setError("Sản lượng giao theo chu kỳ phải lớn hơn 0 kg.");
+      setCreateFormError("Sản lượng giao theo chu kỳ phải lớn hơn 0 kg.");
       return;
     }
-    if (!Number.isFinite(unitPriceVndPerKg) || unitPriceVndPerKg <= 0) {
-      setError("Đơn giá thu mua phải lớn hơn 0.");
+    if (!isValidPrice(unitPriceVndPerKg)) {
+      setCreateFormError("Đơn giá thu mua phải lớn hơn 0.");
       return;
     }
     if (!form.startDate || !form.endDate || form.endDate < form.startDate) {
-      setError("Ngày hết hạn phải bằng hoặc sau ngày bắt đầu.");
+      setCreateFormError("Ngày hết hạn phải bằng hoặc sau ngày bắt đầu.");
       return;
     }
+
 
     const request: CreateSupplyContractRequest = {
       supplierId,
@@ -584,8 +556,10 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
       terms: form.terms.trim() || null,
     };
 
+    createSubmitRef.current = true;
     setCreateBusy(true);
     setError("");
+    setCreateNotice("");
     setMessage("");
     try {
       const saved = editingId
@@ -598,13 +572,8 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
             terms: request.terms,
           } satisfies UpdateSupplyContractRequest)
         : await createSupplyContract(request);
-      const withAttachment = attachmentFile && !editingId
-        ? await uploadSupplyContractAttachment(saved.id, attachmentFile)
-        : saved;
+      const withAttachment = saved;
       closeContractForm(true);
-      setEditingId(null);
-      setForm(initialForm());
-      setAttachmentFile(null);
       setSelected(withAttachment);
       setMessage(
         editingId
@@ -614,13 +583,14 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
       setPage(1);
       await load();
     } catch (createError: unknown) {
-      setError(
+      setCreateFormError(
         getAuthErrorMessage(
           createError,
           editingId ? "Không thể cập nhật hợp đồng." : "Không thể tạo hợp đồng.",
         ),
       );
     } finally {
+      createSubmitRef.current = false;
       setCreateBusy(false);
     }
   };
@@ -636,6 +606,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
     setActionBusy(true);
     setError("");
     setMessage("");
+    setAdminActionError("");
     try {
       let updated: SupplyContractDetail;
       if (action === "confirm") {
@@ -655,9 +626,8 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
       setRejectionReason("");
       await load();
     } catch (actionError: unknown) {
-      setError(
-        getAuthErrorMessage(actionError, "Không thể cập nhật trạng thái hợp đồng."),
-      );
+      const text = getAuthErrorMessage(actionError, "Không thể cập nhật trạng thái hợp đồng.");
+      if (mode === "admin") setAdminActionError(text); else setError(text);
     } finally {
       setActionBusy(false);
     }
@@ -736,6 +706,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
 
   const cancelByAdmin = async () => {
     if (!selected) return;
+    setAdminActionError("");
     setActionBusy(true);
     setError("");
     setMessage("");
@@ -745,29 +716,33 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
       setMessage(`Bạn đã hủy hợp đồng ${selected.contractCode}.`);
       await load();
     } catch (actionError: unknown) {
-      setError(getAuthErrorMessage(actionError, "Không thể hủy hợp đồng."));
+      setAdminActionError(getAuthErrorMessage(actionError, "Không thể hủy hợp đồng."));
     } finally {
       setActionBusy(false);
     }
   };
 
+  const showSupplierList = Boolean(mode === "supplier");
+
   return (
-    <div className="min-h-full bg-slate-50 p-4 sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-wrap items-end justify-between gap-4">
+    <div className={mode === "warehouse" ? "saw-warehouse-contracts-page" : mode === "admin" ? "admin-contract-page" : "min-h-full bg-slate-50 p-4 sm:p-6"}>
+      <div className={mode === "warehouse" ? "warehouse-contracts-content" : mode === "admin" ? "admin-contract-content" : "mx-auto max-w-[1600px] space-y-6"}>
+        {showSupplierList ? <><SupplierContractList onOpen={(id) => void openDetail(id)} reloadToken={resultRevision} />{error && !selected && <div role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}<FormNotification warehouse message={message} tone="success" onDismiss={() => setMessage("")} /></> : Boolean(mode === "admin") ? <><AdminContractList onOpen={(id) => void openDetail(id)} reloadToken={resultRevision} />{error && !selected && <div role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}<FormNotification warehouse message={adminActionError || message} tone={adminActionError ? "error" : "success"} onDismiss={() => { setAdminActionError(""); setMessage(""); }} /></> : <>
+        <header className={`flex flex-wrap items-end justify-between gap-4 ${mode === "warehouse" ? "warehouse-contract-header" : ""}`}>
           <div>
-            <p className="text-sm font-semibold text-emerald-700">{copy.eyebrow}</p>
-            <h1 className="text-3xl font-bold text-slate-950">{copy.title}</h1>
-            <p className="mt-1 max-w-3xl text-slate-500">{copy.description}</p>
+            <p className="text-sm font-semibold text-emerald-700">{mode === "warehouse" ? "Nhà cung cấp / Hợp đồng" : copy.eyebrow}</p>
+            <h1 className="text-3xl font-bold text-slate-950">{mode === "warehouse" ? "Hợp đồng nhà cung cấp" : copy.title}</h1>
+            <p className="mt-1 max-w-3xl text-slate-500">{mode === "warehouse" ? "Quản lý hợp đồng thu mua, sản lượng cam kết và tiến độ xác nhận từ nhà cung cấp." : copy.description}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
+            {mode === "admin" ? <RefreshButton loading={loading} onClick={() => void load()} /> : <button
               type="button"
-              onClick={() => void load()}
+              onClick={() => { if (!loading) void load() }}
+              disabled={loading}
               className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700"
             >
-              <AppIcon name="refresh" className="size-4" /> Làm mới
-            </button>
+              <AppIcon name="refresh" className={`size-4 ${loading ? "warehouse-contract-spin" : ""}`} /> Làm mới
+            </button>}
             {mode === "warehouse" && (
               <button
                 type="button"
@@ -780,11 +755,11 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
           </div>
         </header>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <section className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 ${mode === "warehouse" ? "warehouse-contract-toolbar" : ""}`}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Lọc và sắp xếp</h2>
-              <p className="mt-0.5 text-xs text-slate-500">Thu hẹp danh sách theo thông tin hoặc trạng thái hợp đồng.</p>
+              <h2 className="text-sm font-bold text-slate-900">{mode === "warehouse" ? "Danh sách hợp đồng" : "Lọc và sắp xếp"}</h2>
+              <p className="mt-0.5 text-xs text-slate-500">{mode === "warehouse" ? <><AnimatedNumber value={totalCount} /> hợp đồng</> : "Thu hẹp danh sách theo thông tin hoặc trạng thái hợp đồng."}</p>
             </div>
             {(query || search || status || sortOption !== "createdAt-desc") && (
               <button
@@ -862,19 +837,20 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
           </form>
         </section>
 
-        {error && !selected && (
+        {error && !selected && !showCreate && (
           <div className="flex items-start gap-2 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
             <AppIcon name="alert" className="mt-0.5 size-4 shrink-0" /> {error}
           </div>
         )}
-        {message && !selected && (
+        {(mode === "warehouse" || mode === "admin") && <FormNotification warehouse message={adminActionError || createNotice || message} tone={adminActionError || createNotice ? "error" : "success"} onDismiss={() => { setAdminActionError(""); setCreateNotice(""); setMessage(""); }} />}
+        {mode !== "warehouse" && message && !selected && (
           <div className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-700">
             {message}
           </div>
         )}
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+        <section className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ${mode === "warehouse" ? "warehouse-contract-list" : ""}`}>
+          <div className={`flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 ${mode === "warehouse" ? "warehouse-contract-list-heading" : ""}`}>
             <div>
               <h2 className="font-bold text-slate-900">Danh sách hợp đồng</h2>
               <p className="mt-0.5 text-sm text-slate-500">
@@ -882,7 +858,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
               </p>
             </div>
             <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800">
-              {totalCount} hợp đồng
+              {mode === 'warehouse' || mode === 'admin' ? <AnimatedNumber value={totalCount} /> : totalCount} hợp đồng
             </span>
           </div>
           {loading && !hasLoaded ? (
@@ -890,7 +866,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
           ) : items.length === 0 ? (
             <div className="contract-result-state-enter py-14 text-center text-slate-500">
               <AppIcon name="clipboard" className="mx-auto mb-3 size-10 text-slate-300" />
-              Chưa có hợp đồng phù hợp.
+              {search || status ? "Không tìm thấy hợp đồng phù hợp." : "Chưa có hợp đồng nhà cung cấp."}
             </div>
           ) : (
             <div className="relative" aria-busy={loading}>
@@ -921,7 +897,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                     <tr
                       key={item.id}
                       style={{ animationDelay: `${Math.min(index * 28, 196)}ms` }}
-                      className="contract-result-row-enter align-top hover:bg-slate-50/70"
+                      className={`${mode === "warehouse" ? "" : "contract-result-row-enter"} align-top hover:bg-slate-50/70`}
                     >
                       <td className="px-4 py-4">
                         <p className="font-bold text-slate-900">{item.contractCode}</p>
@@ -944,7 +920,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                         </span>
                       </td>
                       <td className="px-4 py-4 font-bold text-slate-900">
-                        {money.format(item.unitPriceVndPerKg)}
+                        {formatCurrencyInput(item.unitPriceExact ?? String(item.unitPriceVndPerKg)) + ' ₫'}
                         <span className="block text-xs font-normal text-slate-500">mỗi kg</span>
                       </td>
                       <td className="px-4 py-4 text-slate-600">
@@ -975,6 +951,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                                 : "rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:border-emerald-600 hover:text-emerald-700"
                             }
                           >
+                            {mode === "warehouse" && <Eye size={15} aria-hidden="true" />}
                             {(mode === "supplier" && item.status === "PENDING_SUPPLIER")
                               || (mode === "admin" && (item.status === "PENDING_ADMIN" || item.status === "PENDING_ADMIN_CANCELLATION"))
                               ? item.status === "PENDING_ADMIN_CANCELLATION" ? "Xử lý yêu cầu" : "Xác nhận"
@@ -992,7 +969,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
             </div>
           )}
           <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">
-            <span>Trang {page}</span>
+            <span>{mode === "warehouse" ? `Hiển thị ${totalCount ? (page - 1) * 20 + 1 : 0}–${Math.min(page * 20, totalCount)} / ${totalCount} hợp đồng` : `Trang ${page}`}</span>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -1002,6 +979,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
               >
                 Trước
               </button>
+              {mode === "warehouse" && <span className="warehouse-contract-page-number">{page}</span>}
               <button
                 type="button"
                 disabled={page * 20 >= totalCount}
@@ -1013,6 +991,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
             </div>
           </div>
         </section>
+        </>}
       </div>
 
       {showCreate && mode === "warehouse" && (
@@ -1027,9 +1006,9 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
             role="dialog"
             aria-modal="true"
             aria-labelledby="contract-form-title"
-            className={`my-auto flex max-h-[calc(100dvh-2rem)] w-full flex-col transition-[max-width] duration-300 ease-in-out ${attachmentFile && showCreateAttachmentPreview ? "max-w-[96vw]" : attachmentFile ? "max-w-5xl" : "max-w-3xl"} overflow-hidden rounded-2xl bg-white shadow-2xl ${createClosing ? "contract-create-dialog-exit" : "contract-create-dialog-enter"}`}
+            className={`warehouse-contract-create my-auto flex max-h-[calc(100dvh-2rem)] w-full flex-col transition-[max-width] duration-300 ease-in-out max-w-[96vw] overflow-hidden rounded-2xl bg-white shadow-2xl ${createClosing ? "contract-create-dialog-exit" : "contract-create-dialog-enter"}`}
           >
-            <div className="contract-create-header flex items-start justify-between border-b border-slate-200 px-6 py-5">
+            <div className="contract-create-header flex shrink-0 items-start justify-between border-b border-slate-200 px-6 py-5">
               <div>
                 <h2 id="contract-form-title" className="text-xl font-bold text-slate-950">
                   {editingId ? "Cập nhật hợp đồng thu mua" : "Tạo hợp đồng thu mua"}
@@ -1041,16 +1020,6 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                {attachmentFile && (
-                  <button
-                    type="button"
-                    onClick={toggleCreateAttachmentPreview}
-                    aria-pressed={showCreateAttachmentPreview}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-500 hover:text-emerald-700"
-                  >
-                    {showCreateAttachmentPreview ? "Ẩn bản xem trước" : "Hiện bản xem trước"}
-                  </button>
-                )}
                 <button
                   type="button"
                   disabled={createBusy}
@@ -1062,43 +1031,11 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
               </div>
             </div>
 
-            <div className={`contract-scrollbar-hidden min-h-0 flex-1 overflow-y-auto ${attachmentFile && (showCreateAttachmentPreview || createAttachmentPreviewClosing) ? "grid xl:grid-cols-[minmax(0,1.65fr)_minmax(390px,0.85fr)]" : ""}`}>
-              {attachmentFile && (
-                <section
-                  hidden={!showCreateAttachmentPreview && !createAttachmentPreviewClosing}
-                  className={`${createAttachmentPreviewClosing ? "contract-create-preview-exit" : showCreateAttachmentPreview ? "contract-create-preview-enter" : ""} min-w-0 border-b border-slate-200 bg-slate-50 p-3 sm:p-4 xl:sticky xl:top-0 xl:h-[min(78dvh,760px)] xl:min-h-[560px] xl:border-b-0 xl:border-r xl:p-5`}
-                >
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-slate-900">Xem trước hợp đồng</h3>
-                      <p className="truncate text-xs text-slate-500">{attachmentFile.name}</p>
-                    </div>
-                    <span className="shrink-0 rounded-md bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-800">
-                      {attachmentFile.name.toLowerCase().endsWith(".pdf") ? "PDF" : "WORD"}
-                    </span>
-                  </div>
-                  <div className="h-[55dvh] min-h-[320px] overflow-hidden rounded-xl border border-slate-200 bg-white xl:h-[calc(100%-3.5rem)]">
-                    {createAttachmentPreviewLoading && (
-                      <div className="grid h-full place-items-center text-sm text-slate-500">Đang mở bản xem trước...</div>
-                    )}
-                    {createAttachmentPreviewError && (
-                      <div className="grid h-full place-items-center p-6 text-center text-sm text-amber-800">
-                        {createAttachmentPreviewError}
-                      </div>
-                    )}
-                    {createAttachmentPreviewUrl && attachmentFile.name.toLowerCase().endsWith(".pdf") && (
-                      <iframe title={`Xem trước ${attachmentFile.name}`} src={createAttachmentPreviewUrl} className="h-full w-full bg-white" />
-                    )}
-                    {attachmentFile.name.toLowerCase().endsWith(".docx") && (
-                      <div ref={createAttachmentDocxRef} className="contract-scrollbar-hidden docx-viewer h-full overflow-auto bg-slate-100 p-3" aria-label={`Nội dung ${attachmentFile.name}`} />
-                    )}
-                  </div>
-                </section>
-              )}
+            <div className="contract-scrollbar-hidden grid min-h-0 flex-1 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1.5fr)_minmax(360px,1fr)]">
               {optionsLoading ? (
                 <p className="p-10 text-center text-slate-500">Đang tải biểu mẫu...</p>
               ) : (
-                <div className={`contract-create-fields grid gap-x-4 gap-y-3 sm:grid-cols-2 ${attachmentFile ? "p-4 xl:p-5" : "gap-5 p-6"}`}>
+                <div className="contract-create-fields grid min-w-0 content-start self-start gap-5 p-6 sm:grid-cols-2 lg:col-start-2 lg:row-start-1">
                 <label className="space-y-1.5 text-sm font-semibold text-slate-700">
                   Nhà cung cấp <span className="text-rose-600">*</span>
                   {editingId ? (
@@ -1108,34 +1045,12 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                       className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 font-normal text-slate-600"
                     />
                   ) : (
-                    <select
-                      required
-                      value={form.supplierId}
-                      onChange={(event) => {
-                        const supplierId = event.target.value;
-                        const supplier = options?.suppliers.find((item) => item.id === Number(supplierId));
-                        setForm((current) => ({
-                          ...current,
-                          supplierId,
-                          cropTypeId: supplier?.cropTypeIds.includes(Number(current.cropTypeId))
-                            ? current.cropTypeId
-                            : "",
-                        }));
-                      }}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal outline-none focus:border-emerald-600"
-                    >
-                      <option value="">Chọn nhà cung cấp</option>
-                      {options?.suppliers.map((supplier) => (
-                        <option key={supplier.id} value={supplier.id}>
-                          {supplier.code} - {supplier.name}
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableSelect label="Nhà cung cấp" value={form.supplierId} options={(options?.suppliers ?? []).map(x => ({ value: String(x.id), label: x.code + ' · ' + x.name }))} onChange={supplierId => setForm(current => ({ ...current, supplierId, cropTypeId: '' }))} />
                   )}
                 </label>
 
                 <label className="space-y-1.5 text-sm font-semibold text-slate-700">
-                  Loại rau củ <span className="text-rose-600">*</span>
+                  Loại nông sản <span className="text-rose-600">*</span>
                   {editingId ? (
                     <input
                       value={selected?.cropTypeName ?? ""}
@@ -1143,25 +1058,12 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                       className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 font-normal text-slate-600"
                     />
                   ) : (
-                    <select
-                      required
-                      value={form.cropTypeId}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, cropTypeId: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal outline-none focus:border-emerald-600"
-                    >
-                      <option value="">Chọn loại rau củ</option>
-                      {availableCropTypes.map((crop) => (
-                        <option key={crop.id} value={crop.id}>
-                          {crop.code} - {crop.name} ({crop.categoryName})
-                        </option>
-                      ))}
-                    </select>
+                    <><SearchableSelect label="Loại nông sản" value={form.cropTypeId} disabled={!form.supplierId || optionsLoading} options={availableCropTypes.map(x => ({ value: String(x.id), label: x.code + ' · ' + x.name }))} onChange={cropTypeId => setForm(current => ({ ...current, cropTypeId }))} />{form.supplierId && !availableCropTypes.length && <p className="text-xs text-slate-500">Nhà cung cấp chưa có nông sản đủ điều kiện.</p>}</>
                   )}
                 </label>
 
 
+                <h3 className="warehouse-contract-group sm:col-span-2">Điều kiện thu mua</h3>
                 <label className="space-y-1.5 text-sm font-semibold text-slate-700">
                   Sản lượng cam kết <span className="text-rose-600">*</span>
                   <div className="relative">
@@ -1207,30 +1109,12 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                 <label className="space-y-1.5 text-sm font-semibold text-slate-700 sm:col-span-2">
                   Đơn giá thu mua <span className="text-rose-600">*</span>
                   <div className="relative">
-                    <input
-                      required
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={form.unitPriceVndPerKg}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          unitPriceVndPerKg: event.target.value,
-                        }))
-                      }
-                      placeholder="Ví dụ: 25000"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2.5 pr-28 font-normal outline-none focus:border-emerald-600"
-                    />
+                    <CurrencyInput value={form.unitPriceVndPerKg} onChange={unitPriceVndPerKg => setForm(current => ({ ...current, unitPriceVndPerKg }))} className="w-full rounded-lg border border-slate-300 px-3 py-2.5 pr-28 font-normal outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
                     <span className="pointer-events-none absolute right-3 top-2.5 font-normal text-slate-500">
                       VNĐ/kg
                     </span>
                   </div>
-                  {Number(form.unitPriceVndPerKg) > 0 && (
-                    <span className="block font-normal text-emerald-700">
-                      {money.format(Number(form.unitPriceVndPerKg))} mỗi kg
-                    </span>
-                  )}
+
                 </label>
 
                 <label className="space-y-1.5 text-sm font-semibold text-slate-700">
@@ -1252,7 +1136,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                   <input
                     required
                     type="date"
-                    min={form.startDate}
+                    min={editingId && form.startDate < today ? today : form.startDate}
                     value={form.endDate}
                     onChange={(event) =>
                       setForm((current) => ({ ...current, endDate: event.target.value }))
@@ -1277,41 +1161,12 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                     {form.terms.length}/2000
                   </span>
                 </label>
-
-                {!editingId && (
-                  <label className="space-y-1.5 text-sm font-semibold text-slate-700 sm:col-span-2">
-                    File hợp đồng
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0] ?? null;
-                        if (file && !/\.(pdf|doc|docx)$/i.test(file.name)) {
-                          setError("Hệ thống chỉ hỗ trợ file PDF và Word (.doc, .docx).");
-                          event.currentTarget.value = "";
-                          setAttachmentFile(null);
-                          setCreateAttachmentPreviewClosing(false);
-                          setShowCreateAttachmentPreview(true);
-                          return;
-                        }
-                        setError("");
-                        setAttachmentFile(file);
-                        if (file) {
-                          if (createPreviewCloseTimerRef.current) clearTimeout(createPreviewCloseTimerRef.current);
-                          setCreateAttachmentPreviewClosing(false);
-                          setShowCreateAttachmentPreview(true);
-                        }
-                      }}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 font-normal"
-                    />
-                    <span className="block font-normal text-slate-500">Chỉ hỗ trợ file PDF và Word (.doc, .docx), tối đa 10 MB.</span>
-                  </label>
-                )}
                 </div>
               )}
+              <ContractPreview request={{ supplierId: Number(form.supplierId), cropTypeId: Number(form.cropTypeId), deliveryQuantityKg: Number(form.deliveryQuantityKg) || 0, deliveryPeriod: form.deliveryPeriod, unitPriceVndPerKg: isValidPrice(form.unitPriceVndPerKg) ? form.unitPriceVndPerKg : '0', startDate: form.startDate, endDate: form.endDate, terms: form.terms || null }} />
             </div>
 
-            <div className="contract-create-footer flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+            <div className="contract-create-footer flex shrink-0 flex-wrap justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
               <button
                 type="button"
                 disabled={createBusy}
@@ -1336,38 +1191,53 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
       )}
 
       {(selected || detailLoading || detailClosing) && (
-        <div className="fixed inset-0 z-[70] flex justify-end overflow-hidden">
+        <div inert={showCreate} className="fixed inset-0 z-[70] flex items-center justify-center overflow-hidden p-2 sm:p-4">
           <button
             type="button"
             className={`absolute inset-0 z-0 border-0 bg-slate-950/55 p-0 ${detailClosing ? "contract-backdrop-exit" : "contract-backdrop-enter"}`}
             aria-label="Đóng chi tiết hợp đồng"
             onClick={closeDetail}
           />
-          <aside className={`${detailClosing ? "contract-drawer-exit" : "contract-drawer-enter"} contract-scrollbar-hidden relative z-10 flex h-full w-full max-w-none flex-col overflow-y-auto overscroll-y-contain bg-white shadow-2xl transition-[width] duration-300 ease-in-out lg:overflow-hidden lg:w-[min(94vw,672px)] ${attachmentPreviewOpen ? "lg:w-[min(94vw,1500px)]" : ""}`}>
+          <aside role="dialog" aria-modal="true" aria-label="Chi tiết hợp đồng" className={`${detailClosing ? "contract-drawer-exit" : "contract-drawer-enter"} relative z-10 flex max-h-[96dvh] w-full max-w-[1500px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl`}>
             {detailLoading && !selected ? (
               <p className="p-10 text-center text-slate-500">Đang tải chi tiết...</p>
             ) : selected ? (
               <>
-                <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between border-b border-slate-200 bg-white px-6 py-4">
+                <div className="sticky top-0 z-10 flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
                   <div>
                     <p className="text-sm font-semibold text-emerald-700">Chi tiết hợp đồng</p>
                     <h2 className="text-xl font-bold text-slate-950">
                       {selected.contractCode}
                     </h2>
                   </div>
-                  <button
-                    type="button"
-                    disabled={actionBusy}
-                    onClick={closeDetail}
-                    className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100"
-                  >
-                    Đóng
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canEditContract && (
+                      <button
+                        type="button"
+                        disabled={actionBusy || detailLoading || detailClosing}
+                        onClick={openEdit}
+                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+                      >
+                        <Pencil size={16} aria-hidden="true" />
+                        Cập nhật hợp đồng
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={actionBusy}
+                      onClick={closeDetail}
+                      className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100"
+                    >
+                      Đóng
+                    </button>
+                  </div>
                 </div>
 
-                <div className={`grid gap-4 p-4 sm:p-6 lg:min-h-0 lg:flex-1 lg:items-stretch lg:transition-[grid-template-columns] lg:duration-300 lg:ease-in-out ${selected.attachmentFileName ? (attachmentPreviewOpen ? "lg:grid-cols-[minmax(0,1.55fr)_minmax(0,0.85fr)]" : "lg:grid-cols-[minmax(0,0fr)_minmax(0,1fr)]") : "lg:grid-cols-1"}`}>
+                <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(340px,1fr)] lg:items-start">
+                  {!selected.documentContent && <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 lg:col-start-1">Hợp đồng cũ chưa có bản nội dung được lưu tại thời điểm gửi. Xem tài liệu đính kèm nếu có.</p>}
+                  {selected.documentContent && <section className="min-w-0 lg:col-start-1 lg:row-start-1"><ContractDocument content={selected.documentContent} /></section>}
                   {selected.attachmentFileName && (
-                    <section className={`${attachmentPreviewOpen ? "flex" : "hidden lg:flex"} min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 lg:col-start-1 lg:row-start-1 lg:min-h-0`}>
+                    <section className={`${attachmentPreviewOpen ? "flex" : "hidden"} min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 lg:col-start-1 lg:min-h-0`}>
                       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
                         <div className="min-w-0">
                           <h3 className="font-bold text-slate-900">Xem trước hợp đồng</h3>
@@ -1391,7 +1261,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                     </section>
                   )}
 
-                  <div className={`contract-scrollbar-hidden space-y-4 overscroll-y-contain lg:min-h-0 lg:overflow-y-auto lg:pr-1 ${selected.attachmentFileName ? "lg:col-start-2 lg:row-start-1" : ""}`}>
+                  <div className="min-w-0 space-y-4 lg:col-start-2 lg:row-start-1">
                     <ContractStatusBadge
                       status={selected.status}
                       mode={mode}
@@ -1507,14 +1377,14 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                             label="Quản lý kho tạo"
                             value={selected.warehouseManagerName}
                           />
-                          <DetailField label="Loại rau củ" value={selected.cropTypeName} />
+                          <DetailField label="Loại nông sản" value={selected.cropTypeName} />
                           <DetailField
                             label="Sản lượng cam kết"
                             value={`${weight.format(selected.deliveryQuantityKg)} kg/${deliveryPeriodLabel(selected.deliveryPeriod)}`}
                           />
                           <DetailField
                             label="Đơn giá thu mua"
-                            value={`${money.format(selected.unitPriceVndPerKg)} / kg`}
+                            value={`${formatCurrencyInput(selected.unitPriceExact ?? String(selected.unitPriceVndPerKg)) + ' ₫'} / kg`}
                             important
                           />
                           <DetailField label="Ngày bắt đầu" value={formatDate(selected.startDate)} />
@@ -1534,70 +1404,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                     </div>
                   </div>
 
-                  <section className="space-y-3 border-t border-slate-200 pt-5">
-                    <h3 className="font-bold text-slate-900">Lịch sử xử lý</h3>
-                    <HistoryItem
-                      title="Quản lý kho đã tạo và gửi hợp đồng"
-                      detail={formatDateTime(selected.createdAt)}
-                      complete
-                    />
-                    {selected.revision > 1 && (
-                      <HistoryItem
-                        title={`Quản lý kho đã cập nhật hợp đồng (phiên bản ${selected.revision})`}
-                        detail="Mọi xác nhận cũ đã hết hiệu lực; hợp đồng phải được duyệt lại."
-                        complete
-                      />
-                    )}
-                    <HistoryItem
-                      title={selected.status === "SUPPLIER_REJECTED"
-                        ? "Nhà cung cấp đã từ chối"
-                        : mode === "supplier" ? "Bạn đã xác nhận" : "Nhà cung cấp xác nhận"}
-                      detail={
-                        selected.supplierRejectionReason ??
-                        (selected.supplierRespondedAt
-                          ? formatDateTime(selected.supplierRespondedAt)
-                          : "Đang chờ xử lý")
-                      }
-                      complete={Boolean(selected.supplierRespondedAt)}
-                      rejected={Boolean(selected.supplierRejectionReason)}
-                    />
-                    <HistoryItem
-                      title={selected.status === "ADMIN_REJECTED"
-                        ? mode === "admin" ? "Bạn đã từ chối" : "Admin đã từ chối"
-                        : mode === "admin" ? "Bạn đã duyệt cuối cùng" : "Admin duyệt cuối cùng"}
-                      detail={
-                        selected.adminRejectionReason ??
-                        (selected.adminReviewedAt
-                          ? `${selected.adminName ?? "Admin"} · ${formatDateTime(selected.adminReviewedAt)}`
-                          : "Đang chờ xử lý")
-                      }
-                      complete={Boolean(selected.adminReviewedAt)}
-                      rejected={Boolean(selected.adminRejectionReason)}
-                    />
-                    {selected.cancellationRequestedAt && (
-                      <HistoryItem
-                        title={mode === "supplier" ? "Bạn đã gửi yêu cầu hủy" : "Nhà cung cấp đã gửi yêu cầu hủy"}
-                        detail={`${selected.cancellationRequestReason ?? "Không có lý do"} · ${formatDateTime(selected.cancellationRequestedAt)}`}
-                        complete
-                      />
-                    )}
-                    {selected.status === "PENDING_ADMIN_CANCELLATION" && (
-                      <HistoryItem
-                        title={mode === "warehouse" ? "Bạn đã duyệt yêu cầu hủy" : "Quản lý kho đã duyệt yêu cầu hủy"}
-                        detail={mode === "admin" ? "Đang chờ bạn duyệt hủy." : "Đã chuyển đến Admin để duyệt hủy."}
-                        complete
-                      />
-                    )}
-                    {selected.cancelledAt && (
-                      <HistoryItem
-                        title={selected.adminReviewedAt
-                          ? mode === "admin" ? "Bạn đã hủy hợp đồng lần cuối" : "Admin đã hủy hợp đồng lần cuối"
-                          : mode === "warehouse" ? "Bạn đã hủy hợp đồng do quá hạn giao" : "Quản lý kho đã hủy hợp đồng do quá hạn giao"}
-                        detail={`${selected.cancellationReason ?? "Không có lý do"} · ${formatDateTime(selected.cancelledAt)}`}
-                        complete
-                      />
-                    )}
-                  </section>
+                  <SupplyContractTimeline key={selected.id} contract={selected} formatDateTime={formatDateTime} />
 
                   {error && (
                     <p
@@ -1607,7 +1414,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                       {error}
                     </p>
                   )}
-                  {message && (
+                  {mode === "supplier" && message && (
                     <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700" role="status">
                       {message}
                     </p>
@@ -1968,35 +1775,6 @@ function DetailField({
       >
         {value}
       </p>
-    </div>
-  );
-}
-
-function HistoryItem({
-  title,
-  detail,
-  complete,
-  rejected = false,
-}: {
-  title: string;
-  detail: string;
-  complete: boolean;
-  rejected?: boolean;
-}) {
-  const tone = rejected
-    ? "bg-rose-100 text-rose-700"
-    : complete
-      ? "bg-emerald-100 text-emerald-700"
-      : "bg-slate-100 text-slate-400";
-  return (
-    <div className="flex gap-3">
-      <span className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full ${tone}`}>
-        {complete ? "✓" : "·"}
-      </span>
-      <div>
-        <p className="text-sm font-semibold text-slate-800">{title}</p>
-        <p className="text-sm text-slate-500">{detail}</p>
-      </div>
     </div>
   );
 }

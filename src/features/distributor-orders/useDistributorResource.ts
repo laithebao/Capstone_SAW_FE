@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getAuthErrorMessage } from '@/services/authService'
 
-export function useDistributorResource<T>(load: (signal: AbortSignal) => Promise<T>, { refreshOnFocus = true }: { refreshOnFocus?: boolean } = {}) {
+export function useDistributorResource<T>(load: (signal: AbortSignal) => Promise<T>, { refreshOnFocus = true, retainData = false }: { refreshOnFocus?: boolean; retainData?: boolean } = {}) {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -9,13 +9,15 @@ export function useDistributorResource<T>(load: (signal: AbortSignal) => Promise
   useEffect(() => {
     const controller = new AbortController()
     const timer = window.setTimeout(async () => {
-      setLoading(true); setData(null); setError(null)
+      setLoading(true)
+      if (!retainData) setData(null)
+      setError(null)
       try { const result = await load(controller.signal); if (!controller.signal.aborted) setData(result) }
       catch (cause) { if (!controller.signal.aborted) setError(getAuthErrorMessage(cause, 'Không thể tải dữ liệu. Vui lòng thử lại.')) }
       finally { if (!controller.signal.aborted) setLoading(false) }
     }, 0)
     return () => { controller.abort(); window.clearTimeout(timer) }
-  }, [load, version])
+  }, [load, retainData, version])
   useEffect(() => {
     if (!refreshOnFocus) return
     const refresh = () => setVersion(v => v + 1)

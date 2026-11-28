@@ -6,6 +6,7 @@ import AuthLayout from "@/layouts/AuthLayout";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import PublicLayout from "@/layouts/PublicLayout";
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
+import CategoriesPage from '@/pages/admin/CategoriesPage'
 import CropTypesPage from "@/pages/admin/CropTypesPage";
 import CropTypeFormPage from "@/pages/admin/CropTypeFormPage";
 import InspectionStandardsPage from "@/pages/admin/InspectionStandardsPage";
@@ -28,6 +29,7 @@ import DistributorLotDetailPage from "@/pages/distributor/DistributorLotDetailPa
 import CreateDistributorOrderPage from "@/pages/distributor/CreateDistributorOrderPage";
 import DistributorOrderListPage from "@/pages/distributor/DistributorOrderListPage";
 import DistributorOrderDetailPage from "@/pages/distributor/DistributorOrderDetailPage";
+import DistributorCartPage from "@/pages/distributor/DistributorCartPage";
 import OperationDashboardPage from "@/pages/operation/OperationDashboardPage";
 import GoodsIssueManagementPage from "@/pages/operation/GoodsIssueManagementPage";
 import StockAdjustmentManagementPage from "@/pages/operation/StockAdjustmentManagementPage";
@@ -56,7 +58,7 @@ import ForbiddenPage from "@/pages/system/ForbiddenPage";
 import NotFoundPage from "@/pages/system/NotFoundPage";
 import TraceabilityPage from "@/pages/traceability/TraceabilityPage";
 import WarehouseManagerDashboardPage from "@/pages/warehouse-manager/WarehouseManagerDashboardPage";
-import WarehouseManagement from "@/features/warehouse/WarehouseManagement";
+import AdminCapacityPage from "@/pages/admin/AdminCapacityPage";
 import WarehouseDistributorOrdersPage from "@/pages/warehouse-manager/WarehouseDistributorOrdersPage";
 import WarehouseSaleOffersPage from "@/pages/warehouse-manager/WarehouseSaleOffersPage";
 import WarehouseStockAdjustmentDetailPage from "@/pages/warehouse-manager/WarehouseStockAdjustmentDetailPage";
@@ -71,8 +73,19 @@ import BatchStatusDetailPage from "@/pages/supplier/BatchStatusDetailPage";
 import { SupplierGuard } from "@/routes/SupplierGuard";
 import SupplyContractsPage from "@/pages/contracts/SupplyContractsPage";
 import DistributorLayout from "@/layouts/DistributorLayout";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AppRoutes() {
+  const { user } = useAuth();
+  const isDistributor = user?.role === ROLES.DISTRIBUTOR;
+  const accountRoutes = (
+    <>
+      <Route path={ROUTES.PROFILE} element={<UserProfilePage />} />
+      <Route path={ROUTES.CHANGE_PASSWORD} element={<ChangePasswordPage />} />
+    </>
+  );
+
+
   return (
     <Routes>
       <Route path={ROUTES.HOME} element={<HomePage />} />
@@ -93,18 +106,15 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
-          <Route path={ROUTES.PROFILE} element={<UserProfilePage />} />
-          <Route
-            path={ROUTES.CHANGE_PASSWORD}
-            element={<ChangePasswordPage />}
-          />
+          {!isDistributor && accountRoutes}
           <Route element={<RoleRoute allowedRoles={[ROLES.ADMINISTRATOR]} />}>
             <Route path={ROUTES.ADMIN} element={<AdminDashboardPage />} />
-            <Route path={ROUTES.ADMIN_WAREHOUSE_CAPACITY} element={<div className="mx-auto max-w-5xl space-y-5"><h1 className="text-2xl font-bold">Cài đặt sức chứa kho</h1><WarehouseManagement /></div>} />
+            <Route path={ROUTES.ADMIN_WAREHOUSE_CAPACITY} element={<AdminCapacityPage />} />
             <Route
               path={ROUTES.ADMIN_USER_ACCESS}
               element={<UserAccessPage />}
             />
+            <Route path="/admin/categories" element={<CategoriesPage />} />
             <Route path={ROUTES.ADMIN_CROP_TYPES} element={<CropTypesPage />} />
             <Route
               path={ROUTES.ADMIN_CROP_TYPE_NEW}
@@ -178,13 +188,12 @@ export default function AppRoutes() {
               element={<SupplyContractsPage mode="warehouse" />}
             />
           </Route>
-          {/* QC – Đọc: danh sách + chi tiết (WAREHOUSE_MANAGER chỉ xem) */}
+          {/* QC – Đọc: bảng điều khiển, danh sách và chi tiết phiếu */}
           <Route
             element={
               <RoleRoute
                 allowedRoles={[
                   ROLES.QC_STAFF,
-                  ROLES.WAREHOUSE_MANAGER,
                   ROLES.ADMINISTRATOR,
                 ]}
               />
@@ -244,7 +253,7 @@ export default function AppRoutes() {
             />
           </Route>
 
-          {/* Xem danh sách, chi tiết lô hàng và phiếu nhập kho (Hỗ trợ Vận hành, Quản lý kho, Quản trị viên) */}
+          {/* Xem danh sách, chi tiết lô hàng */}
           <Route
             element={
               <RoleRoute
@@ -264,6 +273,8 @@ export default function AppRoutes() {
               path={ROUTES.OPERATION_PRODUCT_BATCH_DETAIL}
               element={<ProductBatchDetailPage />}
             />
+          </Route>
+          <Route element={<RoleRoute allowedRoles={[ROLES.OPERATION_STAFF, ROLES.ADMINISTRATOR]} />}>
             <Route
               path={ROUTES.OPERATION_GOODS_RECEIPTS}
               element={<GoodsReceiptManagementPage />}
@@ -320,15 +331,25 @@ export default function AppRoutes() {
             </Route>
           </Route>
 
-          <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
-            <Route element={<DistributorLayout />}>
+        </Route>
+        <Route element={<RoleRoute allowedRoles={[ROLES.DISTRIBUTOR]} />}>
+          <Route element={<DistributorLayout />}>
+            {isDistributor && accountRoutes}
               <Route
                 path={ROUTES.DISTRIBUTOR}
+                element={<DistributorCatalogPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_OVERVIEW}
                 element={<DistributorDashboardPage />}
               />
               <Route
                 path={ROUTES.DISTRIBUTOR_CATALOG}
                 element={<DistributorCatalogPage />}
+              />
+              <Route
+                path={ROUTES.DISTRIBUTOR_CART}
+                element={<DistributorCartPage />}
               />
               <Route
                 path={ROUTES.DISTRIBUTOR_LOT_DETAIL}
@@ -347,7 +368,6 @@ export default function AppRoutes() {
                 element={<DistributorOrderDetailPage />}
               />
             </Route>
-          </Route>
         </Route>
       </Route>
     </Routes>

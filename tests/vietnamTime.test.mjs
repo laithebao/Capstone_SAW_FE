@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { test } from 'node:test'
-import { formatVietnamDate, formatVietnamDateTime, getVietnamDateTimeLocal, toVietnamIsoString } from '../src/utils/vietnamTime.ts'
+import { formatVietnam, formatVietnamDate, formatVietnamDateTime, getVietnamDateTimeLocal, getVietnamWeekday, parseApiTimestamp, toVietnamIsoString } from '../src/utils/vietnamTime.ts'
 
 test('QC UTC timestamps display in Vietnam time with or without the SQL timezone suffix', () => {
   const expected = formatVietnamDateTime('2026-11-24T09:30:00+07:00')
@@ -28,6 +28,14 @@ test('Vietnam measurement inputs round trip without adding the offset twice', ()
   assert.equal(payload, '2026-11-24T00:05:00+07:00')
   assert.equal(toVietnamIsoString(payload), payload)
   assert.match(formatVietnamDateTime(payload), /00:05/)
+})
+
+test('calendar dates and style-based formatters retain their Vietnam day', () => {
+  assert.equal(formatVietnamDate('2026-11-27'), '27/11/2026')
+  assert.equal(formatVietnam('2026-11-27', { day: '2-digit', month: '2-digit', year: 'numeric' }), '27/11/2026')
+  assert.doesNotThrow(() => formatVietnamDateTime('2026-11-26T17:00:00Z', { dateStyle: 'short', timeStyle: 'short' }))
+  assert.doesNotThrow(() => formatVietnamDate('2026-11-27', { dateStyle: 'medium' }))
+  assert.equal(getVietnamWeekday(parseApiTimestamp('2026-11-26T17:00:00Z')), 5)
 })
 
 test('QC display is independent of the device timezone', () => {

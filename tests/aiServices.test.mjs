@@ -21,7 +21,7 @@ registerHooks({
 })
 
 const { apiClient } = await import('../src/services/apiClient.ts')
-const { sendAiChatMessage } = await import('../src/services/aiChatService.ts')
+const { sendAiChatMessage, getAiChatHistory, clearAiChatHistory } = await import('../src/services/aiChatService.ts')
 const { generateSpoilageForecasts, getLatestSpoilageForecasts } = await import('../src/services/spoilageForecastService.ts')
 
 function response(config, data, status = 200) {
@@ -73,6 +73,26 @@ test('forecast uses POST to generate and GET to read the saved results', async (
   assert.deepEqual(adapter.mock.calls.map(({ arguments: [config] }) => config.method), ['post', 'get'])
 })
 
+test('chat history reads pages and deletes only the authenticated account history', async (t) => {
+  const signal = new AbortController().signal
+  const page = { items: [{ id: 12, message: 'Xin chào', reply: 'Chào bạn',
+    sentAt: '2026-11-28T01:00:00Z', repliedAt: '2026-11-28T01:00:01Z' }], hasMore: true }
+  const adapter = mockAdapter(t, async config => {
+    assert.equal(config.url, '/distributor/ai-chat/history')
+    assert.equal(config.signal, signal)
+    if (config.method === 'get') {
+      assert.deepEqual(config.params, { beforeId: 20 })
+      return response(config, { data: page })
+    }
+    assert.equal(config.method, 'delete')
+    assert.equal(config.data, undefined)
+    return response(config, undefined, 204)
+  })
+  assert.deepEqual(await getAiChatHistory(20, signal), page)
+  assert.equal(await clearAiChatHistory(signal), undefined)
+  assert.equal(adapter.mock.callCount(), 2)
+})
+
 test('forecast preserves the server message when generation fails', async (t) => {
   const data = { message: 'AI chưa tạo được dự báo. Vui lòng thử lại.' }
   mockAdapter(t, async (config) => {
@@ -94,5 +114,7 @@ test('an aborted AI request never reaches the HTTP adapter', async (t) => {
   await assert.rejects(sendAiChatMessage({ message: 'Xin chào', history: [] }, signal), axios.isCancel)
   await assert.rejects(generateSpoilageForecasts(signal), axios.isCancel)
   await assert.rejects(getLatestSpoilageForecasts(signal), axios.isCancel)
+  await assert.rejects(getAiChatHistory(undefined, signal), axios.isCancel)
+  await assert.rejects(clearAiChatHistory(signal), axios.isCancel)
   assert.equal(adapter.mock.callCount(), 0)
 })

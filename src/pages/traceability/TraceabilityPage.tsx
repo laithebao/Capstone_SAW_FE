@@ -1,3 +1,4 @@
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 ﻿import axios from 'axios'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router'
@@ -11,8 +12,8 @@ type Result =
   | { status: 'notFound' | 'unavailable' | 'error' }
 
 const number = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(value)
-const dateOnly = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`))
-const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(value))
+const dateOnly = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  dateStyle: 'medium' }).format(parseApiTimestamp(`${value}T00:00:00`))
+const dateTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(parseApiTimestamp(value))
 
 export default function TraceabilityPage() {
   const { qrCode = '' } = useParams<'qrCode'>()

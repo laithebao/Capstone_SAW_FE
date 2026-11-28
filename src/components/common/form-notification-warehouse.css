@@ -1,0 +1,1 @@
+[data-warehouse-toast]{animation:saw-warehouse-toast-enter .2s ease-out both;transform-origin:bottom right}[data-warehouse-toast] [role]{box-shadow:0 8px 28px rgba(15,23,42,.1)}@keyframes saw-warehouse-toast-enter{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}@media(prefers-reduced-motion:reduce){[data-warehouse-toast]{animation:none}}

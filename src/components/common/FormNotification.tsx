@@ -1,3 +1,5 @@
+import './form-notification-warehouse.css'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { AlertCircle, CheckCircle2, X } from 'lucide-react'
 
@@ -6,13 +8,21 @@ interface Props {
   tone?: 'error' | 'success'
   onDismiss: () => void
   onViewErrors?: () => void
+  warehouse?: boolean
 }
 
-export default function FormNotification({ message, tone = 'error', onDismiss, onViewErrors }: Props) {
+export default function FormNotification({ message, tone = 'error', onDismiss, onViewErrors, warehouse = false }: Props) {
+  const dismissRef = useRef(onDismiss)
+  useEffect(() => { dismissRef.current = onDismiss }, [onDismiss])
+  useEffect(() => {
+    if (!warehouse || !message || tone !== 'success') return
+    const timer = window.setTimeout(() => dismissRef.current(), 4000)
+    return () => window.clearTimeout(timer)
+  }, [warehouse, message, tone])
   if (!message) return null
   const Icon = tone === 'error' ? AlertCircle : CheckCircle2
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-4 bottom-5 z-[100] sm:inset-x-auto sm:right-6 sm:w-[26rem]" data-form-notification>
+    <div className="pointer-events-none fixed inset-x-4 bottom-5 z-[100] sm:inset-x-auto sm:right-6 sm:w-[26rem]" data-form-notification data-warehouse-toast={warehouse || undefined}>
       <div role={tone === 'error' ? 'alert' : 'status'} aria-atomic="true"
         className={`pointer-events-auto max-h-[70vh] overflow-y-auto rounded-2xl border bg-white p-4 shadow-xl ${tone === 'error' ? 'border-rose-300 text-rose-800' : 'border-emerald-300 text-emerald-800'}`}>
         <div className="flex items-start gap-3">

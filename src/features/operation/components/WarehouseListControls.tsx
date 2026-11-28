@@ -22,7 +22,7 @@ export function WarehouseListFilters({ children, onSubmit, onReset, columns = 'g
 }
 
 export function WarehouseDetailLink({ to, label }: { to: string; label: string }) {
-  return <Link to={to} aria-label={label} title={label} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-emerald-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600">
+  return <Link data-saw-transition="" to={to} aria-label={label} title={label} className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-emerald-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600">
     <Eye className="size-4" aria-hidden="true" />
   </Link>
 }

@@ -1,3 +1,4 @@
+import { formatVietnamDate } from '@/utils/vietnamTime'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import AppIcon from '@/components/common/AppIcon'
@@ -50,7 +51,7 @@ function VersionPanel({ version, isLatest }: { version: InspectionStandardVersio
             <p className="mt-0.5 text-xs text-slate-500">
               {version.criterionCount} tiêu chí
               {version.effectiveFrom ? ` · Hiệu lực từ ${version.effectiveFrom}` : ''}
-              {' · '}Tạo lúc {new Date(version.createdAt).toLocaleDateString('vi-VN')}
+              {' · '}Tạo lúc {formatVietnamDate(version.createdAt)}
             </p>
           </div>
         </div>

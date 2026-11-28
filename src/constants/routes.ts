@@ -70,7 +70,9 @@ export const ROUTES = {
   SUPPLIER_CONTRACTS: "/supplier/contracts",
 
   DISTRIBUTOR: "/distributor",
+  DISTRIBUTOR_OVERVIEW: "/distributor/overview",
   DISTRIBUTOR_CATALOG: "/distributor/catalog",
+  DISTRIBUTOR_CART: "/distributor/cart",
   DISTRIBUTOR_LOT_DETAIL: "/distributor/catalog/:id",
   DISTRIBUTOR_ORDERS: "/distributor/orders",
   DISTRIBUTOR_ORDER_CREATE: "/distributor/orders/new",

@@ -1,3 +1,5 @@
+import FormNotification from '@/components/common/FormNotification'
+import { formatVietnamDateTime } from '@/utils/vietnamTime'
 import AdjustmentResolutionPanel from '@/features/operation/components/AdjustmentResolutionPanel'
 import axios from 'axios'
 import { useEffect, useRef, useState } from 'react'
@@ -15,7 +17,7 @@ import { PickingStatus } from '@/features/operation/components/PickingPresentati
 import type { AdjustmentReviewDetail } from '@/types/stockAdjustment'
 
 const card = 'space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm'
-const time = (v: string | null) => v ? new Date(/(Z|[+-]\d{2}:\d{2})$/.test(v) ? v : v + 'Z').toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa ghi nhận'
+const time = (v: string | null) => v ? formatVietnamDateTime(/(Z|[+-]\d{2}:\d{2})$/.test(v) ? v : v + 'Z', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa ghi nhận'
 export default function WarehouseStockAdjustmentDetailPage() {
   const { id } = useParams()
   return <ReviewContent key={id} id={Number(id)} />
@@ -64,10 +66,10 @@ function ReviewContent({ id }: { id: number }) {
   }
   const request = data?.request, summary = request?.summary
   const locked = busy || loading || needsReload || !!loadError
-  return <div className="space-y-6"><header className="flex flex-wrap justify-between gap-4"><div><p className="text-sm font-semibold text-emerald-700">QUẢN LÝ KHO · PHÊ DUYỆT</p><h1 className="mt-2 text-3xl font-bold">Xem xét yêu cầu điều chỉnh</h1></div><Link className="h-fit rounded-lg border border-slate-300 bg-white px-4 py-2" to={ROUTES.WAREHOUSE_STOCK_ADJUSTMENTS}>Quay lại danh sách</Link></header>
+  return <div className="space-y-6"><header className="flex flex-wrap justify-between gap-4"><div><p className="text-sm font-semibold text-emerald-700">QUẢN LÝ KHO · PHÊ DUYỆT</p><h1 className="mt-2 text-3xl font-bold">Xem xét yêu cầu điều chỉnh</h1></div><Link data-saw-transition="" className="h-fit rounded-lg border border-slate-300 bg-white px-4 py-2" to={ROUTES.WAREHOUSE_STOCK_ADJUSTMENTS}>Quay lại danh sách</Link></header>
     {loading && <p role="status">Đang tải số liệu...</p>}
     {(loadError || saveError || needsReload) && <div role="alert" className="space-y-2 rounded-lg bg-rose-50 p-4 text-rose-800"><p>{saveError || loadError || 'Số liệu đã thay đổi. Hãy rà soát và tải lại trước khi quyết định.'}</p><p className="text-sm">Ghi chú đang nhập được giữ lại; không tự gửi lại thao tác.</p><button disabled={busy} className="font-semibold underline" onClick={refresh}>Tải lại số liệu</button></div>}
-    {success && <p role="status" className="rounded-lg bg-emerald-50 p-4 text-emerald-800">{success}</p>}
+    <FormNotification warehouse message={success} tone="success" onDismiss={() => setSuccess('')} />
     {data && request && summary && <>
       <section className={card}><div className="flex flex-wrap justify-between gap-3"><div><p className="break-all font-mono font-bold text-emerald-700">{summary.adjustmentCode}</p><h2 className="mt-2 text-xl font-bold">{summary.requestKind === 'DISPOSAL' ? 'Loại bỏ toàn bộ lô' : 'Điều chỉnh kiểm đếm'}</h2></div><AdjustmentStatus status={summary.status} /></div>
         <div className="grid gap-4 text-sm sm:grid-cols-2"><p>Lô hàng: <strong className="font-semibold text-emerald-700">{summary.batchCode}</strong> · {summary.productName}</p><ProductBatchStatusBadge status={data.batchStatus} /><p>Người lập: {summary.createdBy}<br />Thời gian: {time(summary.createdAt)}</p><p>Nguyên nhân: {adjustmentTypes[summary.adjustmentType] ?? summary.adjustmentType}</p></div>

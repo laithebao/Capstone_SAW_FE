@@ -1,6 +1,9 @@
+import { formatVietnamDateTime } from '@/utils/vietnamTime'
+import NotificationPopups from './NotificationPopups'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import AppIcon from '@/components/common/AppIcon'
+import DistributorFade from '@/features/distributor-orders/DistributorFade'
 import { roleLabels } from '@/features/role-dashboard/roleDashboardConfig'
 import { Link, useNavigate } from 'react-router'
 import { ROUTES } from '@/constants/routes'
@@ -9,9 +12,9 @@ import type { NotificationItem } from '@/types/notification'
 import { watchNotificationUpdates } from '@/services/notificationEvents'
 import { isVisibleNotification, notificationMessage } from '@/services/notificationFormat'
 
-const notificationTime = (value: string) => new Date(/(?:Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}Z`).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+const notificationTime = (value: string) => formatVietnamDateTime(/(?:Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}Z`, { timeZone: 'Asia/Ho_Chi_Minh' })
 
-export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
+export default function Header({ onOpenMenu, marketplaceMode = false }: { onOpenMenu: () => void; marketplaceMode?: boolean }) {
   const { user } = useAuth()
   const profileRoute = user?.role === 'SUPPLIER' ? ROUTES.SUPPLIER_PROFILE : ROUTES.PROFILE
   const navigate = useNavigate()
@@ -29,6 +32,7 @@ export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
 
   useEffect(() => {
     if (!user?.id) return
+    setNotifications([]); setUnreadCount(0); setShowNotifications(false); notificationVersion.current++
     const controller = new AbortController()
     let inFlight = false
     let pending = false
@@ -125,9 +129,9 @@ export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
     const type = item.relatedEntityType
     const id = item.relatedEntityId
     if (type === 'SUPPLY_CONTRACT') navigate(role === 'SUPPLIER' ? ROUTES.SUPPLIER_CONTRACTS : role === 'ADMINISTRATOR' ? ROUTES.ADMIN_CONTRACTS : ROUTES.WAREHOUSE_CONTRACTS)
-    else if (type === 'GOODS_RECEIPT') navigate(id ? ROUTES.OPERATION_GOODS_RECEIPT_DETAIL.replace(':id', id) : ROUTES.OPERATION_GOODS_RECEIPTS)
+    else if (type === 'GOODS_RECEIPT') navigate(role === 'WAREHOUSE_MANAGER' ? ROUTES.OPERATION_PRODUCT_BATCHES : id ? ROUTES.OPERATION_GOODS_RECEIPT_DETAIL.replace(':id', id) : ROUTES.OPERATION_GOODS_RECEIPTS)
     else if (type === 'GOODS_ISSUE') navigate(role === 'WAREHOUSE_MANAGER' ? ROUTES.WAREHOUSE_ORDERS : id ? ROUTES.OPERATION_GOODS_ISSUE_DETAIL.replace(':id', id) : ROUTES.OPERATION_GOODS_ISSUES)
-    else if (type === 'QC_QUEUE') navigate(ROUTES.QC_INSPECTIONS)
+    else if (type === 'QC_QUEUE') navigate(role === 'WAREHOUSE_MANAGER' ? ROUTES.OPERATION_PRODUCT_BATCHES : ROUTES.QC_INSPECTIONS)
     else if (type === 'SALE_OFFER') navigate(ROUTES.WAREHOUSE_SALE_OFFERS)
     else if (type === 'ORDER_RETURN') navigate(role === 'DISTRIBUTOR' && id ? ROUTES.DISTRIBUTOR_ORDER_DETAIL.replace(':id', id) : role === 'OPERATION_STAFF' ? ROUTES.OPERATION : ROUTES.WAREHOUSE_ORDERS)
     else if (type === 'CUSTOMER_ORDERS') navigate(ROUTES.DISTRIBUTOR_ORDERS)
@@ -158,37 +162,44 @@ export default function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
     }
   }
 
-  return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
-      <button type="button" onClick={onOpenMenu} className="grid size-10 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Mở menu"><AppIcon name="menu" className="size-5" /></button>
-      <div className="ml-auto flex items-center gap-3">
-        <div className="relative" ref={notificationPanelRef}>
-          <button type="button" onClick={() => void toggleNotifications()} className="relative grid size-10 place-items-center rounded-full text-slate-600 hover:bg-slate-100" aria-label={unreadCount > 0 ? `${unreadCount} thông báo mới` : 'Thông báo'} aria-expanded={showNotifications}>
-            <AppIcon name="bell" className="size-5"/>
-            {unreadCount > 0 && <span aria-live="polite" className="absolute -right-0.5 -top-0.5 grid min-h-4 min-w-4 place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-bold leading-4 text-white ring-2 ring-white">{unreadCount > 99 ? '99+' : unreadCount}</span>}
-          </button>
-          {showNotifications && (
-            <section className="absolute right-0 top-12 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl" aria-label="Danh sách thông báo">
-              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                <div><h2 className="text-sm font-bold text-slate-900">Thông báo</h2><p className="text-xs text-slate-500">{unreadCount} thông báo chưa đọc</p></div>
-                <button type="button" disabled={notificationsLoading} onClick={() => void refreshNotifications()} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">Làm mới</button>
-              </div>
-              <div className="max-h-[min(65vh,28rem)] overflow-y-auto">
-                {notificationError && <p role="alert" className="px-4 py-3 text-xs text-rose-700">{notificationError}</p>}
-                {notificationsLoading && <p className="px-4 py-3 text-xs text-slate-500">Đang tải thông báo...</p>}
-                {!notificationsLoading && visibleNotifications.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-500">Bạn chưa có thông báo nào.</p>}
-                {visibleNotifications.map((item) => (
-                  <button key={item.id} type="button" onClick={() => void openNotification(item)} className={`block w-full border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${item.isRead ? 'bg-white' : 'bg-emerald-50/60'}`}>
-                    <span className="flex items-start gap-2"><span className={`mt-1.5 size-2 shrink-0 rounded-full ${item.isRead ? 'bg-transparent' : 'bg-emerald-600'}`} /><span className="min-w-0"><span className="block text-sm font-semibold text-slate-900">{item.title}</span><span className="mt-1 block text-xs leading-5 text-slate-600">{notificationMessage(item)}</span><span className="mt-1 block text-[11px] text-slate-400">{notificationTime(item.createdAt)}</span></span></span>
-                  </button>
-                ))}
-                {hasMore && visibleNotifications.length >= 20 && <button type="button" disabled={notificationsLoading} className="w-full p-3 text-sm font-semibold text-emerald-700" onClick={() => void refreshNotifications(true)}>Xem thông báo cũ hơn</button>}
-              </div>
-            </section>
-          )}
-        </div>
-        <Link to={profileRoute} className="hidden text-right sm:block" title="Hồ sơ cá nhân"><p className="text-sm font-semibold">{user?.name}</p><p className="text-xs text-slate-500">{user ? roleLabels[user.role] : ''}</p></Link><Link to={profileRoute} className="grid size-10 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-700" title="Hồ sơ cá nhân" aria-label="Mở hồ sơ cá nhân">{user?.name?.charAt(0).toUpperCase()||'A'}</Link>
+  const notificationButton = <>
+
+    <button type="button" onClick={() => void toggleNotifications()} className={marketplaceMode ? "saw-bell" : "relative grid size-10 place-items-center rounded-full text-slate-600 hover:bg-slate-100"} aria-label={unreadCount > 0 ? `${unreadCount} thông báo mới` : 'Thông báo'} aria-expanded={showNotifications}>
+      <AppIcon name="bell" className="size-5" />
+      {unreadCount > 0 && (marketplaceMode ? <sup aria-live="polite">{unreadCount > 99 ? '99+' : unreadCount}</sup> : <span aria-live="polite" className="absolute -right-0.5 -top-0.5 grid min-h-4 min-w-4 place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-bold leading-4 text-white ring-2 ring-white">{unreadCount > 99 ? '99+' : unreadCount}</span>)}
+    </button>
+  </>
+  const notificationList = <section className="absolute right-0 top-12 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl" aria-label="Danh sách thông báo">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <div><h2 className="text-sm font-bold text-slate-900">Thông báo</h2><p className="text-xs text-slate-500">{unreadCount} thông báo chưa đọc</p></div>
+        <button type="button" disabled={notificationsLoading} onClick={() => void refreshNotifications()} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">Làm mới</button>
       </div>
-    </header>
-  )
+      <div className="max-h-[min(65vh,28rem)] overflow-y-auto">
+        {notificationError && <p role="alert" className="px-4 py-3 text-xs text-rose-700">{notificationError}</p>}
+        {notificationsLoading && <p role="status" className="px-4 py-3 text-xs text-slate-500">Đang tải thông báo...</p>}
+        {!notificationsLoading && visibleNotifications.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-500">Bạn chưa có thông báo nào.</p>}
+        {visibleNotifications.map(item => <button key={item.id} type="button" onClick={() => void openNotification(item)} className={`block w-full border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${item.isRead ? 'bg-white' : 'bg-emerald-50/60'}`}>
+          <span className="flex items-start gap-2"><span className={`mt-1.5 size-2 shrink-0 rounded-full ${item.isRead ? 'bg-transparent' : 'bg-emerald-600'}`} /><span className="min-w-0"><span className="block text-sm font-semibold text-slate-900">{item.title}</span><span className="mt-1 block text-xs leading-5 text-slate-600">{notificationMessage(item)}</span><span className="mt-1 block text-[11px] text-slate-400">{notificationTime(item.createdAt)}</span></span></span>
+        </button>)}
+        {hasMore && visibleNotifications.length >= 20 && <button type="button" disabled={notificationsLoading} className="w-full p-3 text-sm font-semibold text-emerald-700" onClick={() => void refreshNotifications(true)}>Xem thông báo cũ hơn</button>}
+      </div>
+    </section>
+  const notificationPanel = <div className="relative" ref={notificationPanelRef}>
+    {notificationButton}
+    {marketplaceMode
+      ? <DistributorFade changeKey={showNotifications ? 'notifications' : null}>{notificationList}</DistributorFade>
+      : showNotifications && notificationList}
+  </div>
+
+  return <>
+    {user?.id && <NotificationPopups key={user.id} onOpen={item => void openNotification(item)} />}
+    {marketplaceMode ? <div className="saw-marketplace-notifications">{notificationPanel}</div> : <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+    <button type="button" onClick={onOpenMenu} className="grid size-10 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Mở menu"><AppIcon name="menu" className="size-5" /></button>
+    <div className="ml-auto flex items-center gap-3">
+      {notificationPanel}
+      <Link to={profileRoute} className="hidden text-right sm:block" title="Hồ sơ cá nhân"><p className="text-sm font-semibold">{user?.name}</p><p className="text-xs text-slate-500">{user ? roleLabels[user.role] : ''}</p></Link>
+      <Link to={profileRoute} className="grid size-10 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-700" title="Hồ sơ cá nhân" aria-label="Mở hồ sơ cá nhân">{user?.name?.charAt(0).toUpperCase()||'A'}</Link>
+    </div>
+  </header>}
+  </>
 }

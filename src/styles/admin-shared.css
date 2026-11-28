@@ -1,0 +1,8 @@
+.saw-admin-ui { background:#f5f6f8; }
+.saw-admin-ui main table { font-size:13px; }
+.saw-admin-ui main table thead { background:#f1f3f6; }
+.saw-admin-ui main table th { font-weight:600; }
+.saw-admin-ui main table tbody tr { border-color:#e0e4e9; }
+.saw-admin-ui main table tbody tr:hover { background:#f7f9fc; }
+@media (prefers-reduced-motion: no-preference) { .saw-admin-ui main :is([role=dialog], [role=alertdialog]) { animation:saw-modal-in 180ms ease-out both; } }
+.saw-admin-ui main :is(input:not([type=checkbox]):not([type=radio]),select,textarea):focus-visible { outline:2px solid #087f59; outline-offset:1px; }

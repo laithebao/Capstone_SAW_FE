@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
+import OperationReceiptFilters from '@/features/operation/components/OperationReceiptFilters'
 import { Link } from 'react-router'
-import { Eye, Plus, RotateCw } from 'lucide-react'
+import { Eye, Plus, RotateCw, PackageCheck } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { getGoodsReceiptOptions, getGoodsReceipts } from '@/services/goodsReceiptService'
 import { useGoodsReceiptResource } from '@/features/operation/hooks/useGoodsReceiptResource'
@@ -23,25 +24,25 @@ export default function GoodsReceiptManagementPage() {
   const total = result.data?.totalCount ?? 0
   const pages = Math.max(1, Math.ceil(total / filters.pageSize))
   return <div className="mx-auto max-w-[1600px] space-y-4">
-    <header className="flex flex-wrap items-end justify-between gap-3">
-      <div>
+    <header className="op-page-header flex flex-wrap items-end justify-between gap-3">
+      {user?.role === ROLES.OPERATION_STAFF && <span className="op-heading-icon"><PackageCheck /></span>}<div className="op-page-heading">
         <p className="text-xs font-bold text-emerald-700">
           {user?.role === ROLES.WAREHOUSE_MANAGER ? 'ĐIỀU HÀNH KHO' : 'VẬN HÀNH'}
         </p>
-        <h1 className="mt-1 text-xl font-bold">QUẢN LÝ PHIẾU NHẬP</h1>
+        <h1 className="mt-1 text-xl font-bold">Quản lý phiếu nhập kho</h1>
         <p className="mt-1 text-sm text-slate-500">
           {user?.role === ROLES.WAREHOUSE_MANAGER
             ? 'Theo dõi danh sách và chi tiết phiếu nhập kho.'
             : 'Lưu nháp và xác nhận nhập kho các lô đã được QC duyệt.'}
         </p>
       </div>
-      {user?.role === ROLES.OPERATION_STAFF && (
-        <Link to={ROUTES.OPERATION_GOODS_RECEIPT_CREATE} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 transition">
+      {user?.role === ROLES.OPERATION_STAFF && (<div className="flex items-center gap-2">
+        <button type="button" aria-label="Làm mới dữ liệu" title="Làm mới dữ liệu" className="grid size-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600" onClick={() => { result.reload(); options.reload() }}><RotateCw className="size-4" /></button><Link to={ROUTES.OPERATION_GOODS_RECEIPT_CREATE} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 transition">
           <Plus className="size-4" />Tạo phiếu nhập
-        </Link>
+        </Link></div>
       )}
     </header>
-    <form onSubmit={e => { e.preventDefault(); setFilters({ ...draft, page: 1 }); result.reload() }} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    {user?.role === ROLES.OPERATION_STAFF ? <><OperationReceiptFilters draft={draft} setDraft={setDraft} filters={filters} setFilters={setFilters} options={options.data} />{options.error && <p role="alert" className="text-sm text-rose-700">{options.error} <button type="button" className="underline" onClick={options.reload}>Thử lại bộ lọc</button></p>}</> : <form onSubmit={e => { e.preventDefault(); setFilters({ ...draft, page: 1 }); result.reload() }} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex justify-between"><h2 className="font-semibold">Tìm kiếm và bộ lọc</h2><button type="button" aria-label="Làm mới" onClick={() => { result.reload(); options.reload() }}><RotateCw className="size-4" /></button></div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <input className={input} aria-label="Mã phiếu hoặc mã lô" placeholder="Tìm mã phiếu / mã lô" maxLength={100} value={draft.search ?? ''} onChange={e => setDraft({ ...draft, search: e.target.value || undefined })} />
@@ -54,7 +55,7 @@ export default function GoodsReceiptManagementPage() {
         <button className="h-10 self-end rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white">Áp dụng bộ lọc</button>
       </div>
       {options.error && <p role="alert" className="mt-3 text-sm text-rose-700">{options.error} <button type="button" className="underline" onClick={options.reload}>Thử lại bộ lọc</button></p>}
-    </form>
+    </form>}
     {result.error && <div role="alert" className="rounded-xl bg-rose-50 p-4 text-rose-700">{result.error} <button onClick={result.reload} className="underline">Thử lại</button></div>}
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <h2 className="border-b border-slate-100 p-4 font-semibold">Danh sách phiếu nhập <span className="text-slate-500">({total})</span></h2>

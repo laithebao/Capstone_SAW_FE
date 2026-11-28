@@ -1,29 +1,23 @@
-import { supplierBatchFilterStatuses } from '@/features/supplier/batchStatus';
+import { supplierBatchFilterStatuses, canEditSupplierBatch } from '@/features/supplier/batchStatus';
+import { Pencil, RefreshCw } from 'lucide-react';
+import { formatVietnamDate } from '@/utils/vietnamTime'
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSupplierPageRefresh } from '@/features/supplier/useSupplierPageRefresh';
 import { useNavigate } from 'react-router';
 import {
   FileCheck,
-  Clock,
-  FlaskConical,
-  CheckCircle2,
-  XCircle,
   Plus,
-  Building2,
-  List,
   Eye,
   Search,
   Loader2,
   ChevronLeft,
   ChevronRight,
-  ArrowUpRight,
   MapPin,
 } from 'lucide-react';
 import { supplierBatchService } from '@/services/suppliers/supplierBatchService';
 import type {
   SupplierBatchListResponse,
   SupplierBatchItemResponse,
-  SupplierBatchSummaryResponse,
 } from '@/types/supplierBatch';
 import { supplierService } from '@/services/suppliers/supplierService';
 import type { SupplierGrowingAreaDto } from '@/types/supplier';
@@ -41,19 +35,20 @@ export const SupplierBatchListPage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedGrowingAreaId, setSelectedGrowingAreaId] = useState<string>('');
   const [growingAreas, setGrowingAreas] = useState<SupplierGrowingAreaDto[]>([]);
+  const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let active = true;
+    const states = ['', 'SUBMITTED', 'PENDING_QC', 'APPROVED_FOR_STORAGE', 'REJECTED', 'IN_STOCK'];
+    void Promise.allSettled(states.map(status => supplierBatchService.getDeclaredBatches({ status: status || undefined, pageIndex: 1, pageSize: 1 }))).then(results => {
+      if (active) setTabCounts(Object.fromEntries(results.flatMap((result, i) => result.status === 'fulfilled' ? [[states[i], result.value.batches.totalCount]] : [])));
+    });
+    return () => { active = false; };
+  }, []);
   const [loadingAreas, setLoadingAreas] = useState(true);
   const [areaError, setAreaError] = useState('');
   const [pageIndex, setPageIndex] = useState<number>(1);
   const pageSize = 10;
   const latestRequest = useRef({ version: 0 });
-
-  const [summary, setSummary] = useState<SupplierBatchSummaryResponse>({
-    totalDeclaredBatches: 0,
-    pendingApprovalBatches: 0,
-    pendingQCBatches: 0,
-    approvedBatches: 0,
-    rejectedBatches: 0,
-  });
 
   const [batches, setBatches] = useState<SupplierBatchItemResponse[]>([]);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -73,7 +68,7 @@ export const SupplierBatchListPage: React.FC = () => {
     const timer = setTimeout(() => {
       setDebouncedKeyword(keyword);
       setPageIndex(1);
-    }, 400);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [keyword]);
@@ -95,16 +90,6 @@ export const SupplierBatchListPage: React.FC = () => {
         });
 
       if (response && request === latestRequest.current.version) {
-        setSummary(
-          response.summary || {
-            totalDeclaredBatches: 0,
-            pendingApprovalBatches: 0,
-            pendingQCBatches: 0,
-            approvedBatches: 0,
-            rejectedBatches: 0,
-          }
-        );
-
         setBatches(response.batches?.items || []);
         const pages = response.batches?.totalPages || 1;
         setTotalPages(pages);
@@ -172,132 +157,18 @@ export const SupplierBatchListPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Chào mừng trở lại, Nhà cung cấp
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Dưới đây là tổng quan về trạng thái khai báo, vùng trồng và tiến độ nhập kho các lô hàng nông sản của bạn.
-        </p>
-      </div>
-
-      {/* KPI Cards Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Tổng lô hàng khai báo
-            </span>
-            <FileCheck className="w-5 h-5 text-gray-400" />
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-gray-900">
-              {(summary.totalDeclaredBatches || 0).toLocaleString()}
-            </span>
-            <div className="flex items-center gap-1 text-xs text-emerald-600 font-medium mt-1">
-              <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>+12% so với tháng trước</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Chờ duyệt
-            </span>
-            <Clock className="w-5 h-5 text-amber-500" />
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-gray-900">
-              {summary.pendingApprovalBatches || 0}
-            </span>
-            <p className="text-xs text-gray-400 mt-1">Cần phản hồi từ BQL</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Chờ kiểm định QC
-            </span>
-            <FlaskConical className="w-5 h-5 text-blue-500" />
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-gray-900">
-              {summary.pendingQCBatches || 0}
-            </span>
-            <p className="text-xs text-gray-400 mt-1">Đang lấy mẫu & xét nghiệm</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Lô hàng đã duyệt
-            </span>
-            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-gray-900">
-              {(summary.approvedBatches || 0).toLocaleString()}
-            </span>
-            <p className="text-xs text-gray-400 mt-1">Đã nhập kho an toàn</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Lô hàng bị từ chối
-            </span>
-            <XCircle className="w-5 h-5 text-red-500" />
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-gray-900">
-              {summary.rejectedBatches || 0}
-            </span>
-            <p className="text-xs text-gray-400 mt-1">Không đạt chuẩn chất lượng</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Action Buttons */}
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          onClick={() => navigate('/supplier/batches/new')}
-          className="bg-zinc-800 hover:bg-zinc-900 text-white font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm transition shadow-sm cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Khai báo lô hàng mới</span>
-        </button>
-
-        <button
-          onClick={() => navigate('/supplier/profile/edit')}
-          className="bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2.5 rounded-lg border border-gray-300 flex items-center gap-2 text-sm transition shadow-sm cursor-pointer"
-        >
-          <Building2 className="w-4 h-4 text-gray-500" />
-          <span>Cập nhật thông tin NCC</span>
-        </button>
-
-        <button
-          onClick={() => {
-            setSelectedStatus('');
-            setSelectedGrowingAreaId('');
-            setKeyword('');
-            setPageIndex(1);
-          }}
-          className="bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2.5 rounded-lg border border-gray-300 flex items-center gap-2 text-sm transition shadow-sm cursor-pointer"
-        >
-          <List className="w-4 h-4 text-gray-500" />
-          <span>Xem toàn bộ danh sách</span>
-        </button>
-      </div>
-
+    <div className="sp-batches space-y-4">
+      <header className="sp-heading"><span className="sp-heading-icon"><FileCheck /></span><div><p>Quản lý lô hàng / Lô hàng của tôi</p><h1>Lô hàng của tôi</h1><span>Theo dõi và quản lý các lô nông sản đã khai báo.</span></div><button type="button" onClick={() => void fetchBatches()} disabled={loading} title="Làm mới" aria-label="Làm mới"><RefreshCw className="w-5 h-5 text-emerald-700" /></button><button type="button" className="sp-primary" onClick={() => navigate('/supplier/batches/new')}><Plus /> Khai báo lô</button></header>
       {/* Main Table Container */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="sp-batch-tabs" role="tablist" aria-label="Lọc trạng thái lô hàng">{[
+          { value: '', label: 'Tất cả', count: tabCounts[''] },
+          { value: 'SUBMITTED', label: 'Chờ tiếp nhận', count: tabCounts.SUBMITTED },
+          { value: 'PENDING_QC', label: 'Chờ kiểm định QC', count: tabCounts.PENDING_QC },
+          { value: 'APPROVED_FOR_STORAGE', label: 'Đã duyệt nhập kho', count: tabCounts.APPROVED_FOR_STORAGE },
+          { value: 'REJECTED', label: 'Bị từ chối', count: tabCounts.REJECTED },
+          { value: 'IN_STOCK', label: 'Đã nhập kho', count: tabCounts.IN_STOCK },
+        ].map(tab => <button key={tab.value} type="button" role="tab" aria-selected={selectedStatus === tab.value} onClick={() => { setSelectedStatus(tab.value); setPageIndex(1) }}>{tab.label}{tab.count != null && <span>{tab.count}</span>}</button>)}</div>
         {/* Table Header & Search Filter Bar */}
         <div className="p-5 border-b border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
@@ -376,20 +247,21 @@ export const SupplierBatchListPage: React.FC = () => {
                 <th className="py-3 px-4 text-center">NGÀY TẠO</th>
                 <th className="py-3 px-4 text-center">TRẠNG THÁI HIỆN HÀNH</th>
                 <th className="py-3 px-4 text-center">NGÀY HOÀN THÀNH</th>
+                <th className="py-3 px-4 text-center">TIÊU THỤ</th>
                 <th className="py-3 px-4 text-center">THAO TÁC</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-gray-400">
+                  <td colSpan={10} className="py-12 text-center text-gray-400">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-600" />
                     <span>Đang tải danh sách lô hàng...</span>
                   </td>
                 </tr>
               ) : batches.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-gray-400">
+                  <td colSpan={10} className="py-12 text-center text-gray-400">
                     Không tìm thấy lô hàng nào phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
@@ -405,18 +277,10 @@ export const SupplierBatchListPage: React.FC = () => {
                     </td>
 
                     <td className="py-3.5 px-4 text-gray-600 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-xs text-gray-800">{batch.areaName || 'Chưa cập nhật'}</span>
-                          {[batch.ward, batch.district, batch.province].some(Boolean) && (
-                            <span className="text-[10px] text-gray-400 font-normal">{[batch.ward, batch.district, batch.province].filter(Boolean).join(', ')}</span>
-                          )}
-                        </div>
-                      </div>
+                      <div><span className="font-semibold text-xs text-gray-800">{batch.areaName || 'Chưa cập nhật'}</span><span className="sp-address"><MapPin />{[batch.ward, batch.district, batch.province].filter(Boolean).join(', ') || 'Chưa cập nhật địa chỉ'}</span></div>
                     </td>
 
-                    <td className="py-3.5 px-4 text-gray-500 max-w-[180px] truncate" title={batch.note || ''}>
+                    <td className="py-3.5 px-4 text-gray-500 max-w-[180px] truncate" title={batch.note || 'Không có ghi chú'} tabIndex={0}>
                       {batch.note || 'Không có ghi chú'}
                     </td>
 
@@ -428,7 +292,7 @@ export const SupplierBatchListPage: React.FC = () => {
 
                     <td className="py-3.5 px-4 text-center text-gray-500 whitespace-nowrap">
                       {batch.submittedDate
-                        ? new Date(batch.submittedDate).toLocaleDateString('vi-VN')
+                        ? formatVietnamDate(batch.submittedDate)
                         : 'N/A'}
                     </td>
 
@@ -438,10 +302,11 @@ export const SupplierBatchListPage: React.FC = () => {
 
                     <td className="py-3.5 px-4 text-center text-gray-500 whitespace-nowrap">
                       {batch.completedDate
-                        ? new Date(batch.completedDate).toLocaleDateString('vi-VN')
+                        ? formatVietnamDate(batch.completedDate)
                         : '-'}
                     </td>
 
+                    <td className="py-3.5 px-4 text-center">{batch.consumptionStatusDisplayName || '—'}</td>
                     <td className="py-3.5 px-4 text-center">
                       <button
                         onClick={() => navigate(`/supplier/batches/${batch.batchId}`)}
@@ -451,6 +316,7 @@ export const SupplierBatchListPage: React.FC = () => {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
+                      {canEditSupplierBatch(batch.status) && <button type="button" onClick={() => navigate(`/supplier/batches/${batch.batchId}/edit`)} className="p-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-50" title="Chỉnh sửa lô hàng" aria-label={`Chỉnh sửa lô hàng ${batch.batchCode}`}><Pencil className="w-4 h-4" /></button>}
                     </td>
                   </tr>
                 ))

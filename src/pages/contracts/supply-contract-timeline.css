@@ -1,0 +1,24 @@
+.saw-contract-timeline { min-width: 0; padding-top: 20px; border-top: 1px solid #e0e4e9; }
+.saw-contract-timeline__heading { margin: 0 0 20px; color: #182230; font-size: 16px; font-weight: 650; }
+.saw-contract-timeline__list { margin: 0; padding: 0; list-style: none; }
+.saw-contract-timeline__item { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding-bottom: 24px; }
+.saw-contract-timeline__item:not(:last-child)::before { content: ''; position: absolute; top: 36px; bottom: 0; left: 17px; width: 1px; background: #e0e4e9; }
+.saw-contract-timeline__item:last-child { padding-bottom: 0; }
+.saw-contract-timeline__icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; }
+.saw-contract-timeline__icon svg { width: 19px; height: 19px; stroke-width: 1.8; }
+.saw-contract-timeline--blue { background: #eaf1fa; color: #315b86; }
+.saw-contract-timeline--green { background: #e4f5ed; color: #087f59; }
+.saw-contract-timeline--red { background: #fce9e9; color: #b91c1c; }
+.saw-contract-timeline--amber { background: #fff3dd; color: #a46713; }
+.saw-contract-timeline--gray { background: #f1f3f6; color: #8591a2; }
+.saw-contract-timeline--purple { background: #f2ecf8; color: #7950a0; }
+.saw-contract-timeline__content { min-width: 0; padding-top: 1px; overflow-wrap: anywhere; }
+.saw-contract-timeline__title { margin: 0 0 5px; color: #182230; font-size: 14px; font-weight: 600; line-height: 1.5; }
+.saw-contract-timeline__meta { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0 0; color: #687588; font-size: 12px; line-height: 1.6; }
+.saw-contract-timeline__meta:first-of-type { color: #435063; font-weight: 500; }
+.saw-contract-timeline__meta svg { width: 13px; height: 13px; margin-top: 3px; flex-shrink: 0; }
+.saw-contract-timeline__description, .saw-contract-timeline__reason { margin: 5px 0 0; font-size: 12px; line-height: 1.6; white-space: pre-wrap; color: #687588; }
+.saw-contract-timeline__reason--red { color: #b91c1c; }
+.saw-contract-timeline__reason--amber { color: #a46713; }
+@media (prefers-reduced-motion: no-preference) { .saw-contract-timeline { animation: saw-contract-history-in 200ms ease-out; } @keyframes saw-contract-history-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } } }
+@media (max-width: 640px) { .saw-contract-timeline__item { gap: 10px; padding-bottom: 20px; } }

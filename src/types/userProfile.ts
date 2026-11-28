@@ -17,11 +17,12 @@ export interface UserProfile {
   phoneNumber: string | null
   avatarUrl: string | null
   roleCode: string
+  isProfileComplete: boolean
   distributor: DistributorProfile | null
 }
 
 export interface UpdateUserProfileRequest {
   fullName: string
   phoneNumber: string | null
-  distributor: Omit<DistributorProfile, 'distributorId' | 'distributorCode' | 'taxCode'> | null
+  distributor: Omit<DistributorProfile, 'distributorId' | 'distributorCode' | 'taxCode'> & { taxCode?: string } | null
 }

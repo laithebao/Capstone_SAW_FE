@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, Navigate } from 'react-router'
+import { Link, Navigate, useNavigate } from 'react-router'
 import { Building2, Loader2, Pencil, Save, UserRound } from 'lucide-react'
 import FormNotification from '@/components/common/FormNotification'
 import { ROUTES } from '@/constants/routes'
@@ -23,16 +23,18 @@ const toRequest = (profile: UserProfile): UpdateUserProfileRequest => ({
   fullName: profile.fullName,
   phoneNumber: profile.phoneNumber,
   distributor: profile.distributor ? {
+    taxCode: profile.distributor.taxCode.startsWith('GOOGLE-') ? '' : profile.distributor.taxCode,
     distributorName: profile.distributor.distributorName,
     contactPerson: profile.distributor.contactPerson,
     phoneNumber: profile.distributor.phoneNumber,
     email: profile.distributor.email,
     address: profile.distributor.address,
-  } : null,
+  } : profile.roleCode === 'DISTRIBUTOR' ? { distributorName: '', taxCode: '', contactPerson: null, phoneNumber: null, email: null, address: null } : null,
 })
 
 export default function UserProfilePage() {
   const { user, updateProfileName } = useAuth()
+  const navigate = useNavigate()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [draft, setDraft] = useState<UpdateUserProfileRequest | null>(null)
   const [loading, setLoading] = useState(true)
@@ -50,6 +52,7 @@ export default function UserProfilePage() {
       if (controller.signal.aborted) return
       setProfile(result)
       setDraft(toRequest(result))
+      if (result.roleCode === 'DISTRIBUTOR' && !result.isProfileComplete) setEditing(true)
     }).catch((requestError: unknown) => {
       if (!controller.signal.aborted) setError(getProfileErrorMessage(requestError, 'Không thể tải hồ sơ.'))
     }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
@@ -73,12 +76,14 @@ export default function UserProfilePage() {
     setError('')
     setMessage('')
     try {
-      const result = await updateMyProfile(validation.data, profile?.distributor?.taxCode)
+      const result = await updateMyProfile(validation.data, profile?.distributor?.taxCode, taxEditable)
       setProfile(result)
       setDraft(toRequest(result))
       updateProfileName(result.accountId, result.fullName)
       setEditing(false)
       setMessage('Đã cập nhật hồ sơ thành công.')
+      window.dispatchEvent(new Event('saw:profile-updated'))
+      if (user?.role === 'DISTRIBUTOR' && !profile?.isProfileComplete && result.isProfileComplete) navigate(ROUTES.DISTRIBUTOR, { replace: true })
     } catch (requestError) {
       const fields = getApiFieldErrors(requestError, fieldLabels)
       setFieldErrors(fields)
@@ -114,6 +119,8 @@ export default function UserProfilePage() {
   if (!profile || !draft) return <div role="alert" className="mx-auto max-w-xl rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-700"><p>{error || 'Không tìm thấy hồ sơ.'}</p><button type="button" className={`${buttonClass} mt-4 bg-rose-700 text-white`} onClick={() => { setError(''); setLoading(true); setRetry(value => value + 1) }}>Thử lại</button></div>
 
   const isDistributor = user?.role === 'DISTRIBUTOR'
+  const completing = isDistributor && !profile.isProfileComplete
+  const taxEditable = !profile.distributor?.taxCode || profile.distributor.taxCode.toUpperCase().startsWith('GOOGLE-')
   const business = draft.distributor
   const fieldProps = (field: string) => ({
     id: `profile-${field}`, 'aria-invalid': Boolean(fieldErrors[field]),
@@ -122,13 +129,14 @@ export default function UserProfilePage() {
   })
   const fieldError = (field: string) => fieldErrors[field] && <span id={`profile-${field}-error`} data-field-error={field} className="mt-1.5 block text-sm font-normal text-rose-600">{fieldErrors[field]}</span>
   return <div className="mx-auto max-w-6xl space-y-6">
+    {completing && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">Vui lòng hoàn thiện hồ sơ trước khi sử dụng các chức năng của hệ thống.</p>}
     <div data-profile-actions className="sticky top-16 z-20 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/95 p-5 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-6">
       <div><h1 className="text-2xl font-bold tracking-tight text-slate-900">{isDistributor ? 'Hồ sơ Nhà phân phối' : 'Hồ sơ cá nhân'}</h1><p className="mt-1 text-sm text-slate-500">Xem và cập nhật thông tin của bạn.</p></div>
       <div className="flex flex-wrap gap-3">
-        <Link to={ROUTES.CHANGE_PASSWORD} className={`${buttonClass} border border-slate-200 text-slate-700 hover:bg-slate-50`}>Đổi mật khẩu</Link>
+        {!completing && <Link to={ROUTES.CHANGE_PASSWORD} className={`${buttonClass} border border-slate-200 text-slate-700 hover:bg-slate-50`}>Đổi mật khẩu</Link>}
         {!editing && <button type="button" onClick={() => { setEditing(true); setMessage(''); setError(''); setFieldErrors({}) }} className={`${buttonClass} bg-emerald-700 text-white hover:bg-emerald-800`}><Pencil className="size-4" />Chỉnh sửa thông tin</button>}
         {editing && <>
-          <button type="button" disabled={saving} onClick={() => { setDraft(toRequest(profile)); setEditing(false); setError(''); setFieldErrors({}); setMessage('') }} className={`${buttonClass} border border-slate-200 text-slate-700 hover:bg-slate-50`}>Hủy thay đổi</button>
+          {!completing && <button type="button" disabled={saving} onClick={() => { setDraft(toRequest(profile)); setEditing(false); setError(''); setFieldErrors({}); setMessage('') }} className={`${buttonClass} border border-slate-200 text-slate-700 hover:bg-slate-50`}>Hủy thay đổi</button>}
           <button type="submit" form="user-profile-form" disabled={saving || (isDistributor && !business)} className={`${buttonClass} bg-emerald-700 text-white hover:bg-emerald-800`}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
         </>}
       </div>
@@ -150,7 +158,7 @@ export default function UserProfilePage() {
         <fieldset disabled={!editing || saving} className="grid gap-5 md:grid-cols-2">
           <label className="text-sm font-semibold text-slate-600">Mã nhà phân phối<input value={profile.distributor?.distributorCode ?? ''} disabled className={inputClass} /></label>
           <label className="text-sm font-semibold text-slate-600">Tên nhà phân phối<span className="text-rose-600" aria-hidden="true"> *</span><input name="distributorName" required maxLength={200} value={business.distributorName} onChange={event => changeBusiness('distributorName', event.target.value)} {...fieldProps('distributor.distributorName')} autoComplete="organization" />{fieldError('distributor.distributorName')}</label>
-          <label className="text-sm font-semibold text-slate-600">Mã số thuế / ĐKKD<input name="taxCode" value={profile.distributor?.taxCode ?? ''} readOnly disabled {...fieldProps('distributor.taxCode')} />{fieldError('distributor.taxCode')}<span className="mt-1 block text-xs font-normal text-slate-500">Mã số thuế đã đăng ký không thể thay đổi.</span></label>
+          <label className="text-sm font-semibold text-slate-600">Mã số thuế / ĐKKD <span className="text-rose-600">*</span><input name="taxCode" maxLength={50} required value={business.taxCode ?? profile.distributor?.taxCode ?? ''} onChange={event => changeBusiness('taxCode', event.target.value)} readOnly={!taxEditable} disabled={!editing || !taxEditable} {...fieldProps('distributor.taxCode')} />{fieldError('distributor.taxCode')}{!taxEditable && <span className="mt-1 block text-xs font-normal text-slate-500">Mã số thuế đã đăng ký không thể thay đổi.</span>}</label>
           <label className="text-sm font-semibold text-slate-600">Người liên hệ<input name="contactPerson" maxLength={150} value={business.contactPerson ?? ''} onChange={event => changeBusiness('contactPerson', event.target.value)} {...fieldProps('distributor.contactPerson')} />{fieldError('distributor.contactPerson')}</label>
           <label className="text-sm font-semibold text-slate-600">Số điện thoại liên hệ<input name="businessPhoneNumber" type="tel" maxLength={30} value={business.phoneNumber ?? ''} onChange={event => changeBusiness('phoneNumber', event.target.value)} {...fieldProps('distributor.phoneNumber')} />{fieldError('distributor.phoneNumber')}</label>
           <label className="text-sm font-semibold text-slate-600">Email liên hệ<input name="businessEmail" type="email" maxLength={255} value={business.email ?? ''} onChange={event => changeBusiness('email', event.target.value)} {...fieldProps('distributor.email')} />{fieldError('distributor.email')}</label>
