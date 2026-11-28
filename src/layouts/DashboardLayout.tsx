@@ -51,6 +51,6 @@ export default function DashboardLayout() {
 
   return <div className={`min-h-screen bg-[#f8faf9] text-slate-900${motionEnabled ? ' saw-wm-motion' : ''}${isAdmin ? ' saw-admin-ui' : ''}${isSupplier ? ' saw-supplier-ui' : ''}${isOperation ? ' saw-operation' : ''}`} onClickCapture={navigateWithMotion}>
     <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
-    <div className="min-h-screen lg:pl-64"><Header onOpenMenu={() => setSidebarOpen(true)} /><main ref={mainRef} className="min-w-0 px-4 py-5 sm:px-6 lg:px-8"><Outlet /></main></div>
+    <div className="min-h-screen lg:pl-64"><Header onOpenMenu={() => setSidebarOpen(true)} /><main ref={mainRef} className="dashboard-main min-w-0 px-4 py-5 sm:px-6 lg:px-8"><Outlet /></main></div>
   </div>
 }

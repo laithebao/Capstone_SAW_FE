@@ -542,11 +542,20 @@
 /* Resolve legacy first-child padding with higher specificity for V11's compact banner. */
 .saw-distributor .dist-market-hero>div:first-child{padding:0}
 /* Shared, viewport-pinned cart summary used on catalog and lot detail. */
-.saw-distributor .dist-selection-bar{position:fixed;left:50%;bottom:12px;width:min(calc(100% - 48px),1200px);transform:translateX(-50%);}
-.saw-distributor .dist-selection-bar>a{display:inline-flex;min-height:40px;align-items:center;justify-content:center;gap:6px;padding:0 15px;border-radius:8px;background:#087c50;color:#fff;font-size:13px;font-weight:650;text-decoration:none}
+.saw-distributor .dist-selection-bar{position:fixed;left:50%;bottom:20px;width:min(calc(100% - 48px),1280px);min-height:96px;padding:18px 24px;gap:24px;transform:translateX(-50%);}
+.saw-distributor .dist-selection-leading{display:flex;min-width:0;flex:1;align-items:center;gap:14px}
+.saw-distributor .dist-selection-icon{display:grid;width:48px;height:48px;flex:0 0 48px;place-items:center;border-radius:14px;background:#e7f6ed;color:#087c50}
+.saw-distributor .dist-selection-icon svg{width:25px;height:25px}
+.saw-distributor .dist-selection-summary{min-width:0;gap:5px}.saw-distributor .dist-selection-summary>b{font-size:18px;line-height:1.4}
+.saw-distributor .dist-selection-summary span,.saw-distributor .dist-selection-total small{font-size:14px}
+.saw-distributor .dist-selection-total{gap:5px}.saw-distributor .dist-selection-total b{font-size:24px;line-height:1.2;white-space:nowrap}
+.saw-distributor .dist-selection-bar>a{display:inline-flex;min-width:180px;min-height:52px;align-items:center;justify-content:center;gap:10px;padding:0 24px;border-radius:12px;background:#087c50;color:#fff;font-size:16px;font-weight:650;text-decoration:none}
 .saw-distributor .dist-selection-bar>a:hover{background:#06643f}
-@media(max-width:600px){.saw-distributor .dist-selection-bar{bottom:8px;width:calc(100% - 24px)}}
+.saw-distributor .dist-selection-bar>a:focus-visible{outline:3px solid #10b981;outline-offset:4px}
+@media(max-width:800px){.saw-distributor .dist-selection-bar{gap:16px;padding:16px}.saw-distributor .dist-selection-icon{display:none}.saw-distributor .dist-selection-summary>b{font-size:16px}.saw-distributor .dist-selection-total b{font-size:22px}}
+@media(max-width:600px){.saw-distributor .dist-selection-bar{bottom:12px;width:calc(100% - 24px);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;padding:16px}.saw-distributor .dist-selection-summary span,.saw-distributor .dist-selection-total small{font-size:12px}.saw-distributor .dist-selection-summary>b{font-size:15px}.saw-distributor .dist-selection-total{text-align:right}.saw-distributor .dist-selection-total b{font-size:20px}.saw-distributor .dist-selection-bar>a{grid-column:1/-1;width:100%;min-height:50px;font-size:15px}}
 
 /* Keep the fixed selection bar from covering the footer when the cart is non-empty. */
 .saw-distributor:has(.dist-selection-bar) .saw-marketplace-footer{padding-bottom:148px}
-@media(max-width:600px){.saw-distributor:has(.dist-selection-bar) .saw-marketplace-footer{padding-bottom:142px}}
+@media(max-width:1400px){.saw-distributor:has(.dist-selection-bar) .agri-chat-fab{bottom:132px}.saw-distributor:has(.dist-selection-bar) .agri-chat-panel{bottom:204px;max-height:calc(100dvh - 228px)}}
+@media(max-width:600px){.saw-distributor:has(.dist-selection-bar) .saw-marketplace-footer{padding-bottom:190px}.saw-distributor:has(.dist-selection-bar) .agri-chat-fab{bottom:176px;right:20px}.saw-distributor:has(.dist-selection-bar) .agri-chat-panel{bottom:248px;max-height:calc(100dvh - 272px)}}

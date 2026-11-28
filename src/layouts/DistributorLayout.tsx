@@ -5,6 +5,7 @@ import AppIcon from '@/components/common/AppIcon'
 import Header from '@/components/layout/Header'
 import AiChatWidget from '@/components/AiChatWidget'
 import DistributorFade from '@/features/distributor-orders/DistributorFade'
+import { useDistributorCart } from '@/features/distributor-orders/DistributorCartProvider'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/hooks/useAuth'
 import type { CatalogLot } from '@/types/order'
@@ -18,7 +19,7 @@ export interface DistributorOutletContext {
 
 export default function DistributorLayout() {
   const [batchContext, setBatchContext] = useState<{ batchId?: number | null; batchCode?: string | null }>({})
-  const [selectedLots, setSelectedLots] = useState<CatalogLot[]>([])
+  const { selectedLots, setSelectedLots } = useDistributorCart()
   const [accountOpen, setAccountOpen] = useState(false)
   const { user, logout } = useAuth()
   const location = useLocation()

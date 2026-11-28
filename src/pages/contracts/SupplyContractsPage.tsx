@@ -982,7 +982,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
             aria-labelledby="contract-form-title"
             className={`warehouse-contract-create my-auto flex max-h-[calc(100dvh-2rem)] w-full flex-col transition-[max-width] duration-300 ease-in-out max-w-[96vw] overflow-hidden rounded-2xl bg-white shadow-2xl ${createClosing ? "contract-create-dialog-exit" : "contract-create-dialog-enter"}`}
           >
-            <div className="contract-create-header flex items-start justify-between border-b border-slate-200 px-6 py-5">
+            <div className="contract-create-header flex shrink-0 items-start justify-between border-b border-slate-200 px-6 py-5">
               <div>
                 <h2 id="contract-form-title" className="text-xl font-bold text-slate-950">
                   {editingId ? "Cập nhật hợp đồng thu mua" : "Tạo hợp đồng thu mua"}
@@ -1006,7 +1006,6 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
             </div>
 
             <div className="contract-scrollbar-hidden grid min-h-0 flex-1 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1.5fr)_minmax(360px,1fr)]">
-              <ContractPreview request={{ supplierId: Number(form.supplierId), cropTypeId: Number(form.cropTypeId), deliveryQuantityKg: Number(form.deliveryQuantityKg) || 0, deliveryPeriod: form.deliveryPeriod, unitPriceVndPerKg: isValidPrice(form.unitPriceVndPerKg) ? form.unitPriceVndPerKg : '0', startDate: form.startDate, endDate: form.endDate, terms: form.terms || null }} />
               {optionsLoading ? (
                 <p className="p-10 text-center text-slate-500">Đang tải biểu mẫu...</p>
               ) : (
@@ -1138,9 +1137,10 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                 </label>
                 </div>
               )}
+              <ContractPreview request={{ supplierId: Number(form.supplierId), cropTypeId: Number(form.cropTypeId), deliveryQuantityKg: Number(form.deliveryQuantityKg) || 0, deliveryPeriod: form.deliveryPeriod, unitPriceVndPerKg: isValidPrice(form.unitPriceVndPerKg) ? form.unitPriceVndPerKg : '0', startDate: form.startDate, endDate: form.endDate, terms: form.terms || null }} />
             </div>
 
-            <div className="contract-create-footer flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+            <div className="contract-create-footer flex shrink-0 flex-wrap justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
               <button
                 type="button"
                 disabled={createBusy}
