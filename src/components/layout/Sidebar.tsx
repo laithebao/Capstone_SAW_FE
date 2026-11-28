@@ -1,3 +1,6 @@
+import { Fragment } from 'react'
+import { ClipboardList, FileCheck, History, Sprout, Warehouse } from 'lucide-react'
+import './warehouse-sidebar.css'
 import { NavLink, useLocation } from 'react-router'
 import { ROLE_HOME_ROUTES, ROUTES } from '@/constants/routes'
 import { useAuth } from '@/hooks/useAuth'
@@ -13,6 +16,70 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const items = user?.role === ROLES.ADMINISTRATOR
     ? adminMenu
     : user ? roleDashboardConfigs[user.role].menu : []
+  const warehouseGroups = [
+    { label: 'Tổng quan', items: ['Bảng điều khiển'] },
+    { label: 'Quản lý kho', items: ['Tồn kho', 'Sức chứa kho', 'Phân bố chất lượng', 'Quản lý lô hàng', 'Duyệt điều chỉnh tồn', 'Giám sát nhiệt ẩm kho'] },
+    { label: 'Đơn hàng & bán hàng', items: ['Công bố lô bán', 'Phê duyệt đơn'] },
+    { label: 'Nhà cung cấp', items: ['Hợp đồng nhà cung cấp'] },
+  ]
+  const operationGroups = [
+    { label: 'Tổng quan', items: ['Bảng điều khiển'] },
+    { label: 'Quản lý kho', items: ['Quản lý lô hàng', 'Nhập kho', 'Xuất kho'] },
+    { label: 'Xử lý đơn hàng', items: ['Đơn hàng chờ soạn'] },
+    { label: 'Kiểm soát tồn kho', items: ['Điều chỉnh tồn'] },
+  ]
+  const supplierGroups = [
+    { label: 'Tổng quan', items: ['Bảng điều khiển'] },
+    { label: 'Quản lý lô hàng', items: ['Lô hàng của tôi', 'Khai báo lô'] },
+    { label: 'Hợp đồng', items: ['Hợp đồng thu mua'] },
+    { label: 'Hồ sơ doanh nghiệp', items: ['Hồ sơ doanh nghiệp'] },
+  ]
+  const distributorGroups = [
+    { label: 'Tổng quan', items: ['Bảng điều khiển'] },
+    { label: 'Mua hàng', items: ['Lô hàng đang bán', 'Đơn hàng của tôi'] },
+  ]
+  const adminGroups = [
+    { label: 'Tổng quan', items: ['Bảng điều khiển'] },
+    { label: 'Quản trị hệ thống', items: ['Người dùng', 'Nhật ký hệ thống'] },
+    { label: 'Danh mục & cấu hình', items: ['Loại nông sản', 'Tiêu chuẩn kiểm định', 'Sức chứa kho'] },
+    { label: 'Hợp đồng', items: ['Duyệt hợp đồng'] },
+  ]
+  const adminIcons: Record<string, typeof Sprout> = { 'Nhật ký hệ thống': History, 'Loại nông sản': Sprout, 'Tiêu chuẩn kiểm định': ClipboardList, 'Sức chứa kho': Warehouse, 'Duyệt hợp đồng': FileCheck }
+  const indexedItems = items.map((item, index) => ({ item, index }))
+  const warehouseItems = warehouseGroups.flatMap(group => {
+    const matching = group.items.flatMap(label => indexedItems.filter(entry => entry.item.label === label))
+    return matching.map((entry, index) => ({ ...entry, heading: index === 0 ? group.label : undefined }))
+  })
+  const distributorItems = distributorGroups.flatMap(group => {
+    const matching = group.items.flatMap(label => indexedItems.filter(entry => entry.item.label === label))
+    return matching.map((entry, index) => ({ ...entry, heading: index === 0 ? group.label : undefined }))
+  })
+  const adminItems = adminGroups.flatMap(group => {
+    const matching = group.items.flatMap(label => indexedItems.filter(entry => entry.item.label === label))
+    return matching.map((entry, index) => ({ ...entry, heading: index === 0 ? group.label : undefined }))
+  })
+  const supplierItems = supplierGroups.flatMap(group => {
+    const matching = group.items.flatMap(label => indexedItems.filter(entry => entry.item.label === label))
+    return matching.map((entry, index) => ({ ...entry, heading: index === 0 ? group.label : undefined }))
+  })
+  const operationItems = operationGroups.flatMap(group => {
+    const matching = group.items.flatMap(label => indexedItems.filter(entry => entry.item.label === label))
+    return matching.map((entry, index) => ({ ...entry, heading: index === 0 ? group.label : undefined }))
+  })
+  const adminAssigned = new Set(adminItems.map(entry => entry.index))
+  const assigned = new Set(warehouseItems.map(entry => entry.index))
+  const navItems = user?.role === ROLES.WAREHOUSE_MANAGER
+    ? [...warehouseItems, ...indexedItems.filter(entry => !assigned.has(entry.index)).map(entry => ({ ...entry, heading: undefined }))]
+    : user?.role === ROLES.ADMINISTRATOR
+      ? [...adminItems, ...indexedItems.filter(entry => !adminAssigned.has(entry.index)).map(entry => ({ ...entry, heading: undefined }))]
+      : user?.role === ROLES.SUPPLIER
+        ? supplierItems
+        : user?.role === ROLES.OPERATION_STAFF
+          ? operationItems
+          : user?.role === ROLES.DISTRIBUTOR
+            ? distributorItems
+            : indexedItems.map(entry => ({ ...entry, heading: undefined }))
+
   const adminRoutes: Record<string, string> = {
     'Bảng điều khiển': ROUTES.ADMIN,
     'Người dùng': ROUTES.ADMIN_USER_ACCESS,
@@ -59,6 +126,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
    * - Các route khác: prefix match (active khi path bắt đầu bằng route)
    */
   const computeIsActive = (route: string, index: number): boolean => {
+    if (user?.role === ROLES.SUPPLIER && route === ROUTES.SUPPLIER_BATCHES) return pathname.startsWith(route) && pathname !== ROUTES.SUPPLIER_BATCH_NEW
     if (route === ROUTES.QC_INSPECTION_NEW) {
       // "Tạo phiếu mới" — chỉ active khi đúng trang new
       return pathname === ROUTES.QC_INSPECTION_NEW
@@ -96,13 +164,12 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             <p className="mt-1 truncate text-[11px] font-medium tracking-[0.01em] text-emerald-100/55">Quản lý kho thông minh</p>
           </div>
         </div>
-        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2.5 py-5" aria-label="Điều hướng chính">
-          {user && items.map((item, i) => {
+        <nav className={`min-h-0 flex-1 space-y-1 overflow-y-auto px-2.5 py-5 ${user?.role === ROLES.WAREHOUSE_MANAGER || user?.role === ROLES.ADMINISTRATOR || user?.role === ROLES.SUPPLIER || user?.role === ROLES.OPERATION_STAFF || user?.role === ROLES.DISTRIBUTOR ? 'saw-wm-sidebar-groups' : ''}`} aria-label="Điều hướng chính">
+          {user && navItems.map(({ item, index: i, heading }) => {
             const route = getRoute(item, i)
             if (!route) {
               return (
-                <button
-                  key={item.label}
+                <Fragment key={item.label}>{heading && <p className="wm-nav-label">{heading}</p>}<button
                   type="button"
                   disabled
                   className="flex min-h-11 w-full cursor-not-allowed items-center gap-3 rounded-xl px-3 text-[13px] font-medium text-slate-400/55"
@@ -111,14 +178,15 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
                     <AppIcon name={item.icon} className="size-[18px]" />
                   </span>
                   <span className="truncate">{item.label}</span>
-                </button>
+                </button></Fragment>
               )
             }
             const isActive = computeIsActive(route, i)
+            const AdminIcon = user.role === ROLES.ADMINISTRATOR ? adminIcons[item.label] : undefined
             return (
-              <NavLink
-                key={item.label}
+              <Fragment key={item.label}>{heading && <p className="wm-nav-label">{heading}</p>}<NavLink
                 to={route}
+                end={i === 0}
                 onClick={onClose}
                 aria-current={isActive ? 'page' : undefined}
                 className={`group relative flex min-h-11 items-center gap-3 rounded-xl px-2.5 text-[13px] transition-[background-color,color,transform] duration-200 ease-out motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#14231e] ${isActive
@@ -126,10 +194,10 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
                   : 'font-medium text-slate-300/75 hover:translate-x-0.5 hover:bg-white/[0.055] hover:text-white active:translate-x-0'} ${isActive ? 'before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-emerald-300' : ''}`}
               >
                 <span className={`grid size-8 shrink-0 place-items-center rounded-lg transition-colors duration-200 ${isActive ? 'bg-emerald-400/15 text-emerald-200' : 'text-slate-400 group-hover:bg-white/[0.06] group-hover:text-emerald-100'}`}>
-                  <AppIcon name={item.icon} className="size-[18px]" />
+                  {AdminIcon ? <AdminIcon className="size-[18px]" aria-hidden="true" /> : <AppIcon name={item.icon} className="size-[18px]" />}
                 </span>
                 <span className="truncate">{item.label}</span>
-              </NavLink>
+              </NavLink></Fragment>
             )
           })}
         </nav>

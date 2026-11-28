@@ -66,7 +66,8 @@ export async function getSupplyContractOptions(signal?: AbortSignal) {
 export async function createSupplyContract(request: CreateSupplyContractRequest) {
   const response = await apiClient.post<ApiResponse<SupplyContractDetail>>(
     "/supply-contracts",
-    request,
+    serializeContract(request),
+    { headers: { 'Content-Type': 'application/json' } },
   );
   return response.data.data;
 }
@@ -101,7 +102,8 @@ export async function updateSupplyContract(
 ) {
   const response = await apiClient.put<ApiResponse<SupplyContractDetail>>(
     `/supply-contracts/${id}`,
-    request,
+    serializeContract(request),
+    { headers: { 'Content-Type': 'application/json' } },
   );
   return response.data.data;
 }
@@ -174,4 +176,14 @@ export async function rejectSupplyContractByAdmin(id: number, reason: string) {
     { reason },
   );
   return response.data.data;
+}
+
+function serializeContract(request: CreateSupplyContractRequest | UpdateSupplyContractRequest) {
+ const price = String(request.unitPriceVndPerKg)
+ if (!/^\d{1,16}(?:\.\d{1,2})?$/.test(price)) throw new Error('Đơn giá không hợp lệ.')
+ return JSON.stringify({ ...request, unitPriceVndPerKg: price }).replace(/("unitPriceVndPerKg":)"[0-9.]+"/, '$1' + price)
+}
+export async function previewSupplyContract(request: CreateSupplyContractRequest, signal?: AbortSignal) {
+ const result = await apiClient.post<ApiResponse<{ content: string }>>('/supply-contracts/preview', serializeContract(request), { signal, headers: { 'Content-Type': 'application/json' } })
+ return result.data.data.content
 }

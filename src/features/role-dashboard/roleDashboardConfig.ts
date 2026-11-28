@@ -187,8 +187,6 @@ export const roleDashboardConfigs: Record<
         icon: "clipboard",
         route: ROUTES.SUPPLIER_CONTRACTS,
       },
-      { label: "Chứng nhận", icon: "shield" },
-      { label: "Thông báo", icon: "bell" },
       { label: "Hồ sơ doanh nghiệp", icon: "users" },
     ],
     stats: [
@@ -267,11 +265,12 @@ export const roleDashboardConfigs: Record<
 export const adminMenu = [
   commonDashboard,
   { label: "Người dùng", icon: "users" },
+  { label: "Quản lý danh mục", icon: "package", route: "/admin/categories" },
   { label: "Loại nông sản", icon: "package" },
   { label: "Tiêu chuẩn kiểm định", icon: "clipboard" },
   { label: "Duyệt hợp đồng", icon: "clipboard", route: ROUTES.ADMIN_CONTRACTS },
+  { label: "Quản lý kho", icon: "database", route: ROUTES.ADMIN_WAREHOUSE_CAPACITY },
   { label: "Nhật ký hệ thống", icon: "scan" },
-  { label: "Sức chứa kho", icon: "settings", route: ROUTES.ADMIN_WAREHOUSE_CAPACITY },
 ] as const;
 export const roleLabels: Record<Role, string> = {
   [ROLES.ADMINISTRATOR]: "Quản trị viên",

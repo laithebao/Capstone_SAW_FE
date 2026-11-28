@@ -1,0 +1,15 @@
+/* Hide scrollbar chrome for warehouse managers while keeping scrolling enabled. */
+html.saw-warehouse-scrollbars-hidden,
+html.saw-warehouse-scrollbars-hidden body,
+html.saw-warehouse-scrollbars-hidden body * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html.saw-warehouse-scrollbars-hidden::-webkit-scrollbar,
+html.saw-warehouse-scrollbars-hidden body::-webkit-scrollbar,
+html.saw-warehouse-scrollbars-hidden body *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

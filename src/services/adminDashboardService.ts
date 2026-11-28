@@ -3,13 +3,14 @@ import type { ApiResponse } from '@/types/api'
 
 export interface DashboardCount { label: string; value: number }
 export interface DailyDashboardActivity { date: string; accountCount: number; batchCount: number }
+export interface DailyAuditActivity { date: string; loginSuccessCount: number; loginFailedCount: number; operationCount: number }
 
 export interface AdminDashboardData {
   totalAccounts: number; activeAccounts: number; pendingAccounts: number
   totalCropTypes: number; activeCropTypes: number
   totalBatches: number; pendingBatches: number
   totalSuppliers: number; totalDistributors: number
-  roleDistribution: DashboardCount[]; weeklyActivity: DailyDashboardActivity[]
+  roleDistribution: DashboardCount[]; weeklyActivity: DailyDashboardActivity[]; auditActivity?: DailyAuditActivity[] | null
 }
 
 export async function getAdminDashboard(): Promise<AdminDashboardData> {

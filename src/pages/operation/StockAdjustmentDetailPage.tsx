@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from '@/utils/vietnamTime'
 import AdjustmentResolutionPanel from '@/features/operation/components/AdjustmentResolutionPanel'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
@@ -9,7 +10,7 @@ import { adjustmentTypes } from '@/features/operation/stockAdjustmentFormat'
 import { pickingKg } from '@/features/operation/pickingFormat'
 import type { AdjustmentDetail } from '@/types/stockAdjustment'
 
-const time = (v: string | null) => v ? new Date(v.endsWith('Z') ? v : v + 'Z').toLocaleString('vi-VN') : 'Chưa ghi nhận'
+const time = (v: string | null) => v ? formatVietnamDateTime(v.endsWith('Z') ? v : v + 'Z') : 'Chưa ghi nhận'
 export default function StockAdjustmentDetailPage() {
   const id = Number(useParams().id), location = useLocation()
   const [data, setData] = useState<AdjustmentDetail | null>(null), [loading, setLoading] = useState(true), [error, setError] = useState(''), [reload, setReload] = useState(0)

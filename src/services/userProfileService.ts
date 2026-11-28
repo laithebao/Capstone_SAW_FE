@@ -17,14 +17,14 @@ export async function getMyProfile(signal?: AbortSignal): Promise<UserProfile> {
   return response.data.data
 }
 
-export async function updateMyProfile(request: UpdateUserProfileRequest, registeredTaxCode?: string | null): Promise<UserProfile> {
-  if (request.distributor && !registeredTaxCode?.trim()) {
+export async function updateMyProfile(request: UpdateUserProfileRequest, registeredTaxCode?: string | null, completingTaxCode = false): Promise<UserProfile> {
+  const realSnapshot = registeredTaxCode?.trim() && !registeredTaxCode.trim().toUpperCase().startsWith('GOOGLE-')
+  if (request.distributor && !realSnapshot && !completingTaxCode)
     throw new Error('Không đọc được mã số thuế đã đăng ký. Vui lòng tải lại hồ sơ trước khi lưu.')
-  }
   // Some deployed DTO versions require TaxCode. Send the stored value separately
   // from editable fields; never take it from the draft or the disabled input.
   const payload = request.distributor
-    ? { ...request, distributor: { ...request.distributor, taxCode: registeredTaxCode } }
+    ? { ...request, distributor: { ...request.distributor, taxCode: realSnapshot ? registeredTaxCode : request.distributor.taxCode } }
     : request
   const response = await apiClient.put<ApiResponse<UserProfile>>('/user-profiles/me', payload)
   return response.data.data

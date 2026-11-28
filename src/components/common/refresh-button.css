@@ -1,0 +1,7 @@
+.saw-refresh-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:0 16px; border:1px solid #d9e5df; border-radius:8px; background:white; color:#28443a; font-size:13px; font-weight:600; cursor:pointer; }
+.saw-refresh-button svg { width:16px; height:16px; }
+.saw-refresh-button:hover:not(:disabled) { background:#f2f8f5; }
+.saw-refresh-button:disabled { opacity:.6; cursor:not-allowed; }
+.saw-refresh-button__spin { animation:saw-refresh-spin .8s linear infinite; }
+@keyframes saw-refresh-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .saw-refresh-button__spin { animation:none; } }

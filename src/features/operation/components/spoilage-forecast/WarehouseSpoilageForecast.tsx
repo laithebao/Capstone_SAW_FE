@@ -1,3 +1,4 @@
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { ROUTES } from '@/constants/routes';
@@ -115,7 +116,7 @@ export function WarehouseSpoilageForecast() {
                       {forecast.actions.map((action, index) => <ActionItemCard key={index} action={action} index={index} />)}
                     </div>
                   )}
-                  <p className="text-xs text-slate-500">Thời điểm dự báo {timestamp.format(new Date(forecast.generatedAt))}</p>
+                  <p className="text-xs text-slate-500">Thời điểm dự báo {timestamp.format(parseApiTimestamp(forecast.generatedAt))}</p>
                 </div>
               </details>
               <Link

@@ -10,12 +10,38 @@ export interface AiChatRequest {
   batchContextId?: number | null
   batchContextCode?: string | null
   batchCode?: string | null
-  history: ChatMessage[]
+  history?: ChatMessage[]
+}
+
+export interface AiChatHistoryTurn {
+  id: number
+  message: string
+  reply: string
+  sentAt: string
+  repliedAt: string
+}
+
+export interface AiChatHistoryPage {
+  items: AiChatHistoryTurn[]
+  hasMore: boolean
 }
 
 export interface AiChatResponse {
   reply: string
   isError: boolean
+  savedTurn?: AiChatHistoryTurn | null
+}
+
+export async function getAiChatHistory(beforeId?: number, signal?: AbortSignal): Promise<AiChatHistoryPage> {
+  const response = await apiClient.get<ApiWrapper<AiChatHistoryPage>>('/distributor/ai-chat/history', {
+    params: { beforeId },
+    signal,
+  })
+  return response.data.data
+}
+
+export async function clearAiChatHistory(signal?: AbortSignal): Promise<void> {
+  await apiClient.delete('/distributor/ai-chat/history', { signal })
 }
 
 interface ApiWrapper<T> {

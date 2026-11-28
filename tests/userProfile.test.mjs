@@ -118,11 +118,13 @@ const draft = () => ({ fullName: 'User', phoneNumber: '0901234567', distributor:
   distributorName: 'Company', contactPerson: 'Contact', phoneNumber: '0901234567', email: 'contact@example.com', address: 'Address',
 } })
 
-test('editable profile draft excludes registered tax code and other server-owned business fields', () => {
+test('completion draft accepts tax code but excludes server-owned business identity and status', () => {
   const request = draft()
   const result = userProfileSchema.parse({ ...request, distributor: { ...request.distributor, taxCode: 'injected', distributorCode: 'injected', profileStatus: 'INACTIVE' } })
-  assert.deepEqual(result, request)
-  assert.equal('taxCode' in result.distributor, false)
+  assert.deepEqual(result, { ...request, distributor: { ...request.distributor, taxCode: 'injected' } })
+  assert.equal('profileStatus' in result.distributor, false)
+  assert.equal('distributorCode' in result.distributor, false)
+  assert.equal(userProfileSchema.safeParse({ ...request, distributor: { ...request.distributor, taxCode: 'GOOGLE-placeholder' } }).success, false)
 })
 
 test('both profile schemas normalize the registration phone formats', () => {
@@ -163,7 +165,7 @@ test('optional contacts can still be cleared and supplier length limits remain e
 
 test('initial supplier declaration retains required contacts and accepts the registration phone format', () => {
   const request = { supplierName: 'Supplier', taxCode: '0123456789', legalRepresentative: 'Owner', contactPerson: 'Contact', phoneNumber: '+84 901 234 567',
-    email: 'supplier@example.com', address: 'Address', growingAreas: [{ growingAreaId: 1 }], cropTypeIds: [1], certifications: [] }
+    email: 'supplier@example.com', address: 'Address', growingAreas: [{ growingAreaId: 1, areaName: 'Vùng đã khai báo' }], cropTypeIds: [1], certifications: [] }
   assert.equal(declareSupplierProfileSchema.parse(request).phoneNumber, '+84901234567')
   assert.equal(declareSupplierProfileSchema.safeParse({ ...request, phoneNumber: '' }).success, false)
   assert.equal(declareSupplierProfileSchema.safeParse({ ...request, email: '' }).success, false)
@@ -210,7 +212,7 @@ test('nested hook-form errors flatten without traversing DOM refs', () => {
 })
 
 test('supplier edit exposes all invalid fields while preserving optional contact fields', () => {
-  const request = { supplierName: ' ', taxCode: '0123456789', legalRepresentative: ' ', contactPerson: '', address: '', cropTypeIds: [], phoneNumber: 'letters', email: 'not-email' }
+  const request = { supplierName: ' ', taxCode: '0123456789', legalRepresentative: ' ', contactPerson: '', address: '', cropTypeIds: [], growingAreas: [{ growingAreaId: 1, areaName: 'Vùng đã khai báo' }], phoneNumber: 'letters', email: 'not-email' }
   const validation = updateSupplierProfileSchema.safeParse(request)
   assert.equal(validation.success, false)
   const fields = getValidationFieldErrors(validation.error.issues)

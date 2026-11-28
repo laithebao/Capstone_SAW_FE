@@ -1,84 +1,61 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import AppIcon from '@/components/common/AppIcon'
+import { parseApiTimestamp } from '@/utils/vietnamTime'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Check, FilterX, LockOpen, RotateCcw, Search, ShieldCheck, UserCheck, UserCog, UserX, Users, X } from 'lucide-react'
+import FormNotification from '@/components/common/FormNotification'
 import { getAuthErrorMessage } from '@/services/authService'
-import {
-  getAccountAccess, getAccounts, getPermissions, getRoles, updateAccountAccess, updateAccountStatus,
-  type PermissionOption, type RoleOption, type UserAccessDetail, type UserAccessListItem,
-} from '@/services/userAccessService'
+import { getAccountAccess, getAccounts, getRoles, updateAccountAccess, updateAccountStatus, type RoleOption, type UserAccessDetail, type UserAccessListItem } from '@/services/userAccessService'
+import './admin-user-access.css'
 
-const statusLabel: Record<string, string> = { ACTIVE: 'Hoạt động', INACTIVE: 'Vô hiệu', PENDING: 'Chờ kích hoạt', LOCKED: 'Tạm khóa' }
-const statusTone: Record<string, string> = { ACTIVE: 'bg-emerald-50 text-emerald-700', INACTIVE: 'bg-slate-100 text-slate-600', PENDING: 'bg-amber-50 text-amber-700', LOCKED: 'bg-rose-50 text-rose-700' }
+type Status = '' | 'ACTIVE' | 'PENDING' | 'LOCKED' | 'INACTIVE'
+const statuses: { value: Status; label: string }[] = [{ value: '', label: 'Tất cả' }, { value: 'ACTIVE', label: 'Hoạt động' }, { value: 'PENDING', label: 'Chờ kích hoạt' }, { value: 'LOCKED', label: 'Tạm khóa' }, { value: 'INACTIVE', label: 'Vô hiệu' }]
+const labels: Record<string, string> = { ACTIVE: 'Hoạt động', PENDING: 'Chờ kích hoạt', LOCKED: 'Tạm khóa', INACTIVE: 'Vô hiệu' }
+const time = (value: string | null) => { if (!value) return 'Chưa đăng nhập'; const date = parseApiTimestamp(value); return Number.isNaN(date.getTime()) ? 'Chưa ghi nhận' : new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  dateStyle: 'short', timeStyle: 'short' }).format(date) }
+const initials = (name: string) => name.trim().split(/\s+/).slice(-2).map(part => part[0]).join('').toUpperCase() || '?'
 
 export default function UserAccessPage() {
-  const [accounts, setAccounts] = useState<UserAccessListItem[]>([])
+  const [items, setItems] = useState<UserAccessListItem[]>([])
   const [roles, setRoles] = useState<RoleOption[]>([])
-  const [permissions, setPermissions] = useState<PermissionOption[]>([])
-  const [selected, setSelected] = useState<UserAccessDetail | null>(null)
+  const [counts, setCounts] = useState<Partial<Record<Status, number>>>({})
+  const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null)
-  const [overrides, setOverrides] = useState<Record<number, boolean>>({})
+  const [query, setQuery] = useState('')
+  const [status, setStatus] = useState<Status>('')
+  const [role, setRole] = useState('')
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const [selected, setSelected] = useState<UserAccessDetail | null>(null)
+  const [selectedRole, setSelectedRole] = useState<number | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [confirm, setConfirm] = useState<UserAccessListItem | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [notice, setNotice] = useState<{ text: string; tone: 'success' | 'error' }>({ text: '', tone: 'success' })
+  const lock = useRef(false)
+  const detailSequence = useRef(0)
+  const [revision, setRevision] = useState(0)
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const [data, roleData, permissionData] = await Promise.all([
-        getAccounts(search, roleFilter ? Number(roleFilter) : undefined, statusFilter || undefined),
-        getRoles(), getPermissions(),
-      ])
-      setAccounts(data.items); setRoles(roleData); setPermissions(permissionData)
-    } catch (requestError) { setError(getAuthErrorMessage(requestError, 'Không thể tải dữ liệu phân quyền.')) }
-    finally { setLoading(false) }
-  }, [search, roleFilter, statusFilter])
-
-  useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer) }, [load])
-
-  const activeAccounts = useMemo(() => accounts.filter((account) => account.status === 'ACTIVE').length, [accounts])
-  async function selectAccount(item: UserAccessListItem) {
-    setError(null); setMessage(null)
-    try {
-      const detail = await getAccountAccess(item.id)
-      setSelected(detail); setSelectedRoleId(detail.roleId)
-      setOverrides(Object.fromEntries(detail.permissionOverrides.map((permission) => [permission.permissionId, permission.isGranted])))
-    } catch (requestError) { setError(getAuthErrorMessage(requestError, 'Không thể tải quyền tài khoản.')) }
-  }
-  function resetFilter() { setSearch(''); setRoleFilter(''); setStatusFilter('') }
-  function toggleOverride(permissionId: number) {
-    setOverrides((current) => ({ ...current, [permissionId]: !(current[permissionId] ?? false) }))
-  }
-  async function save() {
-    if (!selected || !selectedRoleId) return
-    setSaving(true); setError(null)
-    try {
-      const permissionOverrides = Object.entries(overrides).map(([permissionId, isGranted]) => ({ permissionId: Number(permissionId), isGranted }))
-      const detail = await updateAccountAccess(selected.user.id, selectedRoleId, permissionOverrides)
-      setSelected(detail); setMessage('Đã lưu thay đổi quyền tài khoản.'); await load()
-    } catch (requestError) { setError(getAuthErrorMessage(requestError, 'Không thể cập nhật quyền.')) }
-    finally { setSaving(false) }
-  }
-  async function changeStatus(account: UserAccessListItem) {
-    const nextStatus = account.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
-    try {
-      const updated = await updateAccountStatus(account.id, nextStatus)
-      setAccounts((current) => current.map((item) => item.id === updated.id ? updated : item))
-      setSelected((current) => current?.user.id === updated.id ? { ...current, user: updated } : current)
-      setMessage('Đã cập nhật trạng thái tài khoản.')
-    }
-    catch (requestError) { setError(getAuthErrorMessage(requestError, 'Không thể đổi trạng thái tài khoản.')) }
-  }
-
-  return <div className="mx-auto max-w-[1600px] space-y-5">
-    <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end"><div><p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Quản trị · Quản lý người dùng · Phân quyền</p><h1 className="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">Phân quyền tài khoản người dùng</h1><p className="mt-1 text-sm text-slate-500">Quản lý vai trò hệ thống và quyền ngoại lệ theo từng tài khoản.</p></div><div className="flex gap-2"><button onClick={resetFilter} className="h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700">Đặt lại bộ lọc</button><button disabled={!selected || saving} onClick={() => void save()} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white disabled:opacity-60"><AppIcon name="shield" className="size-4" />{saving ? 'Đang lưu...' : 'Cập nhật quyền'}</button></div></div>
-    {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}{message && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</p>}
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div className="flex flex-col gap-3 border-b border-slate-100 p-4"><div className="flex items-center justify-between"><h2 className="font-bold">Người dùng hệ thống <span className="text-slate-400">({accounts.length})</span></h2><span className="text-xs text-emerald-700">{activeAccounts} đang hoạt động</span></div><div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_170px_150px]"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm tài khoản, họ tên, email..." className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500" /><select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 text-sm"><option value="">Tất cả vai trò</option>{roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 text-sm"><option value="">Tất cả trạng thái</option>{Object.entries(statusLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div></div><div className="overflow-x-auto"><table className="w-full min-w-[740px] text-left text-sm"><thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3">Người dùng</th><th className="px-5 py-3">Vai trò</th><th className="px-5 py-3">Trạng thái</th><th className="px-5 py-3">Đăng nhập cuối</th><th className="px-5 py-3 text-right">Thao tác</th></tr></thead><tbody className="divide-y divide-slate-100">{loading ? <tr><td colSpan={5} className="px-5 py-9 text-center text-slate-500">Đang tải dữ liệu...</td></tr> : accounts.length === 0 ? <tr><td colSpan={5} className="px-5 py-9 text-center text-slate-500">Không có tài khoản phù hợp.</td></tr> : accounts.map((account) => <tr key={account.id} className={`cursor-pointer hover:bg-slate-50 ${selected?.user.id === account.id ? 'bg-emerald-50/50' : ''}`} onClick={() => void selectAccount(account)}><td className="px-5 py-4"><div className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">{account.fullName.slice(0, 2).toUpperCase()}</span><div><p className="font-semibold">{account.fullName}</p><p className="text-xs text-slate-500">{account.email}</p></div></div></td><td className="px-5 py-4"><span className="rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">{account.roleName}</span></td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${statusTone[account.status] ?? 'bg-slate-100 text-slate-600'}`}>{statusLabel[account.status] ?? account.status}</span></td><td className="px-5 py-4 text-xs text-slate-500">{account.lastLoginAt ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(account.lastLoginAt)) : 'Chưa đăng nhập'}</td><td className="px-5 py-4 text-right"><button onClick={(event) => { event.stopPropagation(); void selectAccount(account) }} className="mr-3 text-xs font-semibold text-emerald-700">Phân quyền</button><button onClick={(event) => { event.stopPropagation(); void changeStatus(account) }} className="text-xs font-semibold text-rose-600">{account.status === 'ACTIVE' ? 'Vô hiệu' : 'Kích hoạt'}</button></td></tr>)}</tbody></table></div></section>
-      <aside className="min-h-[520px] rounded-xl border border-slate-200 bg-white p-5 shadow-sm">{selected ? <div className="space-y-5"><div className="flex items-start justify-between"><div className="flex gap-3"><span className="grid size-11 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-700">{selected.user.fullName.slice(0, 2).toUpperCase()}</span><div><h2 className="font-bold">{selected.user.fullName}</h2><p className="text-xs text-slate-500">{selected.user.email}</p></div></div><button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-700">×</button></div><div className="border-y border-slate-100 py-4"><label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Gán vai trò hệ thống</label><select value={selectedRoleId ?? ''} onChange={(event) => setSelectedRoleId(Number(event.target.value))} className="mt-2 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm">{roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select><p className="mt-2 text-xs leading-5 text-slate-500">Vai trò cung cấp quyền mặc định. Quyền dưới đây là ngoại lệ riêng cho tài khoản.</p></div><div><div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-bold">Quyền ngoại lệ</h3><span className="text-xs text-slate-500">{Object.keys(overrides).length} đã cấu hình</span></div><div className="max-h-64 space-y-2 overflow-y-auto pr-1">{permissions.length === 0 ? <p className="text-sm text-slate-500">Chưa có quyền nào trong hệ thống.</p> : permissions.map((permission) => <label key={permission.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50"><input type="checkbox" checked={overrides[permission.id] ?? false} onChange={() => toggleOverride(permission.id)} className="mt-0.5 size-4 accent-emerald-700" /><span><b className="block text-xs">{permission.name}</b><small className="text-[11px] text-slate-500">{permission.code}{permission.description ? ` · ${permission.description}` : ''}</small></span></label>)}</div></div><button disabled={saving} onClick={() => void save()} className="h-11 w-full rounded-lg bg-emerald-700 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60">Lưu thay đổi</button></div> : <div className="grid h-full min-h-[450px] place-items-center text-center text-sm text-slate-500"><div><span className="mx-auto grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400"><AppIcon name="users" className="size-6" /></span><p className="mt-3 font-semibold text-slate-700">Chọn một người dùng</p><p className="mt-1 text-xs">Chọn dòng trong danh sách để gán role và quyền.</p></div></div>}</aside>
-    </div>
-    <section className="rounded-xl border border-slate-200 bg-amber-50/50 p-4"><div className="flex gap-3"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700"><AppIcon name="shield" className="size-4" /></span><div><h2 className="text-sm font-bold text-slate-800">Khuyến nghị an ninh</h2><p className="mt-1 text-xs leading-5 text-slate-600">Không tự hạ quyền hoặc vô hiệu hóa tài khoản Admin đang đăng nhập. Khi cần ngăn truy cập tạm thời, dùng “Vô hiệu” thay vì xóa tài khoản để giữ lịch sử nghiệp vụ.</p></div></div></section>
+  useEffect(() => { const timer = window.setTimeout(() => { setPage(1); setQuery(search.trim()) }, 300); return () => window.clearTimeout(timer) }, [search])
+  useEffect(() => { let active = true; const timer = window.setTimeout(() => { setLoading(true); setLoadError(''); void getAccounts(query, role ? Number(role) : undefined, status || undefined, page).then(data => { if (active) { setItems(data.items); setTotal(data.totalCount) } }).catch(error => { if (active) setLoadError(getAuthErrorMessage(error, 'Không thể tải danh sách tài khoản.')) }).finally(() => { if (active) setLoading(false) }) }, 0); return () => { active = false; window.clearTimeout(timer) } }, [query, role, status, page, revision])
+  useEffect(() => { let active = true; void getRoles().then(data => { if (active) setRoles(data) }).catch(() => { if (active) setLoadError('Không thể tải danh sách vai trò.') }); return () => { active = false } }, [])
+  const refreshCounts = useCallback(async () => { const results = await Promise.allSettled(statuses.map(item => getAccounts('', undefined, item.value || undefined))); setCounts(Object.fromEntries(results.flatMap((result, i) => result.status === 'fulfilled' ? [[statuses[i].value, result.value.totalCount]] : []))) }, [])
+  useEffect(() => { const timer = window.setTimeout(() => void refreshCounts(), 0); return () => window.clearTimeout(timer) }, [refreshCounts, revision])
+  useEffect(() => { if (!selected && !confirm && !detailLoading) return; const prior = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = prior } }, [selected, confirm, detailLoading])
+  async function open(item: UserAccessListItem) { const seq = ++detailSequence.current; setDetailLoading(true); setSelected(null); try { const detail = await getAccountAccess(item.id); if (seq === detailSequence.current) { setSelected(detail); setSelectedRole(detail.roleId) } } catch (error) { if (seq === detailSequence.current) setNotice({ text: getAuthErrorMessage(error, 'Không thể tải quyền tài khoản.'), tone: 'error' }) } finally { if (seq === detailSequence.current) setDetailLoading(false) } }
+  function close() { if (busy) return; detailSequence.current++; setSelected(null); setDetailLoading(false); setSelectedRole(null) }
+  async function save() { if (!selected || selectedRole == null || selectedRole === selected.roleId || lock.current) return; lock.current = true; setBusy(true); try { const latest = await getAccountAccess(selected.user.id); if (latest.roleId !== selected.roleId) { setNotice({ text: 'Vai trò đã thay đổi. Vui lòng đóng và mở lại thông tin tài khoản.', tone: 'error' }); return } await updateAccountAccess(selected.user.id, selectedRole, latest.permissionOverrides.map(({ permissionId, isGranted }) => ({ permissionId, isGranted }))); setSelected(null); setNotice({ text: 'Đã cập nhật vai trò tài khoản.', tone: 'success' }); setRevision(v => v + 1) } catch (error) { setNotice({ text: getAuthErrorMessage(error, 'Không thể cập nhật vai trò.'), tone: 'error' }) } finally { lock.current = false; setBusy(false) } }
+  async function applyStatus() { if (!confirm || lock.current) return; lock.current = true; setBusy(true); try { const updated = await updateAccountStatus(confirm.id, confirm.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'); setItems(current => current.map(item => item.id === updated.id ? updated : item)); setConfirm(null); setNotice({ text: 'Đã cập nhật trạng thái tài khoản.', tone: 'success' }); setRevision(v => v + 1) } catch (error) { setNotice({ text: getAuthErrorMessage(error, 'Không thể cập nhật trạng thái tài khoản.'), tone: 'error' }) } finally { lock.current = false; setBusy(false) } }
+  function reset() { setSearch(''); setQuery(''); setStatus(''); setRole(''); setPage(1) }
+  return <div className="admin-users">
+    <FormNotification warehouse message={notice.text} tone={notice.tone} onDismiss={() => setNotice(n => ({ ...n, text: '' }))} />
+    <header className="au-heading"><div className="au-heading-icon"><Users /></div><div><p>Quản trị hệ thống / Người dùng</p><h1>Phân quyền người dùng</h1><span>Quản lý vai trò và trạng thái tài khoản.</span></div></header>
+    <section className="au-panel"><div className="au-panel-title"><h2>Danh sách người dùng</h2><small>{total.toLocaleString('vi-VN')} kết quả</small></div>
+      <div className="au-tabs" role="tablist" aria-label="Trạng thái tài khoản">{statuses.map(item => <button role="tab" type="button" key={item.value} aria-selected={status === item.value} onClick={() => { setStatus(item.value); setPage(1) }}>{item.label}<span>{counts[item.value] ?? '—'}</span></button>)}</div>
+      <div className="au-filters"><label className="au-search"><Search /><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm tài khoản, họ tên hoặc email" aria-label="Tìm tài khoản" /></label><select value={role} onChange={event => { setRole(event.target.value); setPage(1) }} aria-label="Lọc vai trò"><option value="">Tất cả vai trò</option>{roles.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><select value={status} onChange={event => { setStatus(event.target.value as Status); setPage(1) }} aria-label="Lọc trạng thái">{statuses.map(item => <option key={item.value} value={item.value}>{item.value ? item.label : 'Tất cả trạng thái'}</option>)}</select><button type="button" className="au-icon-button" onClick={reset} title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc"><FilterX /></button></div>
+      {loadError && <p className="au-error" role="alert">{loadError}</p>}
+      <div className="au-table-wrap"><table><thead><tr><th>Người dùng</th><th>Vai trò / Đăng nhập cuối</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{loading ? <tr><td colSpan={4} className="au-empty">Đang tải dữ liệu…</td></tr> : items.length === 0 ? <tr><td colSpan={4} className="au-empty">Không có tài khoản phù hợp.</td></tr> : items.map(item => <tr key={item.id} onClick={() => void open(item)}><td><div className="au-person"><span className={`au-avatar au-avatar--${item.roleCode}`}>{initials(item.fullName)}</span><div><strong>{item.fullName}</strong><small>{item.email}</small></div></div></td><td><strong>{item.roleName}</strong><small>{time(item.lastLoginAt)}</small></td><td><span className={`au-status au-status--${item.status}`}><i />{labels[item.status] ?? item.status}</span></td><td><div className="au-actions"><button type="button" className="au-icon-button" onClick={event => { event.stopPropagation(); void open(item) }} aria-label={`Phân quyền ${item.fullName}`} title="Phân quyền"><ShieldCheck /></button><button type="button" className="au-icon-button" onClick={event => { event.stopPropagation(); setConfirm(item) }} aria-label={`${item.status === 'ACTIVE' ? 'Vô hiệu hóa' : item.status === 'LOCKED' ? 'Mở khóa' : 'Kích hoạt'} ${item.fullName}`} title={item.status === 'ACTIVE' ? 'Vô hiệu hóa' : item.status === 'LOCKED' ? 'Mở khóa' : 'Kích hoạt'}>{item.status === 'ACTIVE' ? <UserX /> : item.status === 'LOCKED' ? <LockOpen /> : <UserCheck />}</button></div></td></tr>)}</tbody></table></div>
+      <footer className="au-footer"><span>Hiển thị {items.length} / {total} tài khoản</span><div><button disabled={page <= 1 || loading} onClick={() => setPage(v => v - 1)}>Trước</button><b>{page}</b><button disabled={page * 100 >= total || loading} onClick={() => setPage(v => v + 1)}>Sau</button></div></footer>
+    </section>
+    {(selected || detailLoading) && <div className="au-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) close() }}><aside className="au-drawer" role="dialog" aria-modal="true" aria-label="Phân quyền tài khoản"><div className="au-drawer-head"><div><small>PHÂN QUYỀN TÀI KHOẢN</small><h2>Vai trò người dùng</h2></div><button className="au-icon-button" type="button" onClick={close} disabled={busy} aria-label="Đóng"><X /></button></div>{detailLoading ? <p className="au-empty">Đang tải quyền tài khoản…</p> : selected && <><div className="au-drawer-body"><div className="au-person au-selected"><span className={`au-avatar au-avatar--${selected.user.roleCode}`}>{initials(selected.user.fullName)}</span><div><strong>{selected.user.fullName}</strong><small>{selected.user.email}</small><small>Đăng nhập gần nhất · {time(selected.user.lastLoginAt)}</small></div></div><h3>Vai trò hệ thống</h3><div className="au-role-grid">{roles.map(item => <button type="button" key={item.id} aria-pressed={selectedRole === item.id} className={`au-role ${selectedRole === item.id ? 'is-selected' : ''}`} onClick={() => setSelectedRole(item.id)}><UserCog /><span>{item.name}</span>{selectedRole === item.id && <Check />}</button>)}</div></div><div className="au-drawer-footer"><button type="button" className="au-secondary" disabled={busy || selectedRole === selected.roleId} onClick={() => setSelectedRole(selected.roleId)}><RotateCcw /> Hoàn tác</button><button type="button" className="au-primary" disabled={busy || selectedRole === selected.roleId} onClick={() => void save()}>{busy ? 'Đang lưu…' : 'Lưu thay đổi'}</button></div></>}</aside></div>}
+    {confirm && <div className="au-backdrop au-backdrop--modal" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setConfirm(null) }}><div className="au-confirm" role="alertdialog" aria-modal="true" aria-labelledby="au-confirm-title"><div className="au-confirm-icon">{confirm.status === 'ACTIVE' ? <UserX /> : <UserCheck />}</div><h2 id="au-confirm-title">{confirm.status === 'ACTIVE' ? 'Vô hiệu hóa tài khoản?' : confirm.status === 'LOCKED' ? 'Mở khóa tài khoản?' : 'Kích hoạt tài khoản?'}</h2><p>Xác nhận thay đổi trạng thái của <strong>{confirm.fullName}</strong> ({confirm.email}).</p><div><button className="au-secondary" disabled={busy} onClick={() => setConfirm(null)}>Hủy</button><button className={confirm.status === 'ACTIVE' ? 'au-danger' : 'au-primary'} disabled={busy} onClick={() => void applyStatus()}>{busy ? 'Đang xử lý…' : 'Xác nhận'}</button></div></div></div>}
   </div>
 }

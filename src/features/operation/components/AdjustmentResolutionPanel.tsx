@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from '@/utils/vietnamTime'
 import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { ROUTES } from '@/constants/routes'
@@ -36,7 +37,7 @@ export default function AdjustmentResolutionPanel({ data, manager = false, snaps
     {r.replacesStockAdjustmentId && <Link className="block text-sm font-semibold text-emerald-700 underline" to={(manager ? ROUTES.WAREHOUSE_STOCK_ADJUSTMENT_DETAIL : ROUTES.OPERATION_STOCK_ADJUSTMENT_DETAIL).replace(':id', String(r.replacesStockAdjustmentId))}>Xem phiếu gốc được thay thế</Link>}
     {r.replacementAdjustmentId && <Link className="block text-sm font-semibold text-emerald-700 underline" to={(manager ? ROUTES.WAREHOUSE_STOCK_ADJUSTMENT_DETAIL : ROUTES.OPERATION_STOCK_ADJUSTMENT_DETAIL).replace(':id', String(r.replacementAdjustmentId))}>Mở phiếu thay thế đang xử lý</Link>}
     {r.resolutionReason && <p className="whitespace-pre-wrap text-sm">Kết luận kiểm tra: {r.resolutionReason}</p>}
-    {manager && r.updatedAt && <p className="text-xs text-slate-500">Cập nhật: {new Date(r.updatedAt.endsWith('Z') ? r.updatedAt : r.updatedAt + 'Z').toLocaleString('vi-VN')} · {r.updatedBy ?? 'Chưa ghi nhận'}</p>}
+    {manager && r.updatedAt && <p className="text-xs text-slate-500">Cập nhật: {formatVietnamDateTime(r.updatedAt.endsWith('Z') ? r.updatedAt : r.updatedAt + 'Z')} · {r.updatedBy ?? 'Chưa ghi nhận'}</p>}
     {!manager && data.summary.orderCode && <p>Đơn <strong>{data.summary.orderCode}</strong></p>}
     {manager && r.order && <p>Đơn <strong>{r.order.orderCode}</strong> · {r.order.weightKg.toLocaleString('vi-VN')} kg · {money(r.order.wholeLotPrice)}. {r.order.status === 'CANCELLED' ? 'Đơn đã hủy — không tiếp tục soạn.' : r.state === 'RESOLVED' ? 'Tồn và giá đã được cập nhật theo quyết định duyệt.' : 'Tồn và giá chỉ đổi khi quản lý phê duyệt cuối.'}</p>}
     {manager && r.proposals.map(p => <article key={p.id} className="space-y-2 rounded-lg border border-slate-200 p-4"><h3 className="font-semibold">Đề xuất điều chỉnh · {proposalStates[p.status] ?? p.status}</h3><p>{p.originalWeightKg} kg → {p.proposedWeightKg} kg; giá cả lô {money(p.originalWholeLotPrice)} → {money(p.proposedWholeLotPrice)}</p><p>Tổng đơn: {money(p.originalOrderTotal)} → {money(p.proposedOrderTotal)}</p><p className="whitespace-pre-wrap">{p.customerMessage}</p>{p.responseReason && <p>Khách phản hồi: {p.responseReason}</p>}{p.withdrawalReason && <p>Lý do rút: {p.withdrawalReason}</p>}</article>)}

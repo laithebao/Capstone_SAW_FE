@@ -1,3 +1,4 @@
+import SupplierCropSelector from '@/components/supplier/SupplierCropSelector'
 import { SupplierDocumentEditor } from '@/features/supplier/components/SupplierDocuments';
 import { optionalNumericInput } from '@/features/supplier/schemas/supplierBatchSchema';
 import { updateSupplierProfileSchema } from '@/features/supplier/schemas/supplierProfileSchema';
@@ -7,7 +8,7 @@ import { ROUTES } from '@/constants/routes';
 import { supplierAssetUrl, validateSupplierFile } from '@/features/supplier/supplierFiles';
 import type { SupplierDocumentDto } from '@/types/supplier';
 import { getAuthErrorMessage } from '@/services/authService';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, useWatch, useFieldArray, type FieldPath, type SubmitHandler } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router';
 import { supplierService } from '../../services/suppliers/supplierService';
@@ -33,7 +34,7 @@ export const EditSupplierProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [growingAreaOptions, setGrowingAreaOptions] = useState<SupplierGrowingAreaDto[]>([]);
+  const [, setGrowingAreaOptions] = useState<SupplierGrowingAreaDto[]>([]);
   const [cropTypeOptions, setCropTypeOptions] = useState<SupplierCropTypeDto[]>([]);
   const [canCompleteTaxCode, setCanCompleteTaxCode] = useState(false);
   const [notification, setNotification] = useState('');
@@ -111,32 +112,18 @@ export const EditSupplierProfilePage: React.FC = () => {
   };
 
   // Gom nhóm danh sách cây trồng theo CategoryName
-  const groupedCropTypes = useMemo(() => {
-    const groups: { [category: string]: SupplierCropTypeDto[] } = {};
-    const safeCropList = Array.isArray(cropTypeOptions) ? cropTypeOptions : [];
-
-    safeCropList.forEach((crop) => {
-      const category = crop.categoryName || 'Nông sản khác';
-      if (!groups[category]) {
-        groups[category] = [];
-      }
-      groups[category].push(crop);
-    });
-    return groups;
-  }, [cropTypeOptions]);
 
   useEffect(() => {
     const fetchCurrentProfile = async () => {
       try {
         setLoading(true);
-        const [profile, areas, crops] = await Promise.all([
+        const [profile, areas] = await Promise.all([
           supplierService.getMyProfile(),
           supplierService.getGrowingAreas(),
-          supplierService.getCropTypes(),
         ]);
 
         setGrowingAreaOptions(Array.isArray(areas) ? areas : []);
-        setCropTypeOptions(Array.isArray(crops) ? crops : []);
+        setCropTypeOptions(profile?.cropTypes ?? []);
 
         if (profile) {
           setCanCompleteTaxCode(profile.profileStatus === 'PENDING_REVIEW' && profile.taxCode.startsWith('GOOGLE-'));
@@ -149,7 +136,7 @@ export const EditSupplierProfilePage: React.FC = () => {
           if (profile.supplierCode) setMetaInfo((prev) => ({ ...prev, code: profile.supplierCode }));
 
           const formattedAreas = (profile.growingAreas || []).map((ga) => ({
-            growingAreaId: ga.growingAreaId,
+            growingAreaId: ga.growingAreaId, areaName: ga.areaName,
             areaInHectares: ga.areaInHectares || undefined,
           }));
 
@@ -201,18 +188,6 @@ export const EditSupplierProfilePage: React.FC = () => {
     }
   };
 
-  const handleCropToggle = (id: number) => {
-    const numericId = Number(id);
-    if (!numericId) return;
-
-    const current = [...selectedCrops].map(Number);
-    const idx = current.indexOf(numericId);
-    if (idx > -1) current.splice(idx, 1);
-    else current.push(numericId);
-    
-    setValue('cropTypeIds', current);
-    if (current.length > 0) clearErrors('cropTypeIds');
-  };
 
   const handleCertToggle = (cert: string) => {
     let current = [...selectedCerts];
@@ -237,12 +212,12 @@ export const EditSupplierProfilePage: React.FC = () => {
       return;
     }
     const hasInvalidArea = values.growingAreas?.some(
-      (ga) => !ga.growingAreaId || Number(ga.growingAreaId) === 0
+      (ga) => !ga.areaName?.trim()
     );
     if (hasInvalidArea) {
       showFieldErrors(Object.fromEntries(values.growingAreas.map((area, index) => [index, area] as const)
-        .filter(([, area]) => !area.growingAreaId || Number(area.growingAreaId) === 0)
-        .map(([index]) => [`growingAreas.${index}.growingAreaId`, 'Vui lòng chọn vùng trồng hợp lệ.'])));
+        .filter(([, area]) => !area.areaName?.trim())
+        .map(([index]) => [`growingAreas.${index}.areaName`, 'Vui lòng chọn vùng trồng hợp lệ.'])));
       return;
     }
 
@@ -266,9 +241,9 @@ export const EditSupplierProfilePage: React.FC = () => {
       ];
 
       const validGrowingAreas = (values.growingAreas || [])
-        .filter((ga) => ga && Number(ga.growingAreaId) > 0)
+        .filter((ga) => ga && ga.areaName?.trim())
         .map((ga) => ({
-          growingAreaId: Number(ga.growingAreaId),
+          growingAreaId: Number(ga.growingAreaId) || 0, areaName: ga.areaName?.trim(),
           areaInHectares: ga.areaInHectares ? Number(ga.areaInHectares) : undefined,
         }));
 
@@ -289,7 +264,7 @@ export const EditSupplierProfilePage: React.FC = () => {
     } catch (err) {
       const labels: Record<string, string> = { ...supplierFieldLabels };
       values.growingAreas.forEach((_, index) => {
-        labels[`growingAreas.${index}.growingAreaId`] = 'Vùng trồng';
+        labels[`growingAreas.${index}.areaName`] = 'Vùng trồng';
         labels[`growingAreas.${index}.areaInHectares`] = 'Diện tích';
       });
       const fields = getApiFieldErrors(err, labels);
@@ -414,7 +389,7 @@ export const EditSupplierProfilePage: React.FC = () => {
                   type="button"
                   onClick={() =>
                     append({
-                      growingAreaId: 0,
+                      growingAreaId: 0, areaName: '',
                       areaInHectares: undefined,
                     })
                   }
@@ -467,18 +442,8 @@ export const EditSupplierProfilePage: React.FC = () => {
                           <label style={{ ...labelStyle, fontSize: '10px', color: '#6b7280' }}>
                             VÙNG TRỒNG #{index + 1}
                           </label>
-                          <select
-                            {...register(`growingAreas.${index}.growingAreaId` as const, { valueAsNumber: true, validate: value => value > 0 || 'Vui lòng chọn vùng trồng hợp lệ.' })}
-                            {...fieldProps(`growingAreas.${index}.growingAreaId`, { ...selectStyle, backgroundColor: '#ffffff' })}
-                          >
-                            <option value={0}>-- Chọn Vùng trồng --</option>
-                            {growingAreaOptions.map((area) => (
-                              <option key={area.growingAreaId} value={area.growingAreaId}>
-                                {area.areaName} ({[area.ward, area.district, area.province].filter(Boolean).join(', ')})
-                              </option>
-                            ))}
-                          </select>
-                          {fieldError(`growingAreas.${index}.growingAreaId`)}
+                          <input type="text" maxLength={200} placeholder="Nhập tên vùng trồng" {...register(`growingAreas.${index}.areaName` as const, { required: 'Vui lòng nhập tên vùng trồng.' })} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+                          {fieldError(`growingAreas.${index}.areaName`)}
                         </div>
 
                         <div>
@@ -524,37 +489,7 @@ export const EditSupplierProfilePage: React.FC = () => {
               <div style={{ padding: '20px' }}>
                 <label style={{ ...labelStyle, marginBottom: '12px', display: 'block' }}>DANH MỤC NÔNG SẢN *</label>
                 
-                {Object.keys(groupedCropTypes).length === 0 ? (
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontStyle: 'italic' }}>
-                    Chưa có dữ liệu cây trồng hoặc đang tải...
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {Object.entries(groupedCropTypes).map(([category, crops]) => (
-                      <div key={category} style={{ borderBottom: '1px dashed #e5e7eb', paddingBottom: '12px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#059669', marginBottom: '8px', textTransform: 'uppercase' }}>
-                          📁 {category}
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                          {crops.map((crop) => {
-                            const isChecked = selectedCrops.map(Number).includes(Number(crop.cropTypeId));
-                            return (
-                              <label key={crop.cropTypeId} style={{ display: 'flex', alignItems: 'center', fontSize: '14px', color: '#374151', cursor: 'pointer' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => handleCropToggle(crop.cropTypeId)}
-                                  style={{ marginRight: '8px' }}
-                                />
-                                {crop.cropName}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <SupplierCropSelector value={selectedCrops} legacy={cropTypeOptions} onChange={ids => setValue('cropTypeIds', ids, { shouldValidate: true })} />
                 {fieldError('cropTypeIds')}
               </div>
             </div>

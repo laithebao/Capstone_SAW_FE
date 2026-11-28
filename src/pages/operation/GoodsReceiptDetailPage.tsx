@@ -1,3 +1,4 @@
+import { formatVietnamDateTime } from '@/utils/vietnamTime'
 import { useCallback, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { ROUTES } from '@/constants/routes'
@@ -18,7 +19,7 @@ function ReceiptDetail({ id }: { id: number }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
-  const isManagerOrAdmin = user?.role === ROLES.WAREHOUSE_MANAGER || user?.role === ROLES.ADMINISTRATOR
+  const isAdministrator = user?.role === ROLES.ADMINISTRATOR
   const isOperationStaff = user?.role === ROLES.OPERATION_STAFF
 
   const resource = useGoodsReceiptResource(useCallback((signal: AbortSignal) => getGoodsReceipt(id, signal), [id]), true)
@@ -39,7 +40,7 @@ function ReceiptDetail({ id }: { id: number }) {
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
         <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-          {isManagerOrAdmin ? 'Điều hành kho · Chi tiết phiếu nhập' : 'Vận hành · Nhập kho'}
+          {isAdministrator ? 'Quản trị · Chi tiết phiếu nhập' : 'Vận hành · Nhập kho'}
         </p>
         <h1 className="mt-1 text-2xl font-bold text-slate-900">CHI TIẾT PHIẾU NHẬP</h1>
       </div>
@@ -49,7 +50,7 @@ function ReceiptDetail({ id }: { id: number }) {
           if (window.history.length > 1) {
             navigate(-1)
           } else {
-            navigate(isManagerOrAdmin ? ROUTES.OPERATION_PRODUCT_BATCHES : ROUTES.OPERATION_GOODS_RECEIPTS)
+            navigate(isAdministrator ? ROUTES.OPERATION_PRODUCT_BATCHES : ROUTES.OPERATION_GOODS_RECEIPTS)
           }
         }}
         className="inline-flex items-center text-sm font-semibold text-emerald-700 hover:text-emerald-900 transition"
@@ -64,7 +65,7 @@ function ReceiptDetail({ id }: { id: number }) {
       <dl className="mt-5 grid gap-5 text-sm sm:grid-cols-2 lg:grid-cols-3">{[
         ['Mã lô', receipt.batchCode], ['Sản phẩm', receipt.productName], ['Nhà cung cấp', receipt.supplierName],
         ['Số lượng nhập', `${receipt.receivedQuantity.toLocaleString('vi-VN')} ${receipt.unit}`], ['Khối lượng nhập', `${receipt.weightInKg.toLocaleString('vi-VN')} kg`], ['Vị trí kho', receipt.locationName],
-        ['Ngày nhận', receipt.receivedDate.split('-').reverse().join('/')], ['Người lập', receipt.operationStaffName], ['Thời điểm xác nhận', receipt.committedAt ? new Date(`${receipt.committedAt}Z`.replace('ZZ', 'Z')).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa xác nhận'],
+        ['Ngày nhận', receipt.receivedDate.split('-').reverse().join('/')], ['Người lập', receipt.operationStaffName], ['Thời điểm xác nhận', receipt.committedAt ? formatVietnamDateTime(`${receipt.committedAt}Z`.replace('ZZ', 'Z'), { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa xác nhận'],
       ].map(([label, value]) => <div key={label}><dt className="text-slate-500">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>)}</dl>
       <div className="mt-5 border-t border-slate-100 pt-4"><h3 className="text-sm text-slate-500">Ghi chú</h3><p className="mt-1 whitespace-pre-wrap text-sm">{receipt.note || 'Không có ghi chú.'}</p></div>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">

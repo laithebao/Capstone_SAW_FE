@@ -12,8 +12,8 @@ export interface UserAccessDetail { user: UserAccessListItem; roleId: number; pe
 export interface UserAccessListResponse { items: UserAccessListItem[]; totalCount: number; page: number; pageSize: number }
 
 const base = '/admin/user-access'
-export async function getAccounts(search = '', roleId?: number, status?: string): Promise<UserAccessListResponse> {
-  const response = await apiClient.get<ApiResponse<UserAccessListResponse>>(`${base}/accounts`, { params: { search, roleId, status, pageSize: 100 } })
+export async function getAccounts(search = '', roleId?: number, status?: string, page = 1): Promise<UserAccessListResponse> {
+  const response = await apiClient.get<ApiResponse<UserAccessListResponse>>(`${base}/accounts`, { params: { search, roleId, status, page, pageSize: 100 } })
   return response.data.data
 }
 export async function getAccountAccess(id: number): Promise<UserAccessDetail> {

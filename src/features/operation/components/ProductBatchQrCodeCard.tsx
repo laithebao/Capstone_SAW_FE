@@ -1,3 +1,4 @@
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import { useEffect, useRef, useState } from 'react'
 import { Download, ExternalLink, QrCode, RefreshCw } from 'lucide-react'
 import { getAuthErrorMessage } from '@/services/authService'
@@ -79,7 +80,7 @@ export default function ProductBatchQrCodeCard({ batchId, loadQrCode = getProduc
           <div className="min-w-0 space-y-3">
             <p className="font-mono font-bold text-emerald-700">{qr.batchCode}</p>
             <p className="break-all text-sm text-slate-600">{qr.traceabilityUrl}</p>
-            <p className="text-xs text-slate-500">Tạo lúc: {qr.generatedAt ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(qr.generatedAt)) : '—'}</p>
+            <p className="text-xs text-slate-500">Tạo lúc: {qr.generatedAt ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',  dateStyle: 'medium', timeStyle: 'short' }).format(parseApiTimestamp(qr.generatedAt)) : '—'}</p>
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={downloading} onClick={() => { void download() }} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"><Download className="size-4" />{downloading ? 'Đang tải...' : 'Tải PNG'}</button>
               <a href={qr.traceabilityUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><ExternalLink className="size-4" />Mở truy xuất</a>

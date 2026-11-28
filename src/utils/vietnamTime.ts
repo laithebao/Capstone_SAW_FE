@@ -28,6 +28,15 @@ export function getVietnamDateTimeLocal(date: Date = new Date()): string {
   return `${map.year}-${map.month}-${map.day}T${hour}:${map.minute}`
 }
 
+/** YYYY-MM-DD for date-only inputs and business-day validation in Vietnam. */
+export function getVietnamDateInput(date: Date = new Date()): string {
+  return getVietnamDateTimeLocal(date).slice(0, 10)
+}
+
+export function getVietnamWeekday(date: Date): number {
+  return new Date(`${getVietnamDateInput(date)}T00:00:00Z`).getUTCDay()
+}
+
 /**
  * Chuyển đổi chuỗi YYYY-MM-DDTHH:mm nhập từ input sang chuỗi ISO 8601 kèm múi giờ Việt Nam (+07:00)
  * Ví dụ: "2026-10-28T21:50" -> "2026-10-28T21:50:00+07:00"
@@ -69,11 +78,23 @@ export function isFutureVietnamTime(localDateTime: string, toleranceMinutes = 1)
  * timezone suffix, so treat those API timestamps as UTC rather than browser time.
  * User-entered datetime-local values must use toVietnamIsoString instead.
  */
-function parseApiTimestamp(value: string | Date): Date {
+export function parseApiTimestamp(value: string | Date): Date {
   if (value instanceof Date) return value
   const timestamp = value.trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(timestamp)) return new Date(`${timestamp}T00:00:00+07:00`)
   const isUnzonedDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(timestamp)
   return new Date(isUnzonedDateTime ? `${timestamp}Z` : timestamp)
+}
+
+export function formatVietnam(value: string | Date | null | undefined, options: Intl.DateTimeFormatOptions = {}, locale = 'vi-VN'): string {
+  if (!value) return '—'
+  const date = parseApiTimestamp(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'Asia/Ho_Chi_Minh' }).format(date)
+}
+
+export function formatVietnamTime(value: string | Date | null | undefined, options: Intl.DateTimeFormatOptions = {}): string {
+  return formatVietnam(value, { hour: '2-digit', minute: '2-digit', ...options })
 }
 
 /** Hiển thị ngày giờ API theo múi giờ Việt Nam. */
@@ -81,31 +102,22 @@ export function formatVietnamDateTime(
   dateInput: string | Date | null | undefined,
   options: Intl.DateTimeFormatOptions = {},
 ): string {
-  if (!dateInput) return '—'
-  const date = parseApiTimestamp(dateInput)
-  if (isNaN(date.getTime())) return '—'
-
-  return new Intl.DateTimeFormat('vi-VN', {
+  const defaults: Intl.DateTimeFormatOptions = options.dateStyle || options.timeStyle ? {} : {
     hour: '2-digit',
     minute: '2-digit',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    ...options,
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }).format(date)
+  }
+  return formatVietnam(dateInput, { ...defaults, ...options })
 }
 
 /** Hiển thị ngày của một thời điểm API theo múi giờ Việt Nam. */
-export function formatVietnamDate(dateInput: string | Date | null | undefined): string {
-  if (!dateInput) return '—'
-  const date = parseApiTimestamp(dateInput)
-  if (isNaN(date.getTime())) return '—'
-
-  return new Intl.DateTimeFormat('vi-VN', {
-    timeZone: 'Asia/Ho_Chi_Minh',
+export function formatVietnamDate(dateInput: string | Date | null | undefined, options: Intl.DateTimeFormatOptions = {}): string {
+  const defaults: Intl.DateTimeFormatOptions = options.dateStyle || options.timeStyle ? {} : {
     day: 'numeric',
     month: 'numeric',
     year: 'numeric',
-  }).format(date)
+  }
+  return formatVietnam(dateInput, { ...defaults, ...options })
 }

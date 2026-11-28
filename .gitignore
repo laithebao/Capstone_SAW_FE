@@ -60,6 +60,15 @@ Desktop.ini
 *.orig
 *.rej
 
+# Generated browser/verification output; keep test source tracked.
+/test-results/
+/playwright-report/
+/blob-report/
+
 # Local Supplier regression tests
 /tests/supplierBatch.test.mjs
 /tests/supplierProfile.test.mjs
+Capstone_SAW_FE.zip
+
+# Local agent instructions
+/AGENTS.md

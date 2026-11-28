@@ -1,3 +1,5 @@
+import { getVietnamDateInput } from '@/utils/vietnamTime'
+import { parseApiTimestamp } from '@/utils/vietnamTime'
 import { optionalNumericInput, type DeclareBatchFormInput } from '@/features/supplier/schemas/supplierBatchSchema';
 import { getAuthErrorMessage } from '@/services/authService';
 import { uploadSupplierFile } from '@/features/supplier/supplierFiles';
@@ -37,12 +39,12 @@ const money = new Intl.NumberFormat('vi-VN', {
   maximumFractionDigits: 0,
 });
 const weight = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 });
-const formatDate = (value: string) => new Intl.DateTimeFormat('vi-VN').format(new Date(`${value}T00:00:00`));
+const formatDate = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }).format(parseApiTimestamp(`${value}T00:00:00`));
 const daysUntilDate = (value: string) => {
   const [year, month, day] = value.split('-').map(Number);
-  const today = new Date();
+  const today = getVietnamDateInput().split('-').map(Number);
   const dueDay = Date.UTC(year, month - 1, day);
-  const todayDay = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayDay = Date.UTC(today[0], today[1] - 1, today[2]);
   return Math.round((dueDay - todayDay) / 86_400_000);
 };
 const periodLabel = (period: 'WEEK' | 'MONTH') => period === 'MONTH' ? 'tháng' : 'tuần';
@@ -288,11 +290,12 @@ export const DeclareBatchPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 max-w-5xl mx-auto">
+    <div className="sp-form">
       <form onSubmit={handleSubmit(onSubmit)}>
         {/* TOP BAR */}
         <div className="flex items-center justify-between mb-6">
           <div>
+            <p className="text-xs text-emerald-700 mb-1">Quản lý lô hàng / Khai báo lô</p>
             <h1 className="text-2xl font-bold text-gray-900">
               Khai báo thông tin lô hàng
             </h1>
@@ -496,7 +499,7 @@ export const DeclareBatchPage: React.FC = () => {
                     </option>
                     {growingAreas.map((area) => (
                       <option key={area.growingAreaId} value={area.growingAreaId}>
-                        {area.areaName} ({[area.ward, area.district, area.province].filter(Boolean).join(', ')})
+                        {[area.areaName, [area.ward, area.district, area.province].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
                       </option>
                     ))}
                   </select>
