@@ -2,7 +2,7 @@ import SupplyContractTimeline from './SupplyContractTimeline';
 import AdminContractList from './AdminContractList';
 import SupplierContractList from './SupplierContractList';
 import './warehouse-contracts-v2.css'
-import { Eye } from 'lucide-react'
+import { Eye, Pencil } from 'lucide-react'
 import FormNotification from '@/components/common/FormNotification'
 import RefreshButton from '@/components/common/RefreshButton'
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
@@ -281,6 +281,12 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
   ) ?? [];
 
   const detailPanelOpen = detailLoading || Boolean(selected) || detailClosing;
+  const canEditContract = mode === "warehouse" && selected
+    && selected.status !== "APPROVED"
+    && selected.status !== "CANCELLATION_REQUESTED"
+    && selected.status !== "PENDING_ADMIN_CANCELLATION"
+    && selected.status !== "CANCELLED";
+  const today = getVietnamDateInput();
 
   useEffect(() => () => {
     if (detailCloseTimerRef.current) clearTimeout(detailCloseTimerRef.current);
@@ -475,11 +481,33 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
     }
   };
 
+  const openEdit = () => {
+    if (!selected || !canEditContract || actionBusy || detailLoading || detailClosing) return;
+    if (createCloseTimerRef.current) clearTimeout(createCloseTimerRef.current);
+    setCreateClosing(false);
+    setEditingId(selected.id);
+    setForm({
+      supplierId: String(selected.supplierId),
+      cropTypeId: String(selected.cropTypeId),
+      deliveryQuantityKg: String(selected.deliveryQuantityKg),
+      deliveryPeriod: selected.deliveryPeriod,
+      unitPriceVndPerKg: selected.unitPriceExact ?? String(selected.unitPriceVndPerKg),
+      startDate: selected.startDate,
+      endDate: selected.endDate,
+      terms: selected.terms ?? "",
+    });
+    setCreateNotice("");
+    setError("");
+    setMessage("");
+    setShowCreate(true);
+  };
+
   const closeContractForm = (force = false) => {
     if (createBusy && !force) return;
     if (createCloseTimerRef.current) clearTimeout(createCloseTimerRef.current);
     setCreateClosing(true);
     setCreateNotice("");
+    if (editingId) setError("");
     createCloseTimerRef.current = setTimeout(() => {
       setShowCreate(false);
       setCreateClosing(false);
@@ -546,8 +574,6 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
         : await createSupplyContract(request);
       const withAttachment = saved;
       closeContractForm(true);
-      setEditingId(null);
-      setForm(initialForm());
       setSelected(withAttachment);
       setMessage(
         editingId
@@ -1110,7 +1136,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
                   <input
                     required
                     type="date"
-                    min={form.startDate}
+                    min={editingId && form.startDate < today ? today : form.startDate}
                     value={form.endDate}
                     onChange={(event) =>
                       setForm((current) => ({ ...current, endDate: event.target.value }))
@@ -1165,7 +1191,7 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
       )}
 
       {(selected || detailLoading || detailClosing) && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-hidden p-2 sm:p-4">
+        <div inert={showCreate} className="fixed inset-0 z-[70] flex items-center justify-center overflow-hidden p-2 sm:p-4">
           <button
             type="button"
             className={`absolute inset-0 z-0 border-0 bg-slate-950/55 p-0 ${detailClosing ? "contract-backdrop-exit" : "contract-backdrop-enter"}`}
@@ -1177,21 +1203,34 @@ export default function SupplyContractsPage({ mode }: SupplyContractsPageProps) 
               <p className="p-10 text-center text-slate-500">Đang tải chi tiết...</p>
             ) : selected ? (
               <>
-                <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between border-b border-slate-200 bg-white px-6 py-4">
+                <div className="sticky top-0 z-10 flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
                   <div>
                     <p className="text-sm font-semibold text-emerald-700">Chi tiết hợp đồng</p>
                     <h2 className="text-xl font-bold text-slate-950">
                       {selected.contractCode}
                     </h2>
                   </div>
-                  <button
-                    type="button"
-                    disabled={actionBusy}
-                    onClick={closeDetail}
-                    className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100"
-                  >
-                    Đóng
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canEditContract && (
+                      <button
+                        type="button"
+                        disabled={actionBusy || detailLoading || detailClosing}
+                        onClick={openEdit}
+                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+                      >
+                        <Pencil size={16} aria-hidden="true" />
+                        Cập nhật hợp đồng
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={actionBusy}
+                      onClick={closeDetail}
+                      className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100"
+                    >
+                      Đóng
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(340px,1fr)] lg:items-start">
